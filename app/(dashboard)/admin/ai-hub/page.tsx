@@ -11,6 +11,7 @@ import {
   getAiGatewayLogs,
   type AiGatewayHealth,
   type AiGatewayLog,
+  type AiGatewayLogData,
 } from "@/lib/operations";
 
 export const metadata: Metadata = {
@@ -37,7 +38,7 @@ export default async function AiHubPage() {
       autoFallbackEnabled: true,
       proxyUrl: "",
     })),
-    getAiGatewayLogs().catch((): AiGatewayLog[] => []),
+    getAiGatewayLogs().catch((): AiGatewayLogData => ({ httpLogs: [], rawLogs: [] })),
   ]);
 
   const activeDocCount = documents.filter((d) => d.isActive).length;
@@ -52,7 +53,8 @@ export default async function AiHubPage() {
 
       {/* 2. Live Console Trace 9Router (Terminal Log Aktivitas Gateway) */}
       <NineRouterConsoleWidget
-        initialLogs={initialLogs}
+        initialLogs={initialLogs.httpLogs}
+        initialRawLogs={initialLogs.rawLogs}
         gatewayUrl={healthData.gatewayUrl}
       />
 

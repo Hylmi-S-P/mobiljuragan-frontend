@@ -516,8 +516,20 @@ export type AiGatewayLog = {
   details: string;
 };
 
-export async function getAiGatewayLogs(): Promise<AiGatewayLog[]> {
-  return await apiGet<AiGatewayLog[]>("/admin/ai/logs");
+export type AiGatewayLogData = {
+  httpLogs: AiGatewayLog[];
+  rawLogs: string[];
+};
+
+export async function getAiGatewayLogs(): Promise<AiGatewayLogData> {
+  const res = await apiGet<AiGatewayLogData | AiGatewayLog[]>("/admin/ai/logs");
+  if (Array.isArray(res)) {
+    return { httpLogs: res, rawLogs: [] };
+  }
+  return {
+    httpLogs: res?.httpLogs || [],
+    rawLogs: res?.rawLogs || [],
+  };
 }
 
 
