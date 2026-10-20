@@ -2,11 +2,12 @@
 
 import { useMemo, useState, useTransition } from "react";
 
-import { replyToTicketAction } from "@/app/actions";
+import { replyToTicketAction, updateTicketStatusAction } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { TICKET_STATUS } from "@/lib/labels";
+import { TICKET_STATUS, formatTicketCategory } from "@/lib/labels";
+import { useDebounce } from "@/lib/useDebounce";
 import type { SupportTicketView, TicketMessageView } from "@/lib/operations";
 import type { SupportTicketStatus } from "@/lib/types";
 
@@ -20,26 +21,53 @@ function initialOf(label: string): string {
 }
 
 export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
+  const [tickets, setTickets] = useState<SupportTicketView[]>(initialTickets);
   const firstTicketId = initialTickets[0]?.id ?? "";
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 300);
   const [activeId, setActiveId] = useState(firstTicketId);
   const [messages, setMessages] = useState<TicketMessageView[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [draftError, setDraftError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSending, startTransition] = useTransition();
 
   const filteredTickets = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
-    if (keyword.length === 0) return initialTickets;
-    return initialTickets.filter((ticket) =>
-      [ticket.customerLabel, ticket.title, ticket.category].some((field) =>
+    const keyword = debouncedQuery.trim().toLowerCase();
+    if (keyword.length === 0) return tickets;
+    return tickets.filter((ticket) =>
+      [ticket.customerLabel, ticket.title, ticket.category, formatTicketCategory(ticket.category)].some((field) =>
         field.toLowerCase().includes(keyword),
       ),
     );
-  }, [query, initialTickets]);
+  }, [debouncedQuery, tickets]);
 
-  const activeTicket = initialTickets.find((ticket) => ticket.id === activeId) ?? null;
+  const activeTicket = tickets.find((ticket) => ticket.id === activeId) ?? null;
+  const isResolvedOrClosed = activeTicket?.status === "selesai";
+
+  function handleStatusChange(
+    newStatus: "OPEN" | "IN_PROGRESS" | "WAITING_CUSTOMER" | "RESOLVED" | "CLOSED",
+  ) {
+    if (!activeTicket) return;
+    const targetStatusMapped = newStatus === "RESOLVED" || newStatus === "CLOSED" ? "selesai" : "baru";
+
+    startTransition(async () => {
+      const result = await updateTicketStatusAction(activeTicket.id, newStatus);
+      if (result.success) {
+        setTickets((current) =>
+          current.map((t) => (t.id === activeTicket.id ? { ...t, status: targetStatusMapped } : t)),
+        );
+        setNotice({
+          text: result.message ?? `Status tiket berhasil diubah menjadi ${newStatus}.`,
+        });
+      } else {
+        setNotice({
+          text: result.message ?? "Gagal mengubah status tiket.",
+          isError: true,
+        });
+      }
+    });
+  }
 
   function sendReply() {
     if (!activeTicket) return;
@@ -65,12 +93,20 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
       const result = await replyToTicketAction(activeTicket.id, text);
       if (result.success) {
-        setNotice(result.message ?? "Balasan terkirim.");
+        setNotice({ text: result.message ?? "Balasan terkirim." });
+        setTickets((current) =>
+          current.map((t) =>
+            t.id === activeTicket.id
+              ? { ...t, status: "menunggu_pelanggan", messageCount: t.messageCount + 1 }
+              : t,
+          ),
+        );
       } else {
         // Gagal kirim: tarik kembali pesan optimistis supaya tidak menyesatkan.
         setMessages((current) => current.filter((message) => message.id !== optimisticMessage.id));
         setDraft(text);
         setDraftError(result.message ?? "Balasan gagal dikirim.");
+        setNotice({ text: result.message ?? "Gagal mengirim balasan.", isError: true });
       }
     });
   }
@@ -78,8 +114,14 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   return (
     <>
       {notice ? (
-        <p className="mt-3 rounded-sm border border-rule bg-surface px-3 py-2 text-meta text-ink">
-          {notice}
+        <p
+          className={`mt-3 rounded-sm border px-3 py-2 text-meta ${
+            notice.isError
+              ? "border-danger bg-danger/10 text-danger"
+              : "border-teal/40 bg-surface text-ink"
+          }`}
+        >
+          {notice.text}
         </p>
       ) : null}
 
@@ -100,7 +142,10 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
             <ul className="mt-3 space-y-1.5">
               {filteredTickets.map((ticket) => {
                 const active = ticket.id === activeId;
-                const status = TICKET_STATUS[ticket.status as SupportTicketStatus];
+                const status = TICKET_STATUS[ticket.status as SupportTicketStatus] ?? {
+                  label: ticket.status,
+                  tone: "neutral" as const,
+                };
                 return (
                   <li key={ticket.id}>
                     <button
@@ -128,7 +173,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           {ticket.title}
                         </span>
                         <span className="mt-1 block text-meta text-ink-soft">
-                          {ticket.category} · {ticket.messageCount} pesan
+                          {formatTicketCategory(ticket.category)} · {ticket.messageCount} pesan
                         </span>
                       </span>
                     </button>
@@ -139,7 +184,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
             {filteredTickets.length === 0 ? (
               <p className="mt-3 text-meta text-ink-soft">
-                {initialTickets.length === 0
+                {tickets.length === 0
                   ? "Belum ada tiket yang masuk dari pelanggan."
                   : "Tidak ada tiket yang cocok dengan kata kunci itu."}
               </p>
@@ -151,19 +196,54 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           <section className="flex min-h-[460px] flex-col rounded-md border border-rule bg-surface">
             {activeTicket ? (
               <>
-                <div className="flex flex-wrap items-center gap-2.5 border-b border-rule px-4 py-3">
-                  <span
-                    aria-hidden="true"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-navy text-body font-semibold text-white"
-                  >
-                    {initialOf(activeTicket.customerLabel)}
-                  </span>
-                  <span className="text-body font-semibold text-ink">
-                    {activeTicket.customerLabel}
-                  </span>
-                  <StatusChip tone={TICKET_STATUS[activeTicket.status as SupportTicketStatus].tone}>
-                    {TICKET_STATUS[activeTicket.status as SupportTicketStatus].label}
-                  </StatusChip>
+                <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-rule px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="flex h-9 w-9 items-center justify-center rounded-full bg-navy text-body font-semibold text-white"
+                    >
+                      {initialOf(activeTicket.customerLabel)}
+                    </span>
+                    <span className="text-body font-semibold text-ink">
+                      {activeTicket.customerLabel}
+                    </span>
+                    <StatusChip
+                      tone={
+                        (TICKET_STATUS[activeTicket.status as SupportTicketStatus] ?? {
+                          tone: "neutral" as const,
+                        }).tone
+                      }
+                    >
+                      {
+                        (TICKET_STATUS[activeTicket.status as SupportTicketStatus] ?? {
+                          label: activeTicket.status,
+                        }).label
+                      }
+                    </StatusChip>
+                  </div>
+
+                  {/* Tombol Aksi Status Tiket Sederhana & Terpusat */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!isResolvedOrClosed ? (
+                      <Button
+                        variant="confirm"
+                        size="sm"
+                        disabled={isSending}
+                        onClick={() => handleStatusChange("RESOLVED")}
+                      >
+                        {isSending ? "Menyelesaikan..." : "Selesaikan & Tutup Tiket"}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isSending}
+                        onClick={() => handleStatusChange("OPEN")}
+                      >
+                        {isSending ? "Membuka..." : "Buka Kembali Tiket"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="border-b border-rule px-4 py-3">
@@ -177,7 +257,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                       <dt className="text-micro font-bold uppercase text-ink-soft">
                         Jenis bantuan
                       </dt>
-                      <dd className="mt-1 text-meta text-ink">{activeTicket.category}</dd>
+                      <dd className="mt-1 text-meta font-medium text-ink">
+                        {formatTicketCategory(activeTicket.category)}
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-micro font-bold uppercase text-ink-soft">Nomor tiket</dt>
@@ -216,28 +298,36 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                 </div>
 
                 <div className="border-t border-rule px-4 py-3">
-                  <label htmlFor="ticket-reply" className="sr-only">
-                    Tulis balasan
-                  </label>
-                  <div className="flex flex-col gap-2.5 sm:flex-row">
-                    <input
-                      id="ticket-reply"
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      placeholder="Tulis balasan..."
-                      aria-invalid={Boolean(draftError)}
-                      aria-describedby={draftError ? "ticket-reply-error" : undefined}
-                      className="h-11 min-w-0 flex-1 rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-                    />
-                    <Button variant="confirm" size="md" onClick={sendReply} disabled={isSending}>
-                      {isSending ? "Mengirim..." : "Kirim Balasan"}
-                    </Button>
-                  </div>
-                  {draftError ? (
-                    <p id="ticket-reply-error" className="mt-2 text-meta text-danger">
-                      {draftError}
-                    </p>
-                  ) : null}
+                  {isResolvedOrClosed ? (
+                    <div className="rounded-sm border border-rule bg-canvas p-2.5 text-center text-meta text-ink-soft">
+                      Tiket ini telah ditandai selesai/ditutup. Klik &quot;Buka Kembali Tiket&quot; di atas untuk melanjutkan percakapan.
+                    </div>
+                  ) : (
+                    <>
+                      <label htmlFor="ticket-reply" className="sr-only">
+                        Tulis balasan
+                      </label>
+                      <div className="flex flex-col gap-2.5 sm:flex-row">
+                        <input
+                          id="ticket-reply"
+                          value={draft}
+                          onChange={(event) => setDraft(event.target.value)}
+                          placeholder="Tulis balasan solusi resmi ke pelanggan..."
+                          aria-invalid={Boolean(draftError)}
+                          aria-describedby={draftError ? "ticket-reply-error" : undefined}
+                          className="h-11 min-w-0 flex-1 rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
+                        />
+                        <Button variant="confirm" size="md" onClick={sendReply} disabled={isSending}>
+                          {isSending ? "Mengirim..." : "Kirim Balasan"}
+                        </Button>
+                      </div>
+                      {draftError ? (
+                        <p id="ticket-reply-error" className="mt-2 text-meta text-danger">
+                          {draftError}
+                        </p>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </>
             ) : (

@@ -54,3 +54,25 @@ export function formatCurrencyInput(value: string): string {
   if (digits.length === 0) return "";
   return `Rp ${Number(digits).toLocaleString("id-ID")}`;
 }
+
+export function formatRupiah(value: number | string): string {
+  const num = typeof value === "number" ? value : Number(String(value).replace(/\D/g, "") || 0);
+  return `Rp ${num.toLocaleString("id-ID")}`;
+}
+
+/**
+ * Memformat angka atau string numerik dengan pemisah ribuan titik khas Indonesia (contoh: 1.000 atau 1.000.000).
+ */
+export function formatRupiahDots(value: number | string): string {
+  const digits = String(value).replace(/\D/g, "");
+  if (!digits) return "";
+  return Number(digits).toLocaleString("id-ID");
+}
+
+/**
+ * Mengonversi teks rupiah berpemisah titik kembali ke angka number murni (contoh: "1.000.000" -> 1000000).
+ */
+export function parseRupiahDots(value: string): number {
+  const digits = value.replace(/\D/g, "");
+  return digits ? Number(digits) : 0;
+}

@@ -228,10 +228,14 @@ function mapBooking(b: ApiBooking): Booking {
     endDate: b.endDateTime,
     dayCount: countDays(b.startDateTime, b.endDateTime),
     status: BOOKING_STATUS_MAP[b.status] ?? "perlu_konfirmasi_tarif",
+    rawStatus: b.status,
+    quotedAmount: b.quotedAmount !== null && b.quotedAmount !== undefined ? Number(b.quotedAmount) : null,
+    driverId: b.driverId,
     serviceType: isDriverService ? "Dengan Supir" : "Lepas Kunci",
     pickupRoute: b.pickupLocation,
     driverName: b.driver?.fullName ?? null,
     driverStatus: b.driver?.readiness ? (DRIVER_READINESS[b.driver.readiness] ?? null) : null,
+    whatsappIntent: (b as { whatsappIntent?: { message: string; url: string } }).whatsappIntent ?? null,
     lineItems,
   };
 }
@@ -392,3 +396,128 @@ export async function getTicketMessages(ticketId: string): Promise<TicketMessage
     senderName: m.sender?.fullName ?? "Tim",
   }));
 }
+
+/* Laporan Keuangan */
+
+export type FinanceSummary = {
+  summary: {
+    totalRevenue: number;
+    pendingRevenue: number;
+    completedBookingsCount: number;
+    confirmedOrActiveCount: number;
+    averageOrderValue: number;
+    totalAllBookings: number;
+  };
+  rentalTypes: {
+    withoutDriver: {
+      count: number;
+      revenue: number;
+      percentage: number;
+    };
+    withDriver: {
+      count: number;
+      revenue: number;
+      percentage: number;
+    };
+  };
+  fleetBreakdown: Array<{
+    vehicleId: string;
+    externalId: string;
+    name: string;
+    licensePlate: string;
+    category: string | null;
+    completedBookings: number;
+    totalRevenue: number;
+    activeBookings: number;
+  }>;
+  monthlyTrends: Array<{
+    label: string;
+    revenue: number;
+    bookings: number;
+  }>;
+};
+
+export async function getFinanceSummary(range: string = "all"): Promise<FinanceSummary> {
+  return await apiGet<FinanceSummary>(`/admin/finance/summary?range=${encodeURIComponent(range)}`);
+}
+
+/* Konfigurasi AI & Knowledge Base */
+
+export type AiConfigData = {
+  config: {
+    id: string;
+    gatewayUrl: string;
+    apiKey: string | null;
+    activeModel: string;
+    fallbackModel: string;
+    fallbackGatewayUrl: string | null;
+    fallbackApiKey: string | null;
+    autoFallbackEnabled: boolean;
+    proxyUrl: string | null;
+    healthStatus: string;
+    lastLatencyMs: number | null;
+    lastHealthCheckedAt: string | null;
+    systemPrompt: string;
+    temperature: number;
+    maxTokens: number;
+    enableRag: boolean;
+    updatedAt: string;
+  };
+  stats: {
+    documentCount: number;
+    activeDocumentCount: number;
+  };
+};
+
+export type AiGatewayHealth = {
+  healthStatus: "HEALTHY" | "RATE_LIMITED" | "DEGRADED" | "OFFLINE";
+  statusCode: number;
+  latencyMs: number;
+  message: string;
+  checkedAt: string;
+  gatewayUrl: string;
+  activeModel: string;
+  fallbackModel: string;
+  autoFallbackEnabled: boolean;
+  proxyUrl?: string;
+};
+
+export async function getAiGatewayHealth(): Promise<AiGatewayHealth> {
+  return await apiGet<AiGatewayHealth>("/admin/ai/health");
+}
+
+export type KnowledgeDocument = {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function getAiConfig(): Promise<AiConfigData> {
+  return await apiGet<AiConfigData>("/admin/ai/config");
+}
+
+export async function getKnowledgeDocuments(): Promise<KnowledgeDocument[]> {
+  return await apiGet<KnowledgeDocument[]>("/admin/ai/documents");
+}
+
+export type AiGatewayLog = {
+  id: string;
+  timestamp: string;
+  event: 'CHAT_COMPLETION' | 'HEALTH_CHECK' | 'GATEWAY_ROUTING' | 'DOC_PARSED';
+  model: string;
+  status: number;
+  latencyMs: number;
+  tokens?: number;
+  tokensPerSecond?: number;
+  details: string;
+};
+
+export async function getAiGatewayLogs(): Promise<AiGatewayLog[]> {
+  return await apiGet<AiGatewayLog[]>("/admin/ai/logs");
+}
+
+

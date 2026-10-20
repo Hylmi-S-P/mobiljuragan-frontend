@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/Table";
 import { formatDateRange } from "@/lib/format";
 import { BOOKING_MODE_LABEL, BOOKING_STATUS } from "@/lib/labels";
+import { useDebounce } from "@/lib/useDebounce";
 import type { Booking, BookingStatus, Vehicle } from "@/lib/types";
 
 /* Label aksi mengikuti nama status pada siklus hidup backend. */
@@ -35,6 +36,7 @@ type Props = {
 
 export function BookingsTable({ initialBookings, vehicles }: Props) {
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 300);
   const [status, setStatus] = useState<"semua" | BookingStatus>("semua");
 
   // Kendaraan dicari dari daftar yang dikirim server, bukan dari data contoh.
@@ -44,7 +46,7 @@ export function BookingsTable({ initialBookings, vehicles }: Props) {
   }, [vehicles]);
 
   const filtered = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
+    const keyword = debouncedQuery.trim().toLowerCase();
     return initialBookings.filter((booking) => {
       if (status !== "semua" && booking.status !== status) return false;
       if (keyword.length === 0) return true;
@@ -57,7 +59,7 @@ export function BookingsTable({ initialBookings, vehicles }: Props) {
         vehicle?.plate ?? "",
       ].some((field) => field.toLowerCase().includes(keyword));
     });
-  }, [query, status, initialBookings, vehicleById]);
+  }, [debouncedQuery, status, initialBookings, vehicleById]);
 
   function resetFilters() {
     setQuery("");
@@ -66,36 +68,64 @@ export function BookingsTable({ initialBookings, vehicles }: Props) {
 
   return (
     <Panel>
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="min-w-0 flex-1">
-          <label htmlFor="booking-search" className="block text-meta font-medium text-ink">
-            Cari pemesan, kode booking, atau plat
-          </label>
-          <input
-            id="booking-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Contoh: Maria, BK-MRK, PA8593GZ"
-            className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-          />
+      {/* Baris Pencarian Ter-debounce dan Filter Status Terpusat & Compact */}
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <label htmlFor="booking-search" className="block text-meta font-medium text-ink">
+              Cari pemesan, kode booking, atau plat nomor
+            </label>
+            <input
+              id="booking-search"
+              maxLength={80}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Ketik untuk mencari (contoh: Maria, BK-MRK, PA8593GZ)..."
+              className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
+            />
+          </div>
         </div>
-        <div className="sm:w-64">
-          <label htmlFor="booking-status" className="block text-meta font-medium text-ink">
-            Status pesanan
-          </label>
-          <select
-            id="booking-status"
-            value={status}
-            onChange={(event) => setStatus(event.target.value as "semua" | BookingStatus)}
-            className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
+
+        {/* Filter Status Compact & Sentral (Segmented Pills) */}
+        <div className="flex flex-wrap items-center gap-1.5 rounded-sm border border-rule bg-canvas p-1.5">
+          <button
+            type="button"
+            onClick={() => setStatus("semua")}
+            className={`rounded-xs px-3 py-1.5 text-meta font-medium transition-colors ${
+              status === "semua"
+                ? "bg-surface font-semibold text-ink shadow-xs"
+                : "text-ink-soft hover:bg-surface/50 hover:text-ink"
+            }`}
           >
-            <option value="semua">Semua status</option>
-            {Object.entries(BOOKING_STATUS).map(([value, meta]) => (
-              <option key={value} value={value}>
-                {meta.label}
-              </option>
-            ))}
-          </select>
+            Semua ({initialBookings.length})
+          </button>
+          {Object.entries(BOOKING_STATUS).map(([value, meta]) => {
+            const count = initialBookings.filter((b) => b.status === value).length;
+            const isSelected = status === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setStatus(value as BookingStatus)}
+                className={`flex items-center gap-1.5 rounded-xs px-3 py-1.5 text-meta font-medium transition-colors ${
+                  isSelected
+                    ? "bg-surface font-semibold text-ink shadow-xs"
+                    : "text-ink-soft hover:bg-surface/50 hover:text-ink"
+                }`}
+              >
+                <span>{meta.label}</span>
+                {count > 0 ? (
+                  <span
+                    className={`rounded-full px-1.5 py-0.2 text-micro ${
+                      isSelected ? "bg-navy/10 text-navy font-bold" : "bg-rule text-ink-soft"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       </div>
 

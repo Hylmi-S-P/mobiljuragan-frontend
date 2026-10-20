@@ -62,7 +62,7 @@ export const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
 
 export const ADMIN_ROLE: Record<AdminRole, string> = {
   super_admin: "Super Admin",
-  staf_operasional: "Staf Operasional (Pool)",
+  staf_operasional: "Staf Operasional (Kantor MobilJuragan)",
 };
 
 export const TICKET_STATUS: Record<SupportTicketStatus, { label: string; tone: ChipTone }> = {
@@ -73,6 +73,26 @@ export const TICKET_STATUS: Record<SupportTicketStatus, { label: string; tone: C
   ditangani: { label: "Ditangani", tone: "busy" },
   selesai: { label: "Selesai", tone: "available" },
 };
+
+/* Penamaan jenis bantuan tiket bantuan pelanggan selaras dengan aplikasi mobile MobilJuragan */
+export const TICKET_CATEGORY_LABEL: Record<string, string> = {
+  VEHICLE_ISSUE: "Kondisi Unit Armada",
+  kendaraan: "Kondisi Unit Armada",
+  PAYMENT_CONFIRMATION: "Pembayaran & Tagihan",
+  pembayaran: "Pembayaran & Tagihan",
+  CANCELLATION: "Jadwal & Reservasi",
+  reservasi: "Jadwal & Reservasi",
+  COMPLAINT: "Layanan Driver",
+  layananSopir: "Layanan Driver",
+  GENERAL: "Pertanyaan Umum",
+  lainnya: "Pertanyaan Umum",
+  OTHER: "Lainnya",
+};
+
+export function formatTicketCategory(category: string | null | undefined): string {
+  if (!category) return "Pertanyaan Umum";
+  return TICKET_CATEGORY_LABEL[category] ?? category.replace(/_/g, " ");
+}
 
 /* Pilihan kategori armada yang dipakai form katalog dan filter. */
 export const VEHICLE_CATEGORY_OPTIONS = [

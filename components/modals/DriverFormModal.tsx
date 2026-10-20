@@ -102,6 +102,7 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
           </label>
           <input
             id={`${fieldId}-label`}
+            maxLength={80}
             value={label}
             onChange={(event) => setLabel(event.target.value)}
             aria-invalid={Boolean(errors.label)}
@@ -123,6 +124,7 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
           <input
             id={`${fieldId}-contact`}
             inputMode="tel"
+            maxLength={20}
             value={contact}
             onChange={(event) => setContact(event.target.value)}
             aria-invalid={Boolean(errors.contact)}
@@ -167,6 +169,7 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
           </label>
           <input
             id={`${fieldId}-license`}
+            maxLength={30}
             value={licenseNumber}
             onChange={(event) => setLicenseNumber(event.target.value)}
             aria-invalid={Boolean(errors.licenseNumber)}
