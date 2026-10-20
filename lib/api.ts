@@ -663,7 +663,12 @@ export type AiGatewayLog = {
   details: string;
 };
 
-export async function apiGetAiGatewayLogs(): Promise<AiGatewayLog[]> {
+export type AiGatewayLogData = {
+  httpLogs: AiGatewayLog[];
+  rawLogs: string[];
+};
+
+export async function apiGetAiGatewayLogs(): Promise<AiGatewayLogData> {
   const token = await getSessionToken();
   const res = await fetch(`${API_BASE_URL}/admin/ai/logs`, {
     method: "GET",
@@ -671,7 +676,13 @@ export async function apiGetAiGatewayLogs(): Promise<AiGatewayLog[]> {
   });
   const json = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(res.status, "FETCH_LOGS_FAILED", "Gagal memuat log gateway.");
-  return json.data || [];
+  if (Array.isArray(json?.data)) {
+    return { httpLogs: json.data, rawLogs: [] };
+  }
+  return {
+    httpLogs: json?.data?.httpLogs || [],
+    rawLogs: json?.data?.rawLogs || [],
+  };
 }
 
 export async function apiClearAiGatewayLogs(): Promise<void> {

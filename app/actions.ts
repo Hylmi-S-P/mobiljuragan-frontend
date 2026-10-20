@@ -590,7 +590,11 @@ export async function getAiGatewayLogsAction() {
     const data = await apiGetAiGatewayLogs();
     return { success: true, data };
   } catch (err) {
-    return { success: false, data: [], message: err instanceof Error ? err.message : "Gagal memuat log." };
+    return {
+      success: false,
+      data: { httpLogs: [], rawLogs: [] },
+      message: err instanceof Error ? err.message : "Gagal memuat log.",
+    };
   }
 }
 
