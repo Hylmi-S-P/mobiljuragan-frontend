@@ -271,11 +271,11 @@ export function AiGatewayConfigCard({ initialConfig, stats }: Props) {
               max="4096"
               step="50"
               value={maxTokens}
-              onChange={(e) => setMaxTokens(parseInt(e.target.value, 10) || 1000)}
+              onChange={(e) => setMaxTokens(parseInt(e.target.value, 10) || 1200)}
               className="mt-3 w-full rounded-button border border-rule bg-white px-3 py-1.5 text-body text-ink outline-none focus:border-teal"
             />
             <span className="mt-1 block text-micro text-ink-soft">
-              Standar 1000 token cukup untuk jawaban 2-3 paragraf lengkap.
+              Standar 1200 token memberikan jawaban yang lebih lengkap dan terperinci tanpa terpotong.
             </span>
           </div>
         </div>

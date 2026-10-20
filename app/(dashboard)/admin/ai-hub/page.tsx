@@ -67,7 +67,7 @@ export default async function AiHubPage() {
       {/* 4. Manajemen Basis Pengetahuan RAG (Upload Berkas Dokumen & Input Manual) */}
       <KnowledgeBaseManager initialDocuments={documents} />
 
-      {/* 5. Sandbox Uji Chatbot (Dilengkapi Slider Parameter Suhu/Token & Badge Rujukan Ringkas) */}
+      {/* 5. Sandbox Uji Chatbot (Live Model & RAG Simulator) */}
       <AiChatSandbox
         initialTemperature={aiData.config.temperature}
         initialMaxTokens={aiData.config.maxTokens}

@@ -29,7 +29,7 @@ const SUGGESTIONS = [
 
 export function AiChatSandbox({
   initialTemperature = 0.7,
-  initialMaxTokens = 1000,
+  initialMaxTokens = 1200,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -42,9 +42,6 @@ export function AiChatSandbox({
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [temperature, setTemperature] = useState(initialTemperature);
-  const [maxTokens, setMaxTokens] = useState(initialMaxTokens);
-  const [showParams, setShowParams] = useState(false);
 
   const sendMessage = async (textToSend: string) => {
     const text = textToSend.trim();
@@ -66,10 +63,7 @@ export function AiChatSandbox({
         .slice(-4)
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const res = await testAiChatAction(text, history, {
-        temperature,
-        maxTokens,
-      });
+      const res = await testAiChatAction(text, history);
 
       if (res.data) {
         const botMsg: Message = {
@@ -130,19 +124,12 @@ export function AiChatSandbox({
               Test Chat Sandbox (Live Model &amp; RAG Simulator)
             </h2>
             <p className="text-meta text-ink-soft">
-              Uji coba respons AI secara langsung dengan parameter kustom sebelum diterapkan ke aplikasi mobile.
+              Uji coba respons asisten AI secara interaktif dengan basis pengetahuan RAG resmi.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setShowParams(!showParams)}
-            className="rounded-button border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas-subtle"
-          >
-            ⚙ Parameter Uji ({temperature} / {maxTokens})
-          </button>
           <button
             type="button"
             onClick={handleClear}
@@ -153,47 +140,6 @@ export function AiChatSandbox({
         </div>
       </div>
 
-      {/* Parameter Uji Cepat (Collapsible) */}
-      {showParams ? (
-        <div className="mt-3 grid grid-cols-1 gap-4 rounded-md border border-rule/80 bg-canvas/40 p-3 sm:grid-cols-2 text-meta">
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-ink">Temperature / Kreativitas:</span>
-              <span className="font-mono text-teal font-bold">{temperature}</span>
-            </div>
-            <input
-              type="range"
-              min="0.0"
-              max="1.0"
-              step="0.05"
-              value={temperature}
-              onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              className="accent-teal cursor-pointer"
-            />
-            <div className="flex justify-between text-micro text-ink-soft">
-              <span>0.0 (Presisi/Faktual)</span>
-              <span>1.0 (Kreatif)</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-ink">Max Tokens:</span>
-              <span className="font-mono text-teal font-bold">{maxTokens}</span>
-            </div>
-            <input
-              type="number"
-              min="100"
-              max="3000"
-              step="100"
-              value={maxTokens}
-              onChange={(e) => setMaxTokens(parseInt(e.target.value, 10) || 1000)}
-              className="rounded border border-rule bg-white px-2 py-1 text-sm font-mono text-ink outline-none focus:border-teal"
-            />
-            <span className="text-micro text-ink-soft">Batas panjang maksimum respons balasan.</span>
-          </div>
-        </div>
-      ) : null}
 
       {/* Suggestion Chips */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
