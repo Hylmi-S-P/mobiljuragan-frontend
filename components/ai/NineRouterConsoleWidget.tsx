@@ -20,7 +20,7 @@ export function NineRouterConsoleWidget({
   const [rawLogs, setRawLogs] = useState<string[]>(initialRawLogs);
   const [isPending, startTransition] = useTransition();
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const consoleBottomRef = useRef<HTMLDivElement>(null);
+  const terminalContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchLogs = () => {
     startTransition(async () => {
@@ -48,10 +48,10 @@ export function NineRouterConsoleWidget({
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
-  // Scroll otomatis ke baris log terbaru saat ada update
+  // Scroll internal box terminal ke baris terbawah TANPA menggeser scroll window halaman utama
   useEffect(() => {
-    if (activeTab === "engine" && consoleBottomRef.current) {
-      consoleBottomRef.current.scrollIntoView({ behavior: "smooth" });
+    if (activeTab === "engine" && terminalContainerRef.current) {
+      terminalContainerRef.current.scrollTop = terminalContainerRef.current.scrollHeight;
     }
   }, [rawLogs, activeTab]);
 
@@ -168,7 +168,10 @@ export function NineRouterConsoleWidget({
       </div>
 
       {/* Terminal View */}
-      <div className="h-56 overflow-y-auto bg-slate-950 p-3 font-mono text-[11px] leading-relaxed text-slate-300">
+      <div
+        ref={terminalContainerRef}
+        className="h-56 overflow-y-auto bg-slate-950 p-3 font-mono text-[11px] leading-relaxed text-slate-300"
+      >
         {activeTab === "engine" ? (
           // Tab 1: Live Engine Console Log (persis tampilan 9Router Web UI)
           rawLogs.length === 0 ? (
@@ -178,7 +181,6 @@ export function NineRouterConsoleWidget({
           ) : (
             <div className="flex flex-col gap-0.5">
               {rawLogs.map((line, i) => renderColoredLine(line, i))}
-              <div ref={consoleBottomRef} />
             </div>
           )
         ) : (
