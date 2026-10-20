@@ -47,10 +47,14 @@ export type Booking = {
   endDate: string;
   dayCount: number;
   status: BookingStatus;
+  rawStatus?: CanonicalBookingStatus;
   serviceType: string;
   pickupRoute: string | null;
+  quotedAmount?: number | null;
+  driverId?: string | null;
   driverName: string | null;
   driverStatus: DriverStatus | null;
+  whatsappIntent?: { message: string; url: string } | null;
   lineItems: LineItem[];
 };
 

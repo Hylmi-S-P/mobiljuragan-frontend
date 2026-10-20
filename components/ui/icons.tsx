@@ -49,6 +49,26 @@ export function IconInbox({ className }: IconProps) {
   );
 }
 
+/** Laporan keuangan: grafik tren naik & arus kas. */
+export function IconTrendingUp({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="m3 17 6-6 4 4 8-8" />
+      <path d="M14 7h7v7" />
+    </Svg>
+  );
+}
+
+/** AI & RAG Hub: kilau cerdas / model AI. */
+export function IconSparkles({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="m12 3 1.9 4.8L18.7 9.7l-4.8 1.9L12 16.4l-1.9-4.8-4.8-1.9 4.8-1.9L12 3Z" />
+      <path d="M19 16l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1Z" />
+    </Svg>
+  );
+}
+
 /** Armada: mobil tampak samping. */
 export function IconCar({ className }: IconProps) {
   return (

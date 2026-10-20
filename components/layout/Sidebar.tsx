@@ -13,6 +13,8 @@ import {
   IconDashboard,
   IconInbox,
   IconShield,
+  IconSparkles,
+  IconTrendingUp,
   IconUsers,
 } from "@/components/ui/icons";
 
@@ -29,6 +31,8 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
   "/fleet/calendar": IconCalendar,
   "/fleet/drivers": IconUsers,
   "/customer-care": IconChat,
+  "/finance": IconTrendingUp,
+  "/admin/ai-hub": IconSparkles,
   "/admin": IconShield,
 };
 

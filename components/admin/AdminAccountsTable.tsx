@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/Table";
 import { ADMIN_ROLE } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
+import { useDebounce } from "@/lib/useDebounce";
 import type { AdminAccount, AdminRole } from "@/lib/types";
 
 type Props = {
@@ -46,6 +47,7 @@ function mapApiUser(user: StaffUserPayload): AdminAccount {
 export function AdminAccountsTable({ initialAccounts }: Props) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [formTarget, setFormTarget] = useState<{ accountId: string | null } | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -116,9 +118,9 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
     ? accounts.find((account) => account.id === deleteTargetId)
     : undefined;
 
-  // Pencarian langsung (live search) di browser memanfaatkan state terkelola
+  // Pencarian langsung (live search) di browser memanfaatkan state terkelola yang ter-debounce
   const filteredAccounts = accounts.filter((account) => {
-    const q = searchQuery.toLowerCase().trim();
+    const q = debouncedSearchQuery.toLowerCase().trim();
     if (!q) return true;
     return (
       account.name.toLowerCase().includes(q) ||

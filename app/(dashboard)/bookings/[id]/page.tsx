@@ -6,7 +6,7 @@ import { DataField, PageLead, Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { formatDateRange } from "@/lib/format";
 import { BOOKING_STATUS, DRIVER_STATUS } from "@/lib/labels";
-import { getBookingById, getVehicleById } from "@/lib/operations";
+import { getBookingById, getDrivers, getVehicleById } from "@/lib/operations";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -37,6 +37,7 @@ export default async function BookingDetailPage({ params }: Params) {
   if (!vehicle) notFound();
 
   const isDriverService = booking.mode === "dengan_supir";
+  const drivers = isDriverService ? await getDrivers() : [];
   const status = BOOKING_STATUS[booking.status];
 
   return (
@@ -92,7 +93,7 @@ export default async function BookingDetailPage({ params }: Params) {
         </div>
 
         <div className="min-w-0">
-          <BookingDecisionPanel booking={booking} vehicle={vehicle} />
+          <BookingDecisionPanel booking={booking} vehicle={vehicle} availableDrivers={drivers} />
         </div>
       </div>
     </>

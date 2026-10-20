@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import type { AdminAccount, AdminRole } from "./types";
+import type { AdminAccount, AdminRole, CanonicalBookingStatus } from "./types";
 
 const API_BASE_URL =
   process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
@@ -248,3 +248,510 @@ export async function apiReplyToTicket(ticketId: string, body: string) {
 
   return json.data;
 }
+
+
+
+// Memperbarui status pemesanan sewa (konfirmasi tarif, penolakan, pelunasan, serah terima, selesai).
+export async function apiUpdateBookingStatus(
+  id: string,
+  status: CanonicalBookingStatus,
+  quotedAmount?: number,
+  note?: string,
+) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/bookings/${encodeURIComponent(id)}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      status,
+      ...(quotedAmount !== undefined ? { quotedAmount } : {}),
+      ...(note ? { note } : {}),
+    }),
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_BOOKING_STATUS_FAILED",
+      json?.error?.message || "Gagal memperbarui status pemesanan.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+
+
+// Menugaskan supir resmi ke pesanan sewa bertipe WITH_DRIVER.
+export async function apiAssignDriverToBooking(id: string, driverId: string, note?: string) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/bookings/${encodeURIComponent(id)}/driver`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      driverId,
+      ...(note ? { note } : {}),
+    }),
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "ASSIGN_DRIVER_FAILED",
+      json?.error?.message || "Gagal menugaskan supir ke pemesanan.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+
+
+// Menambah pengemudi resmi baru ke roster supir.
+export async function apiCreateDriver(data: {
+  fullName: string;
+  phoneNumber?: string;
+  licenseNumber?: string;
+  routeScope: "DALAM_KOTA" | "LUAR_KOTA";
+}) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/drivers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CREATE_DRIVER_FAILED",
+      json?.error?.message || "Gagal mendaftarkan supir baru.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+
+
+// Memperbarui data supir dan wilayah rute tugas.
+export async function apiUpdateDriver(
+  id: string,
+  data: {
+    fullName?: string;
+    phoneNumber?: string;
+    licenseNumber?: string;
+    routeScope?: "DALAM_KOTA" | "LUAR_KOTA";
+  },
+) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/drivers/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_DRIVER_FAILED",
+      json?.error?.message || "Gagal memperbarui data supir.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+
+
+// Mengubah status kesiapan supir (SIAGA / LIBUR).
+export async function apiUpdateDriverReadiness(
+  id: string,
+  readiness: "SIAGA" | "LIBUR",
+  note?: string,
+) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/drivers/${encodeURIComponent(id)}/readiness`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      readiness,
+      ...(note ? { note } : {}),
+    }),
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_READINESS_FAILED",
+      json?.error?.message || "Gagal mengubah status kesiapan supir.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+
+
+// Menonaktifkan / menghapus supir dari roster operasional.
+export async function apiDeleteDriver(id: string) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/drivers/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "DELETE_DRIVER_FAILED",
+      json?.error?.message || "Gagal menonaktifkan supir.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+
+
+// Memperbarui status tiket bantuan (RESOLVED / CLOSED / IN_PROGRESS / OPEN).
+export async function apiUpdateTicketStatus(
+  ticketId: string,
+  status: "OPEN" | "IN_PROGRESS" | "WAITING_CUSTOMER" | "RESOLVED" | "CLOSED",
+) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_TICKET_STATUS_FAILED",
+      json?.error?.message || "Gagal memperbarui status tiket bantuan.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+// Konfigurasi AI Gateway (9Router / LiteLLM / OpenRouter)
+export async function apiUpdateAiConfig(payload: {
+  gatewayUrl?: string;
+  apiKey?: string;
+  activeModel?: string;
+  fallbackModel?: string;
+  fallbackGatewayUrl?: string;
+  fallbackApiKey?: string;
+  autoFallbackEnabled?: boolean;
+  proxyUrl?: string;
+  systemPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  enableRag?: boolean;
+}) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/config`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_AI_CONFIG_FAILED",
+      json?.error?.message || "Gagal menyimpan konfigurasi AI.",
+    );
+  }
+  return json.data;
+}
+
+// Health check dan deteksi kuota / rate-limit live
+export async function apiCheckAiGatewayHealth() {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/health`, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CHECK_HEALTH_FAILED",
+      json?.error?.message || "Gagal memeriksa kesehatan AI Gateway.",
+    );
+  }
+  return json.data;
+}
+
+// Basis Pengetahuan (Knowledge Base RAG)
+export async function apiCreateKnowledgeDocument(payload: {
+  title: string;
+  category: string;
+  content: string;
+  isActive?: boolean;
+}) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/documents`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CREATE_DOC_FAILED",
+      json?.error?.message || "Gagal membuat dokumen pengetahuan.",
+    );
+  }
+  return json.data;
+}
+
+export async function apiUpdateKnowledgeDocument(
+  id: string,
+  payload: {
+    title?: string;
+    category?: string;
+    content?: string;
+    isActive?: boolean;
+  },
+) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/documents/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_DOC_FAILED",
+      json?.error?.message || "Gagal memperbarui dokumen pengetahuan.",
+    );
+  }
+  return json.data;
+}
+
+export async function apiDeleteKnowledgeDocument(id: string) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/documents/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "DELETE_DOC_FAILED",
+      json?.error?.message || "Gagal menghapus dokumen pengetahuan.",
+    );
+  }
+  return json.data;
+}
+
+export async function apiFetchGatewayModels(gatewayUrl?: string, apiKey?: string) {
+  const token = await getSessionToken();
+
+  const params = new URLSearchParams();
+  if (gatewayUrl) params.append("gatewayUrl", gatewayUrl);
+  if (apiKey) params.append("apiKey", apiKey);
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/models?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "FETCH_MODELS_FAILED",
+      json?.error?.message || "Gagal mengambil daftar model.",
+    );
+  }
+  return json.data as { models: string[]; source: string; count: number };
+}
+
+export type AiGatewayLog = {
+  id: string;
+  timestamp: string;
+  event: 'CHAT_COMPLETION' | 'HEALTH_CHECK' | 'GATEWAY_ROUTING' | 'DOC_PARSED';
+  model: string;
+  status: number;
+  latencyMs: number;
+  tokens?: number;
+  tokensPerSecond?: number;
+  details: string;
+};
+
+export async function apiGetAiGatewayLogs(): Promise<AiGatewayLog[]> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}/admin/ai/logs`, {
+    method: "GET",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, "FETCH_LOGS_FAILED", "Gagal memuat log gateway.");
+  return json.data || [];
+}
+
+export async function apiClearAiGatewayLogs(): Promise<void> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}/admin/ai/logs`, {
+    method: "DELETE",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) throw new ApiError(res.status, "CLEAR_LOGS_FAILED", "Gagal membersihkan log.");
+}
+
+export async function apiParseKnowledgeFile(filename: string, contentBase64: string): Promise<{
+  title: string;
+  content: string;
+  format: string;
+  lineCount: number;
+}> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}/admin/ai/documents/parse-file`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ filename, contentBase64 }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "PARSE_FILE_FAILED",
+      json?.message || "Gagal mengekstrak isi dokumen.",
+    );
+  }
+  return json.data;
+}
+
+export async function apiTestAiChat(
+  prompt: string,
+  history?: Array<{ role: string; content: string }>,
+  options?: { temperature?: number; maxTokens?: number; systemPrompt?: string }
+) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/chat/test`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      prompt,
+      history,
+      temperature: options?.temperature,
+      maxTokens: options?.maxTokens,
+      systemPrompt: options?.systemPrompt,
+    }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "TEST_CHAT_FAILED",
+      json?.error?.message || "Gagal memproses pesan uji chat.",
+    );
+  }
+  return json.data as {
+    reply: string;
+    modelUsed: string;
+    tokens?: number | null;
+    latencyMs: number;
+    tokensPerSecond?: number;
+    ragDocumentsInjected: number;
+    referencedDocuments?: string[];
+    isSimulationFallback: boolean;
+    isFallbackTriggered?: boolean;
+    fallbackReason?: string;
+    gatewayNotice?: string;
+  };
+}
+

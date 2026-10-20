@@ -19,6 +19,8 @@ export const NAV_ENTRIES: NavEntry[] = [
     ],
   },
   { label: "Customer Care", href: "/customer-care" },
+  { label: "Laporan Keuangan", href: "/finance" },
+  { label: "AI & RAG Hub", href: "/admin/ai-hub" },
   { label: "Manajemen Admin", href: "/admin" },
 ];
 

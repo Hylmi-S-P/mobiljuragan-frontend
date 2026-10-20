@@ -43,13 +43,13 @@ Tangkapan diambil pada viewport **1440x900**, sama dengan ukuran frame Figma, su
 | Bagian | Figma | Hasil slicing | Keterangan |
 | :--- | :--- | :--- | :--- |
 | Warna, tabel, chip status | Navy, tabel garis, chip | Sama | Sesuai |
-| Teks peran | "Staf Operasional (Pool)" | Sama | Sesuai |
+| Teks peran | "Staf Operasional (Kantor MobilJuragan)" | Sama | Sesuai |
 | Menu sidebar | Dashboard, Pemesanan Masuk, Manajemen Armada, Customer Care, Manajemen Admin | Sama | Sesuai, termasuk urutan dan sorotan menu aktif |
 | Judul topbar | "Manajemen Admin" + tombol "Keluar" | Sama | Sesuai |
 | Kotak pencarian | Ada | Ada | Sesuai |
 | Kepala kolom | Nama, Nomor Telepon / Username, Peran, Status Akun, Aksi Kelola | Sama | Sesuai |
 | Tombol aksi | Hanya "Edit Admin" | "Edit Admin" + "Hapus" | Hapus hanya ada di aplikasi, karena endpoint `DELETE /admin/users/:id` memang tersedia |
-| Data contoh | Markus (Staf Pool) / markus_pool | Staf Operasional Merauke / 081234567899 | Isi tabel mengikuti data nyata di MariaDB, bukan contoh di desain |
+| Data contoh | Markus (Staf Kantor) / markus_kantor | Staf Operasional Merauke / 081234567899 | Isi tabel mengikuti data nyata di MariaDB, bukan contoh di desain |
 
 Catatan: desain Figma ikut diperbarui pada 7 Oktober 2026 agar selaras dengan hasil slicing. Perbedaan yang tersisa hanyalah keputusan sadar, bukan bagian yang belum selesai. Tangkapan layar di atas dihasilkan ulang oleh skrip `.verify/buat-perbandingan-figma.mjs`, sehingga bisa diperbarui kapan saja setelah tampilan berubah.
 
