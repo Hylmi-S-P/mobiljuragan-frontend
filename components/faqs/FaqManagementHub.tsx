@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useOptimistic, startTransition } from "react";
+import { useState, useEffect, useOptimistic, startTransition } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FaqFormModal } from "@/components/modals/FaqFormModal";
 import { DeleteFaqModal } from "@/components/modals/DeleteFaqModal";
@@ -13,8 +13,6 @@ import {
   IconSearch,
   IconPencil,
   IconTrash,
-  IconChevronUp,
-  IconChevronDown,
 } from "@/components/ui/icons";
 import {
   Table,
@@ -46,8 +44,16 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
   const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
   const [deletingFaq, setDeletingFaq] = useState<FaqItem | null>(null);
 
-  // Notice notification
+  // Notice notification (dengan auto-dismiss otomatis 2.5 detik)
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => {
+      setNotice(null);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   // TanStack Query for caching and server state synchronization
   const { data: faqs = initialFaqs, isFetching } = useQuery<FaqItem[]>({
@@ -97,38 +103,6 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
     },
   });
 
-  // Mutation for priority reordering
-  const priorityMutation = useMutation({
-    mutationFn: async ({ id, orderIndex }: { id: string; orderIndex: number }) => {
-      const res = await apiClient.patch(`/admin/faqs/${encodeURIComponent(id)}`, { orderIndex });
-      return res.data?.data as FaqItem;
-    },
-    onMutate: async ({ id, orderIndex }) => {
-      await queryClient.cancelQueries({ queryKey: ["adminFaqs"] });
-      const previous = queryClient.getQueryData<FaqItem[]>(["adminFaqs"]);
-
-      queryClient.setQueryData<FaqItem[]>(["adminFaqs"], (current) =>
-        (current ?? [])
-          .map((item) => (item.id === id ? { ...item, orderIndex } : item))
-          .sort((a, b) => a.orderIndex - b.orderIndex),
-      );
-
-      return { previous };
-    },
-    onError: (_error, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(["adminFaqs"], context.previous);
-      }
-      setNotice("Gagal mengubah urutan prioritas FAQ.");
-    },
-    onSuccess: (_data, vars) => {
-      setNotice(`Urutan prioritas diperbarui ke ${vars.orderIndex}.`);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminFaqs"] });
-    },
-  });
-
   // Categories list
   const existingCategories = Array.from(new Set(faqs.map((f) => f.category))).filter(Boolean);
   const filterCategories = [
@@ -152,12 +126,9 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
     );
   });
 
-  // Sort by orderIndex ASC
-  const sortedFaqs = [...filteredFaqs].sort((a, b) => a.orderIndex - b.orderIndex);
-
   // Optimistic UI updates for instant toggle feel
   const [optimisticFaqs, setOptimisticFaq] = useOptimistic(
-    sortedFaqs,
+    filteredFaqs,
     (current, update: { id: string; isActive: boolean }) =>
       current.map((item) => (item.id === update.id ? { ...item, isActive: update.isActive } : item)),
   );
@@ -174,18 +145,12 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
     });
   };
 
-  const handleAdjustPriority = (faq: FaqItem, delta: number) => {
-    const newOrder = Math.max(0, faq.orderIndex + delta);
-    if (newOrder === faq.orderIndex) return;
-    priorityMutation.mutate({ id: faq.id, orderIndex: newOrder });
-  };
-
   return (
     <>
-      <PageLead lead="Kelola daftar tanya jawab pelanggan, atur kategori, tentukan prioritas urutan tampilan, dan kendalikan visibilitas langsung ke aplikasi mobile serta basis pengetahuan RAG AI Gateway." />
+      <PageLead lead="Kelola daftar tanya jawab pelanggan, kelompokkan kategori, dan kendalikan visibilitas langsung ke aplikasi mobile serta basis pengetahuan RAG AI Gateway." />
 
       {notice ? (
-        <div className="mt-3 flex items-center justify-between rounded-sm border border-teal/40 bg-teal/10 px-3.5 py-2 text-meta text-teal">
+        <div className="mt-3 flex items-center justify-between rounded-sm border border-teal/40 bg-teal/10 px-3.5 py-2 text-meta text-teal transition-all animate-in fade-in">
           <span>{notice}</span>
           <button
             type="button"
@@ -197,26 +162,24 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
         </div>
       ) : null}
 
-      <div className="mt-4">
+      <div className="mt-6 flex flex-col gap-6">
         <Panel
+          title="Daftar FAQ & Pengaturan Tampilan Mobile"
           action={
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-soft">
-                  <IconSearch className="h-4 w-4" />
-                </span>
+              <div className="relative w-72">
+                <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
                 <input
-                  type="search"
+                  type="text"
+                  placeholder="Cari pertanyaan, jawaban, atau kategori..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari pertanyaan, jawaban, atau kategori..."
-                  aria-label="Cari FAQ"
-                  className="h-11 w-64 rounded-sm border border-rule-strong bg-canvas pl-9 pr-3 text-meta text-ink placeholder:text-ink-soft focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy sm:w-80"
+                  className="h-10 w-full rounded-sm border border-rule bg-canvas pl-9 pr-3 text-meta text-ink placeholder:text-ink-soft focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
                 />
               </div>
+
               <Button
-                variant="confirm"
-                size="md"
+                variant="primary"
                 onClick={() => {
                   setEditingFaq(null);
                   setIsFormOpen(true);
@@ -257,9 +220,8 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
           <Table caption="Daftar FAQ resmi MobilJuragan dan pengaturan visibilitas">
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="w-[110px] text-center">Prioritas</TableHeaderCell>
-                <TableHeaderCell className="w-[440px]">Pertanyaan & Jawaban</TableHeaderCell>
-                <TableHeaderCell className="w-[160px]">Kategori</TableHeaderCell>
+                <TableHeaderCell className="w-[520px]">Pertanyaan &amp; Jawaban</TableHeaderCell>
+                <TableHeaderCell className="w-[170px]">Kategori</TableHeaderCell>
                 <TableHeaderCell className="w-[170px] text-center">Visibilitas Mobile</TableHeaderCell>
                 <TableHeaderCell className="w-[160px] text-right">Aksi</TableHeaderCell>
               </TableRow>
@@ -267,7 +229,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
             <TableBody>
               {optimisticFaqs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-meta text-ink-soft">
+                  <TableCell colSpan={4} className="py-8 text-center text-meta text-ink-soft">
                     {faqs.length === 0
                       ? "Belum ada FAQ yang tersimpan. Klik tombol 'Tambah FAQ Baru' untuk mulai menambahkan."
                       : `Tidak ada FAQ yang cocok dengan filter atau pencarian "${searchQuery}".`}
@@ -276,34 +238,6 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
               ) : (
                 optimisticFaqs.map((faq) => (
                   <TableRow key={faq.id}>
-                    {/* Prioritas & Tombol Geser */}
-                    <TableCell className="text-center">
-                      <div className="inline-flex items-center gap-1">
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-sm bg-navy/10 text-body font-semibold text-navy">
-                          {faq.orderIndex}
-                        </span>
-                        <div className="flex flex-col">
-                          <button
-                            type="button"
-                            onClick={() => handleAdjustPriority(faq, -1)}
-                            disabled={faq.orderIndex <= 0}
-                            title="Naikkan prioritas (tampil lebih awal)"
-                            className="flex h-4 w-5 items-center justify-center rounded-xs text-ink-soft hover:bg-rule hover:text-ink disabled:opacity-30"
-                          >
-                            <IconChevronUp className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAdjustPriority(faq, 1)}
-                            title="Turunkan prioritas (tampil lebih akhir)"
-                            className="flex h-4 w-5 items-center justify-center rounded-xs text-ink-soft hover:bg-rule hover:text-ink"
-                          >
-                            <IconChevronDown className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    </TableCell>
-
                     {/* Pertanyaan & Jawaban */}
                     <TableCell>
                       <p className="text-body font-semibold text-ink">{faq.question}</p>
@@ -348,9 +282,8 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
                           size="sm"
                           onClick={() => setDeletingFaq(faq)}
                           aria-label={`Hapus FAQ: ${faq.question}`}
-                          className="text-danger hover:bg-danger/10"
                         >
-                          <IconTrash className="h-3.5 w-3.5" />
+                          <IconTrash className="h-3.5 w-3.5 text-danger" />
                           Hapus
                         </Button>
                       </div>
@@ -363,7 +296,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
         </Panel>
       </div>
 
-      {/* Form Modal (Add / Edit) */}
+      {/* Modal Tambah / Edit FAQ */}
       {isFormOpen ? (
         <FaqFormModal
           faq={editingFaq ?? undefined}
@@ -377,21 +310,20 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
             setNotice(
               editingFaq
                 ? `FAQ "${saved.question.slice(0, 30)}..." berhasil diperbarui.`
-                : `FAQ baru berhasil ditambahkan ke kategori ${saved.category}.`,
+                : "FAQ baru berhasil ditambahkan.",
             );
           }}
         />
       ) : null}
 
-      {/* Delete Confirmation Modal */}
+      {/* Modal Konfirmasi Hapus FAQ */}
       {deletingFaq ? (
         <DeleteFaqModal
           faq={deletingFaq}
           onClose={() => setDeletingFaq(null)}
           onDeleted={() => {
             queryClient.invalidateQueries({ queryKey: ["adminFaqs"] });
-            setNotice(`FAQ "${deletingFaq.question.slice(0, 30)}..." berhasil dihapus.`);
-            setDeletingFaq(null);
+            setNotice("FAQ berhasil dihapus.");
           }}
         />
       ) : null}

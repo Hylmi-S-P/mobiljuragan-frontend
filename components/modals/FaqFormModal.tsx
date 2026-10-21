@@ -92,6 +92,7 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
         {faq ? <input type="hidden" name="id" value={faq.id} /> : null}
         <input type="hidden" name="category" value={activeCategoryValue} />
         <input type="hidden" name="isActive" value={String(isActive)} />
+        <input type="hidden" name="orderIndex" value={String(orderIndex)} />
 
         {state?.message && !state?.success ? (
           <div
@@ -151,56 +152,36 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
         </div>
 
         {/* Kategori (Preset Dropdown + Custom Input) */}
-        <div className="grid gap-3.5 sm:grid-cols-2">
-          <div>
-            <label htmlFor={`${fieldId}-category-select`} className="block text-meta font-medium text-ink">
-              Kategori FAQ <span className="text-danger">*</span>
-            </label>
-            <select
-              id={`${fieldId}-category-select`}
-              value={categorySelect}
-              onChange={(e) => setCategorySelect(e.target.value)}
-              className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
-            >
-              <optgroup label="Preset Kategori Resmi">
-                {FAQ_CATEGORY_PRESETS.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
+        <div>
+          <label htmlFor={`${fieldId}-category-select`} className="block text-meta font-medium text-ink">
+            Kategori FAQ <span className="text-danger">*</span>
+          </label>
+          <select
+            id={`${fieldId}-category-select`}
+            value={categorySelect}
+            onChange={(e) => setCategorySelect(e.target.value)}
+            className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
+          >
+            <optgroup label="Preset Kategori Resmi">
+              {FAQ_CATEGORY_PRESETS.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </optgroup>
+            {existingCategories.filter((c) => !(FAQ_CATEGORY_PRESETS as readonly string[]).includes(c)).length > 0 ? (
+              <optgroup label="Kategori Tersimpan Lainnya">
+                {existingCategories
+                  .filter((c) => !(FAQ_CATEGORY_PRESETS as readonly string[]).includes(c))
+                  .map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
               </optgroup>
-              {existingCategories.filter((c) => !(FAQ_CATEGORY_PRESETS as readonly string[]).includes(c)).length > 0 ? (
-                <optgroup label="Kategori Tersimpan Lainnya">
-                  {existingCategories
-                    .filter((c) => !(FAQ_CATEGORY_PRESETS as readonly string[]).includes(c))
-                    .map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                </optgroup>
-              ) : null}
-              <option value="__custom__">+ Kategori Kustom Baru...</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor={`${fieldId}-order-index`} className="block text-meta font-medium text-ink">
-              Urutan Prioritas (orderIndex)
-            </label>
-            <input
-              id={`${fieldId}-order-index`}
-              name="orderIndex"
-              type="number"
-              min={0}
-              step={1}
-              value={orderIndex}
-              onChange={(e) => setOrderIndex(parseInt(e.target.value, 10) || 0)}
-              className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
-              placeholder="0"
-            />
-            <p className="mt-1 text-micro text-ink-soft">Angka lebih kecil tampil lebih awal.</p>
-          </div>
+            ) : null}
+            <option value="__custom__">+ Kategori Kustom Baru...</option>
+          </select>
         </div>
 
         {/* Input Kategori Kustom jika dipilih */}
