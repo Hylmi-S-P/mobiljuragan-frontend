@@ -6,7 +6,6 @@ import { saveVehicleAction, deleteVehicleAction } from "@/app/actions";
 import { DeleteVehicleModal } from "@/components/modals/DeleteVehicleModal";
 import { VehicleFormModal } from "@/components/modals/VehicleFormModal";
 import { Button } from "@/components/ui/Button";
-import { PlateBadge } from "@/components/ui/PlateBadge";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import {
@@ -62,12 +61,11 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
           <Table caption="Katalog armada resmi MobilJuragan">
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="w-[230px]">Kendaraan &amp; Kategori</TableHeaderCell>
-                <TableHeaderCell className="w-[150px]">Plat Nomor</TableHeaderCell>
-                <TableHeaderCell className="w-[160px]">Tarif Sewa / Hari</TableHeaderCell>
-                <TableHeaderCell className="w-[155px]">Transmisi &amp; Kursi</TableHeaderCell>
-                <TableHeaderCell className="w-[120px]">Ketersediaan</TableHeaderCell>
-                <TableHeaderCell className="w-[160px]">Status &amp; Aksi</TableHeaderCell>
+                <TableHeaderCell className="w-[300px]">Kendaraan &amp; Kategori</TableHeaderCell>
+                <TableHeaderCell className="w-[180px]">Tarif Sewa / Hari</TableHeaderCell>
+                <TableHeaderCell className="w-[180px]">Transmisi &amp; Kursi</TableHeaderCell>
+                <TableHeaderCell className="w-[140px]">Ketersediaan</TableHeaderCell>
+                <TableHeaderCell className="w-[140px]">Status &amp; Aksi</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -81,9 +79,6 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
                       {vehicle.category ?? "[kategori belum diisi]"}
                       {vehicle.usage ? ` • ${vehicle.usage}` : ""}
                     </span>
-                  </TableCell>
-                  <TableCell>
-                    <PlateBadge plate={vehicle.plate} region="Merauke" />
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-body tabular-nums font-semibold text-ink">
                     {formatRupiah(vehicle.pricePerDay ?? 400000)}

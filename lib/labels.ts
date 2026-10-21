@@ -96,16 +96,12 @@ export function formatTicketCategory(category: string | null | undefined): strin
   return TICKET_CATEGORY_LABEL[category] ?? category.replace(/_/g, " ");
 }
 
-/* Pilihan kategori armada yang dipakai form katalog dan filter. */
+/* Pilihan kategori armada yang ringkas, terstandarisasi, dan selaras dengan katalog mobile. */
 export const VEHICLE_CATEGORY_OPTIONS = [
   "MPV",
-  "SUV Premium",
-  "Pickup 4x4",
-  "Medium MPV",
+  "SUV",
+  "Pickup",
   "Commercial",
-  "Compact SUV",
-  "MPV Modern",
-  "MPV Nyaman",
 ];
 
 export const VEHICLE_TRANSMISSION_OPTIONS = ["Manual", "Automatic"];

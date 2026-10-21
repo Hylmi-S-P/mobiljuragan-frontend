@@ -8,7 +8,6 @@ import { Modal } from "@/components/ui/Modal";
 import {
   BOOKING_MODE_LABEL,
   VEHICLE_CATEGORY_OPTIONS,
-  VEHICLE_SEAT_OPTIONS,
   VEHICLE_TRANSMISSION_OPTIONS,
 } from "@/lib/labels";
 import type { BookingMode, Vehicle, VehicleStatus } from "@/lib/types";
@@ -45,7 +44,7 @@ export function VehicleFormModal({
   const [transmission, setTransmission] = useState(
     vehicle?.transmission ?? VEHICLE_TRANSMISSION_OPTIONS[0],
   );
-  const [seats, setSeats] = useState(vehicle?.seats ?? VEHICLE_SEAT_OPTIONS[2]);
+  const [seats, setSeats] = useState<number>(vehicle?.seats ?? 7);
   const [usage, setUsage] = useState(vehicle?.usage ?? "");
   const [priceInput, setPriceInput] = useState<string>(() => {
     const p = vehicle?.pricePerDay ?? 400000;
@@ -237,18 +236,21 @@ export function VehicleFormModal({
             <label htmlFor={`${fieldId}-seats`} className="block text-meta font-medium text-ink">
               Kapasitas kursi
             </label>
-            <select
-              id={`${fieldId}-seats`}
-              value={seats ?? VEHICLE_SEAT_OPTIONS[2]}
-              onChange={(event) => setSeats(Number(event.target.value))}
-              className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-            >
-              {VEHICLE_SEAT_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option} Kursi (Penumpang)
-                </option>
-              ))}
-            </select>
+            <div className="relative mt-1">
+              <input
+                id={`${fieldId}-seats`}
+                type="number"
+                min={1}
+                max={30}
+                value={seats}
+                onChange={(event) => setSeats(Math.max(1, Number(event.target.value) || 1))}
+                className="tabular-nums h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 pr-14 text-body font-semibold text-ink"
+                placeholder="7"
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-meta text-ink-soft">
+                Kursi
+              </span>
+            </div>
           </div>
         </div>
 
