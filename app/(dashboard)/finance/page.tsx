@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { FinancialSummaryCard } from "@/components/finance/FinancialSummaryCard";
 import { FleetRevenueTable } from "@/components/finance/FleetRevenueTable";
-import { IconTrendingUp } from "@/components/ui/icons";
 import { getFinanceSummary } from "@/lib/operations";
 
 export const metadata: Metadata = {
@@ -17,18 +16,6 @@ export default async function FinancePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header Halaman */}
-      <div className="flex items-center gap-3 border-b border-rule pb-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-white">
-          <IconTrendingUp className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink">
-            Laporan Keuangan &amp; Arus Kas Masuk
-          </h1>
-        </div>
-      </div>
-
       {/* Ringkasan Finansial & Visualisasi */}
       <FinancialSummaryCard initialData={financeData} />
 
