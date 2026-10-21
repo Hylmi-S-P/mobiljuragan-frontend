@@ -57,11 +57,6 @@ export function FinancialSummaryCard({ initialData }: Props) {
         <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-meta font-medium text-ink-soft">Transaksi Sewa Selesai</span>
-            <span className="rounded-badge bg-navy-surface px-2 py-0.5 text-micro font-medium text-navy">
-              {summary.totalAllBookings > 0
-                ? `${Math.round((summary.completedBookingsCount / summary.totalAllBookings) * 100)}% Rasio`
-                : "0%"}
-            </span>
           </div>
           <p className="mt-3 text-2xl font-bold tracking-tight text-ink tabular-nums">
             {summary.completedBookingsCount}{" "}
