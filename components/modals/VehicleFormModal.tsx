@@ -47,6 +47,10 @@ export function VehicleFormModal({
   );
   const [seats, setSeats] = useState(vehicle?.seats ?? VEHICLE_SEAT_OPTIONS[2]);
   const [usage, setUsage] = useState(vehicle?.usage ?? "");
+  const [priceInput, setPriceInput] = useState<string>(() => {
+    const p = vehicle?.pricePerDay ?? 400000;
+    return p > 0 ? p.toLocaleString("id-ID") : "400.000";
+  });
   const [status, setStatus] = useState<VehicleStatus>(vehicle?.status ?? "tersedia");
   const [modes, setModes] = useState<BookingMode[]>(
     vehicle?.allowedModes ?? ["lepas_kunci", "dengan_supir"],
@@ -88,6 +92,10 @@ export function VehicleFormModal({
       nextErrors.plate = "Plat ini sudah dipakai unit lain di katalog.";
     }
     if (modes.length === 0) nextErrors.modes = "Pilih minimal satu moda rental yang diizinkan.";
+    const numericPrice = Number(priceInput.replace(/[^\d]/g, "")) || 0;
+    if (numericPrice <= 0) {
+      nextErrors.pricePerDay = "Tarif sewa harian harus bernilai lebih dari 0.";
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -99,6 +107,7 @@ export function VehicleFormModal({
       category,
       transmission,
       seats,
+      pricePerDay: numericPrice,
       usage: usage.trim().length > 0 ? usage.trim() : null,
       allowedModes: modes,
     });
@@ -241,6 +250,39 @@ export function VehicleFormModal({
               ))}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label htmlFor={`${fieldId}-price`} className="block text-meta font-medium text-ink">
+            Tarif sewa harian dasar (Rp / Hari)
+          </label>
+          <div className="relative mt-1">
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-body font-semibold text-ink-soft">
+              Rp
+            </span>
+            <input
+              id={`${fieldId}-price`}
+              type="text"
+              inputMode="numeric"
+              value={priceInput}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^\d]/g, "");
+                setPriceInput(raw ? Number(raw).toLocaleString("id-ID") : "");
+              }}
+              aria-invalid={Boolean(errors.pricePerDay)}
+              aria-describedby={errors.pricePerDay ? `${fieldId}-price-error` : undefined}
+              className="tabular-nums h-11 w-full rounded-sm border border-rule-strong bg-canvas pl-10 pr-3 text-body font-semibold text-ink placeholder:font-normal placeholder:text-ink-soft"
+              placeholder="Contoh: 400.000"
+            />
+          </div>
+          <p className="mt-1 text-micro text-ink-soft">
+            Nominal tarif dasar sewa per hari yang tampil secara dinamis pada katalog aplikasi mobile pelanggan.
+          </p>
+          {errors.pricePerDay ? (
+            <p id={`${fieldId}-price-error`} className="mt-1 text-meta text-danger">
+              {errors.pricePerDay}
+            </p>
+          ) : null}
         </div>
 
         <div>

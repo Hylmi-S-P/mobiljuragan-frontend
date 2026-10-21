@@ -30,9 +30,12 @@ import {
   apiUpdateFaq,
   apiDeleteFaq,
   apiToggleFaqActive,
+  apiCreateVehicle,
+  apiUpdateVehicle,
+  apiDeleteVehicle,
   ApiError,
 } from "@/lib/api";
-import type { AdminRole, CanonicalBookingStatus, FaqItem } from "@/lib/types";
+import type { AdminRole, CanonicalBookingStatus, FaqItem, Vehicle } from "@/lib/types";
 
 export type ActionState = {
   success?: boolean;
@@ -808,6 +811,78 @@ export async function updateFaqPriorityAction(
       return { success: false, message: err.message };
     }
     return { success: false, message: "Gagal memperbarui urutan FAQ." };
+  }
+}
+
+/**
+ * Server Action untuk menyimpan atau menambah armada mobil beserta tarif sewa harian.
+ */
+export async function saveVehicleAction(
+  vehicle: Vehicle,
+): Promise<ActionState & { data?: any }> {
+  try {
+    const isNew = vehicle.id.startsWith("v-") || !vehicle.id;
+    const payload = {
+      name: vehicle.name,
+      licensePlate: vehicle.plate,
+      category: vehicle.category ?? "MPV",
+      transmission:
+        vehicle.transmission?.toUpperCase() === "MATIC"
+          ? "AUTOMATIC"
+          : vehicle.transmission?.toUpperCase() || "MANUAL",
+      seatingCapacity: vehicle.seats ?? 7,
+      pricePerDay: Number(vehicle.pricePerDay) || 400000,
+      operationalStatus: (vehicle.status === "tersedia"
+        ? "AVAILABLE"
+        : vehicle.status === "servis"
+          ? "MAINTENANCE"
+          : vehicle.status === "disewa"
+            ? "BOOKED"
+            : "UNAVAILABLE") as any,
+    };
+
+    let result;
+    if (isNew) {
+      result = await apiCreateVehicle(payload);
+    } else {
+      result = await apiUpdateVehicle(vehicle.id, payload);
+    }
+
+    revalidatePath("/fleet/catalog");
+    revalidatePath("/fleet/calendar");
+    return {
+      success: true,
+      message: isNew
+        ? `Unit ${vehicle.name} berhasil ditambahkan ke katalog.`
+        : `Spesifikasi & tarif ${vehicle.name} berhasil diperbarui.`,
+      data: result,
+    };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menyimpan perubahan armada ke database." };
+  }
+}
+
+/**
+ * Server Action untuk menghapus unit armada mobil dari katalog.
+ */
+export async function deleteVehicleAction(id: string): Promise<ActionState> {
+  if (!id) {
+    return { success: false, message: "ID armada tidak valid." };
+  }
+
+  try {
+    await apiDeleteVehicle(id);
+    revalidatePath("/fleet/catalog");
+    revalidatePath("/fleet/calendar");
+    return { success: true, message: "Armada berhasil dihapus dari sistem." };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menghapus armada pada backend." };
   }
 }
 

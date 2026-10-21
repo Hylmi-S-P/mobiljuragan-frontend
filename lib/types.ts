@@ -11,6 +11,7 @@ export type Vehicle = {
   category: string | null;
   transmission: string | null;
   seats: number | null;
+  pricePerDay: number;
   usage: string | null;
   allowedModes: BookingMode[];
 };

@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
+import { saveVehicleAction, deleteVehicleAction } from "@/app/actions";
 import { DeleteVehicleModal } from "@/components/modals/DeleteVehicleModal";
 import { VehicleFormModal } from "@/components/modals/VehicleFormModal";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { IconCar, IconPencil, IconPlus } from "@/components/ui/icons";
+import { formatRupiah } from "@/lib/format";
 import type { Vehicle } from "@/lib/types";
 import { VEHICLE_STATUS } from "@/lib/labels";
 
@@ -29,6 +31,7 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
   const [formTarget, setFormTarget] = useState<{ vehicleId: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const editing = formTarget?.vehicleId
     ? vehicles.find((vehicle) => vehicle.id === formTarget.vehicleId)
@@ -59,11 +62,12 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
           <Table caption="Katalog armada resmi MobilJuragan">
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="w-[245px]">Kendaraan &amp; Kategori</TableHeaderCell>
-                <TableHeaderCell className="w-[170px]">Plat Nomor</TableHeaderCell>
+                <TableHeaderCell className="w-[230px]">Kendaraan &amp; Kategori</TableHeaderCell>
+                <TableHeaderCell className="w-[150px]">Plat Nomor</TableHeaderCell>
+                <TableHeaderCell className="w-[160px]">Tarif Sewa / Hari</TableHeaderCell>
                 <TableHeaderCell className="w-[155px]">Transmisi &amp; Kursi</TableHeaderCell>
                 <TableHeaderCell className="w-[120px]">Ketersediaan</TableHeaderCell>
-                <TableHeaderCell className="w-[190px]">Status &amp; Aksi</TableHeaderCell>
+                <TableHeaderCell className="w-[160px]">Status &amp; Aksi</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -80,6 +84,10 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
                   </TableCell>
                   <TableCell>
                     <PlateBadge plate={vehicle.plate} region="Merauke" />
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-body tabular-nums font-semibold text-ink">
+                    {formatRupiah(vehicle.pricePerDay ?? 400000)}
+                    <span className="block text-micro font-normal text-ink-soft">/ hari (dasar)</span>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-body tabular-nums">
                     {vehicle.transmission && vehicle.seats
@@ -119,6 +127,7 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
             setDeleteTarget(vehicleId);
           }}
           onSave={(saved) => {
+            // Optimistic UI update
             setVehicles((current) => {
               const exists = current.some((vehicle) => vehicle.id === saved.id);
               return exists
@@ -127,10 +136,19 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
             });
             setNotice(
               editing
-                ? `Perubahan unit ${saved.name} tersimpan di sesi ini.`
-                : `Unit ${saved.name} ditambahkan ke katalog pada sesi ini.`,
+                ? `Menyimpan perubahan unit ${saved.name}...`
+                : `Menambahkan unit ${saved.name}...`,
             );
             setFormTarget(null);
+
+            startTransition(async () => {
+              const res = await saveVehicleAction(saved);
+              if (res.success) {
+                setNotice(res.message ?? "Data armada berhasil disimpan ke database.");
+              } else {
+                setNotice(`Perhatian: ${res.message ?? "Gagal menyimpan ke server backend."}`);
+              }
+            });
           }}
         />
       ) : null}
@@ -140,9 +158,20 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
           vehicle={deleting}
           onClose={() => setDeleteTarget(null)}
           onConfirm={() => {
-            setVehicles((current) => current.filter((vehicle) => vehicle.id !== deleting.id));
-            setNotice(`Unit ${deleting.name} dihapus dari katalog pada sesi ini.`);
+            const targetId = deleting.id;
+            const targetName = deleting.name;
+            setVehicles((current) => current.filter((vehicle) => vehicle.id !== targetId));
+            setNotice(`Menghapus unit ${targetName}...`);
             setDeleteTarget(null);
+
+            startTransition(async () => {
+              const res = await deleteVehicleAction(targetId);
+              if (res.success) {
+                setNotice(res.message ?? `Unit ${targetName} dihapus.`);
+              } else {
+                setNotice(`Perhatian: ${res.message ?? "Gagal menghapus armada."}`);
+              }
+            });
           }}
         />
       ) : null}

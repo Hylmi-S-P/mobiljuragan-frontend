@@ -71,6 +71,7 @@ type ApiVehicle = {
   category: string | null;
   transmission: string | null;
   seatingCapacity: number | null;
+  pricePerDay?: number | null;
   operationalStatus: string;
 };
 
@@ -83,6 +84,7 @@ function mapVehicle(v: ApiVehicle): Vehicle {
     category: v.category,
     transmission: v.transmission,
     seats: v.seatingCapacity,
+    pricePerDay: v.pricePerDay ?? 400000,
     // `usage` dan `allowedModes` tidak dikirim backend. Dibiarkan null/kosong
     // daripada diisi teks karangan.
     usage: null,

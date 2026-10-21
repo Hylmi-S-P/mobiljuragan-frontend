@@ -994,3 +994,89 @@ export async function apiVerifyPayment(
 
   return json?.data as AdminPaymentItem;
 }
+
+export type VehiclePayload = {
+  name: string;
+  licensePlate: string;
+  category?: string;
+  transmission?: string;
+  seatingCapacity?: number;
+  pricePerDay: number;
+  brand?: string;
+  model?: string;
+  imageUrl?: string;
+  operationalStatus?: "AVAILABLE" | "BOOKED" | "MAINTENANCE" | "UNAVAILABLE";
+};
+
+export async function apiCreateVehicle(payload: VehiclePayload) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/vehicles`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CREATE_VEHICLE_FAILED",
+      json?.error?.message || "Gagal menambah armada baru ke sistem.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+export async function apiUpdateVehicle(id: string, payload: Partial<VehiclePayload>) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/vehicles/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_VEHICLE_FAILED",
+      json?.error?.message || "Gagal memperbarui data & tarif armada.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+export async function apiDeleteVehicle(id: string) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/vehicles/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "DELETE_VEHICLE_FAILED",
+      json?.error?.message || "Gagal menghapus armada dari sistem.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
