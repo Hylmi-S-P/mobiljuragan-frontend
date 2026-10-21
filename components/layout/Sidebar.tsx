@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { NAV_ENTRIES, WORKSPACE_NAME, WORKSPACE_ROLE, isNavGroup } from "@/lib/navigation";
+import { LogoutConfirmModal } from "@/components/modals/LogoutConfirmModal";
 import {
   IconCar,
   IconCalendar,
@@ -14,6 +15,7 @@ import {
   IconDashboard,
   IconHelpCircle,
   IconInbox,
+  IconLogout,
   IconShield,
   IconSparkles,
   IconTrendingUp,
@@ -42,6 +44,7 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const fleetActive = NAV_ENTRIES.some(
     (entry) => isNavGroup(entry) && entry.items.some((item) => pathname.startsWith(item.href)),
   );
@@ -170,7 +173,26 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             );
           })}
         </nav>
+
+        <div className="mt-auto pt-3 pb-2 border-t border-navy-line">
+          <button
+            type="button"
+            onClick={() => {
+              setShowLogoutModal(true);
+              onClose();
+            }}
+            className="group flex h-10 w-full items-center gap-2.5 rounded-nav px-3 text-body font-medium text-white/70 transition-all duration-150 hover:bg-danger/20 hover:text-danger cursor-pointer"
+          >
+            <IconLogout className="h-[18px] w-[18px] shrink-0 text-white/50 transition-colors group-hover:text-danger" />
+            <span>Keluar Akun</span>
+          </button>
+        </div>
       </aside>
+
+      <LogoutConfirmModal
+        open={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+      />
     </>
   );
 }
