@@ -279,7 +279,7 @@ export function BookingDetailClient({
           {/* Modul 2: Kartu Informasi Pelanggan & Pemesanan */}
           <CustomerInfoCard booking={booking} />
 
-          {/* Modul 3: Kartu Armada yang Dipesan & Kesiapan Unit */}
+          {/* Modul 3: Kartu Kendaraan yang Dipilih */}
           <VehicleUnitCard vehicle={vehicle} />
 
           {/* Modul 4: Kartu Alokasi Operasional & Penugasan Supir */}
