@@ -274,3 +274,14 @@ export function IconChevronUp({ className }: IconProps) {
     </Svg>
   );
 }
+
+/** Verifikasi pembayaran / transaksi: kartu debit/kredit dan slip pembayaran. */
+export function IconCreditCard({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+      <path d="M6 15h4M16 15h2" />
+    </Svg>
+  );
+}

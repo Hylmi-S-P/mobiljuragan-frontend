@@ -1,6 +1,8 @@
 import "server-only";
 import { getSessionToken, ApiError } from "./api";
 import type {
+  AdminPaymentItem,
+  AdminPaymentsResponse,
   Booking,
   BookingMode,
   BookingStatus,
@@ -530,6 +532,59 @@ export async function getAiGatewayLogs(): Promise<AiGatewayLogData> {
     httpLogs: res?.httpLogs || [],
     rawLogs: res?.rawLogs || [],
   };
+}
+
+/* ==========================================
+ * Verifikasi Pembayaran (Admin Payment Queue)
+ * ========================================== */
+
+export async function getAdminPayments(params?: {
+  status?: string;
+  method?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AdminPaymentsResponse> {
+  const query = new URLSearchParams();
+  if (params?.status && params.status !== "ALL" && params.status !== "semua") {
+    query.append("status", params.status);
+  }
+  if (params?.method) query.append("method", params.method);
+  if (params?.search) query.append("search", params.search);
+  if (params?.page) query.append("page", String(params.page));
+  if (params?.limit) query.append("limit", String(params.limit));
+
+  const qs = query.toString();
+  const path = `/admin/payments${qs ? `?${qs}` : ""}`;
+  return await apiGet<AdminPaymentsResponse>(path);
+}
+
+export async function verifyPayment(
+  id: string,
+  data: { action: "APPROVE" | "REJECT"; notes?: string },
+): Promise<AdminPaymentItem> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}/admin/payments/${encodeURIComponent(id)}/verify`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "VERIFY_PAYMENT_FAILED",
+      json?.error?.message || "Gagal memproses verifikasi pembayaran.",
+      json?.error?.details,
+    );
+  }
+
+  return json?.data as AdminPaymentItem;
 }
 
 

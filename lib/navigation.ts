@@ -10,6 +10,7 @@ export const WORKSPACE_ROLE = "Portal admin";
 export const NAV_ENTRIES: NavEntry[] = [
   { label: "Dashboard", href: "/" },
   { label: "Pemesanan Masuk", href: "/bookings" },
+  { label: "Verifikasi Pembayaran", href: "/payments" },
   {
     label: "Manajemen Armada",
     items: [
@@ -38,10 +39,12 @@ export function navLinks(entries: NavEntry[] = NAV_ENTRIES): NavLink[] {
 const EXTRA_PAGE_TITLES: Record<string, string> = {
   "/empty": "Empty State",
   "/error-boundary": "Error State",
+  "/payments": "Verifikasi Pembayaran",
 };
 
 export function pageTitleFor(pathname: string): string {
   if (/^\/bookings\/.+/.test(pathname)) return "Detail Pemesanan";
+  if (/^\/payments(\/.*)?$/.test(pathname)) return "Verifikasi Pembayaran";
   if (EXTRA_PAGE_TITLES[pathname]) return EXTRA_PAGE_TITLES[pathname];
   return navLinks().find((link) => link.href === pathname)?.label ?? "MobilJuragan";
 }

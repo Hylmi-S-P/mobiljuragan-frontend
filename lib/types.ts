@@ -108,3 +108,73 @@ export type FaqItem = {
   createdAt?: string;
   updatedAt?: string;
 };
+
+// ==========================================
+// Modul Pembayaran (Payment Lifecycle)
+// ==========================================
+
+export type PaymentStatus =
+  | "UNPAID"
+  | "PENDING_VERIFICATION"
+  | "PAID"
+  | "FAILED"
+  | "REFUNDED";
+
+export type PaymentMethod = "QRIS" | "BANK_TRANSFER" | "CASH";
+
+export type AdminPaymentCustomer = {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+};
+
+export type AdminPaymentVehicle = {
+  id: string;
+  name: string;
+  licensePlate: string;
+  brand?: string | null;
+  model?: string | null;
+};
+
+export type AdminPaymentBooking = {
+  id: string;
+  bookingCode: string;
+  status: string;
+  startDate?: string;
+  endDate?: string;
+  customer?: AdminPaymentCustomer | null;
+  vehicle?: AdminPaymentVehicle | null;
+};
+
+export type AdminPaymentItem = {
+  id: string;
+  bookingId: string;
+  baseAmount: number;
+  uniqueCode: number;
+  totalAmount: number;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  qrisPayload?: string | null;
+  proofImageUrl?: string | null;
+  bankName?: string | null;
+  senderAccount?: string | null;
+  verifiedAt?: string | null;
+  verifiedBy?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string | null;
+  booking: AdminPaymentBooking;
+};
+
+export type AdminPaymentsPagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type AdminPaymentsResponse = {
+  items: AdminPaymentItem[];
+  pagination: AdminPaymentsPagination;
+};

@@ -10,6 +10,7 @@ import {
   IconCalendar,
   IconChat,
   IconChevronDown,
+  IconCreditCard,
   IconDashboard,
   IconHelpCircle,
   IconInbox,
@@ -28,6 +29,7 @@ type SidebarProps = {
 const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactElement> = {
   "/": IconDashboard,
   "/bookings": IconInbox,
+  "/payments": IconCreditCard,
   "/fleet/catalog": IconCar,
   "/fleet/calendar": IconCalendar,
   "/fleet/drivers": IconUsers,

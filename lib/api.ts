@@ -1,6 +1,13 @@
 import "server-only";
 import { cookies } from "next/headers";
-import type { AdminAccount, AdminRole, CanonicalBookingStatus, FaqItem } from "./types";
+import type {
+  AdminAccount,
+  AdminPaymentItem,
+  AdminPaymentsResponse,
+  AdminRole,
+  CanonicalBookingStatus,
+  FaqItem,
+} from "./types";
 
 const API_BASE_URL =
   process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
@@ -915,4 +922,75 @@ export async function apiToggleFaqActive(id: string, isActive?: boolean): Promis
   }
 
   return json.data as FaqItem;
+}
+
+// ==========================================
+// Verifikasi Pembayaran (Admin Payment Queue)
+// ==========================================
+
+export async function getAdminPayments(params?: {
+  status?: string;
+  method?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AdminPaymentsResponse> {
+  const token = await getSessionToken();
+  const query = new URLSearchParams();
+  if (params?.status && params.status !== "ALL" && params.status !== "semua") {
+    query.append("status", params.status);
+  }
+  if (params?.method) query.append("method", params.method);
+  if (params?.search) query.append("search", params.search);
+  if (params?.page) query.append("page", String(params.page));
+  if (params?.limit) query.append("limit", String(params.limit));
+
+  const qs = query.toString();
+  const url = `${API_BASE_URL}/admin/payments${qs ? `?${qs}` : ""}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "FETCH_PAYMENTS_FAILED",
+      json?.error?.message || "Gagal memuat antrean pembayaran dari backend.",
+    );
+  }
+
+  return json?.data as AdminPaymentsResponse;
+}
+
+export async function apiVerifyPayment(
+  id: string,
+  data: { action: "APPROVE" | "REJECT"; notes?: string },
+): Promise<AdminPaymentItem> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/payments/${encodeURIComponent(id)}/verify`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "VERIFY_PAYMENT_FAILED",
+      json?.error?.message || "Gagal memproses verifikasi pembayaran.",
+    );
+  }
+
+  return json?.data as AdminPaymentItem;
 }

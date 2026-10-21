@@ -6,6 +6,8 @@ import type {
   CanonicalBookingStatus,
   DriverRoute,
   DriverStatus,
+  PaymentMethod,
+  PaymentStatus,
   SupportTicketStatus,
   VehicleStatus,
 } from "./types";
@@ -120,3 +122,22 @@ export const FAQ_CATEGORY_PRESETS = [
 ] as const;
 
 export type FaqCategoryPreset = (typeof FAQ_CATEGORY_PRESETS)[number];
+
+/* Konfigurasi label dan tone visual untuk status pembayaran */
+export const PAYMENT_STATUS: Record<
+  PaymentStatus,
+  { label: string; tone: ChipTone }
+> = {
+  UNPAID: { label: "Belum Bayar", tone: "neutral" },
+  PENDING_VERIFICATION: { label: "Menunggu Verifikasi", tone: "pending" },
+  PAID: { label: "Terbayar", tone: "available" },
+  FAILED: { label: "Ditolak", tone: "danger" },
+  REFUNDED: { label: "Dikembalikan", tone: "service" },
+};
+
+/* Label bahasa Indonesia yang natural untuk metode pembayaran */
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  QRIS: "QRIS Dinamis",
+  BANK_TRANSFER: "Transfer Bank",
+  CASH: "Tunai di Tempat (COD)",
+};
