@@ -10,41 +10,15 @@ type Props = {
 type Stage = {
   id: number;
   label: string;
-  description: string;
   canonical: CanonicalBookingStatus;
 };
 
 const STAGES: Stage[] = [
-  {
-    id: 1,
-    label: "Permintaan Masuk",
-    description: "Pesanan baru dibuat",
-    canonical: "CREATED",
-  },
-  {
-    id: 2,
-    label: "Konfirmasi Tarif & Supir",
-    description: "Verifikasi staf & supir",
-    canonical: "PENDING_CONFIRMATION",
-  },
-  {
-    id: 3,
-    label: "Menunggu Pembayaran",
-    description: "Tarif resmi disahkan",
-    canonical: "CONFIRMED",
-  },
-  {
-    id: 4,
-    label: "Sewa Berjalan",
-    description: "Armada beroperasi",
-    canonical: "IN_PROGRESS",
-  },
-  {
-    id: 5,
-    label: "Selesai",
-    description: "Armada kembali di pool",
-    canonical: "COMPLETED",
-  },
+  { id: 1, label: "Permintaan Masuk", canonical: "CREATED" },
+  { id: 2, label: "Konfirmasi Tarif", canonical: "PENDING_CONFIRMATION" },
+  { id: 3, label: "Menunggu Pembayaran", canonical: "CONFIRMED" },
+  { id: 4, label: "Sewa Berjalan", canonical: "IN_PROGRESS" },
+  { id: 5, label: "Selesai", canonical: "COMPLETED" },
 ];
 
 function getStageIndex(rawStatus: CanonicalBookingStatus): number {
@@ -169,7 +143,7 @@ export function BookingTimelineBar({ rawStatus, rejectionReason }: Props) {
                     </div>
                   </div>
 
-                  {/* Stage label & description */}
+                  {/* Stage label */}
                   <span
                     className={`block text-meta leading-tight ${
                       isCurrent
@@ -180,9 +154,6 @@ export function BookingTimelineBar({ rawStatus, rejectionReason }: Props) {
                     }`}
                   >
                     {stage.label}
-                  </span>
-                  <span className="mt-0.5 hidden text-micro text-ink-soft sm:block">
-                    {stage.description}
                   </span>
                 </div>
               );

@@ -106,18 +106,12 @@ export function BookingActionSidebar({
               className="tabular-nums h-11 w-full rounded-r-sm border border-rule-strong bg-surface px-3 text-body font-bold text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
             />
           </div>
-          <p className="text-micro text-ink-soft">
-            Pemisah ribuan titik otomatis terpasang. Nominal ini menjadi acuan tagihan resmi pelanggan.
-          </p>
         </div>
       ) : (
         <div className="rounded-md border border-rule bg-canvas p-3">
           <p className="text-micro font-bold uppercase text-ink-soft">Tarif Sewa Dasar Resmi</p>
           <p className="mt-1 text-subtitle font-bold text-ink tabular-nums">
             {formatRupiah(quotedAmount)}
-          </p>
-          <p className="mt-0.5 text-micro text-ink-soft">
-            Tarif sewa telah disahkan untuk {booking.dayCount} hari sewa.
           </p>
         </div>
       )}
@@ -134,11 +128,6 @@ export function BookingActionSidebar({
               : formatRupiah(totalCleanBill)}
           </span>
         </div>
-        <p className="mt-1.5 text-micro text-ink-soft">
-          {canDecide
-            ? TARIFF_PENDING_NOTE
-            : "Total tagihan bersih mencakup tarif dasar dan penyesuaian biaya operasional."}
-        </p>
       </div>
 
       {/* Primary Decision Actions (CREATED / PENDING_CONFIRMATION) */}
@@ -146,7 +135,7 @@ export function BookingActionSidebar({
         <div className="space-y-2.5 pt-1">
           {isDriverBlocked ? (
             <p className="text-micro text-amber-800 bg-amber-50 border border-amber-300 rounded-sm p-2">
-              Perhatian: Anda wajib memilih supir resmi di kolom kiri sebelum menyetujui pesanan ini.
+              Pilih supir di kolom kiri sebelum menyetujui pesanan.
             </p>
           ) : null}
 
@@ -245,9 +234,6 @@ export function BookingActionSidebar({
           >
             Buka Pesan WhatsApp Konfirmasi
           </a>
-          <p className="mt-1 text-center text-[11px] text-ink-soft">
-            Membuka draf rincian pesanan resmi di WhatsApp Web / App
-          </p>
         </div>
       ) : null}
     </aside>

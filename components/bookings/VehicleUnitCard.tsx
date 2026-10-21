@@ -30,23 +30,22 @@ export function VehicleUnitCard({ vehicle }: Props) {
           }
         >
           {isAvailable
-            ? "Unit siap di pool Merauke"
+            ? "Tersedia di Pool"
             : isRented
-              ? "Sedang disewa"
+              ? "Sedang Disewa"
               : isService
-                ? "Dalam perawatan"
-                : "Tidak tersedia"}
+                ? "Dalam Perawatan"
+                : "Tidak Tersedia"}
         </StatusChip>
       }
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3.5">
           {/* Unit Visual Silhouette / Category Box */}
-          <div className="flex h-16 w-20 shrink-0 flex-col items-center justify-center rounded-md border border-rule bg-canvas text-center">
+          <div className="flex h-14 w-16 shrink-0 flex-col items-center justify-center rounded-md border border-rule bg-canvas text-center">
             <span className="text-micro font-bold uppercase tracking-wider text-teal">
               {vehicle.category ?? "Armada"}
             </span>
-            <span className="mt-0.5 text-[10px] text-ink-soft">MobilJuragan</span>
           </div>
 
           <div className="min-w-0">
@@ -74,27 +73,6 @@ export function VehicleUnitCard({ vehicle }: Props) {
         <DataField label="Kapasitas penumpang">
           {vehicle.seats ? `${vehicle.seats} Penumpang` : "7 Penumpang"}
         </DataField>
-      </div>
-
-      {/* Pool Readiness Information Box */}
-      <div className="mt-3.5 rounded-sm border border-rule bg-canvas p-3">
-        <div className="flex items-start gap-2">
-          <span className="text-teal font-bold">&#9679;</span>
-          <div>
-            <p className="text-micro font-bold uppercase text-ink-soft">
-              Kesiapan Fisik &amp; Kelayakan Operasional
-            </p>
-            <p className="mt-0.5 text-meta text-ink">
-              {isAvailable
-                ? "Kebersihan interior, kelayakan ban, oli, dan toolkit darurat terverifikasi siap serah terima di kantor MobilJuragan Merauke."
-                : isRented
-                  ? "Unit sedang beroperasi di lapangan, terjadwal kembali sebelum waktu serah terima."
-                  : isService
-                    ? "Unit sedang dalam inspeksi perawatan berkala di bengkel rekanan resmi."
-                    : "Unit saat ini dalam pembaruan berkas administrasi operasional."}
-            </p>
-          </div>
-        </div>
       </div>
     </Panel>
   );

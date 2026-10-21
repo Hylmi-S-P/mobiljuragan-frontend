@@ -113,17 +113,6 @@ export function BillingLineItemsCard({
           </tbody>
         </table>
       </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-rule/60 pt-3 text-micro text-ink-soft">
-        <p>
-          Tarif dasar mencakup armada dan operasional. Surcharge manual dapat ditambahkan untuk penyesuaian rute luar kota, overtime, atau BBM tambahan.
-        </p>
-        {canDecide ? (
-          <Button variant="outline" size="sm" onClick={onOpenSurcharge}>
-            + Tambah Surcharge Manual
-          </Button>
-        ) : null}
-      </div>
     </Panel>
   );
 }

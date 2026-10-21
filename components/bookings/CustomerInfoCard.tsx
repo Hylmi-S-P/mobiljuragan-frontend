@@ -50,17 +50,19 @@ export function CustomerInfoCard({ booking }: Props) {
     waUrl = `https://wa.me/${normalizedPhone}`;
   }
 
+  const hasGenuineNote = Boolean(
+    booking.customerContext && !hasValidPhone && booking.customerContext.trim().length > 0,
+  );
+
   return (
     <Panel
       title="Informasi Pelanggan & Pemesanan"
       action={
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-1.5">
           <StatusChip tone={isDriverService ? "busy" : "available"}>
-            {isDriverService ? "Dengan Supir Resmi" : "Lepas Kunci (Self-Drive)"}
+            {isDriverService ? "Dengan Supir" : "Lepas Kunci"}
           </StatusChip>
-          <StatusChip tone={isLuarKota ? "pending" : "neutral"}>
-            {isLuarKota ? "Rute Luar Kota Merauke" : "Rute Dalam Kota Merauke"}
-          </StatusChip>
+          {isLuarKota ? <StatusChip tone="pending">Luar Kota</StatusChip> : null}
         </div>
       }
     >
@@ -71,7 +73,7 @@ export function CustomerInfoCard({ booking }: Props) {
 
         <div className="min-w-0">
           <p className="text-micro font-semibold uppercase text-ink-soft">Nomor WhatsApp</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
+          <div className="mt-1 flex items-center gap-2">
             <span className="truncate text-meta font-medium text-ink tabular-nums">
               {rawContact || "Belum diverifikasi"}
             </span>
@@ -80,17 +82,11 @@ export function CustomerInfoCard({ booking }: Props) {
                 href={waUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-sm border border-teal/40 bg-teal/10 px-1.5 py-0.5 text-micro font-medium text-teal hover:bg-teal/20 transition-colors"
-                title="Buka WhatsApp Pelanggan"
+                className="text-micro font-medium text-teal hover:underline inline-flex items-center gap-0.5"
               >
-                <span>Terverifikasi</span>
-                <span className="text-[10px]">&#8599;</span>
+                Hubungi WA ↗
               </a>
-            ) : (
-              <span className="inline-flex items-center rounded-sm border border-rule px-1.5 py-0.5 text-micro text-ink-soft">
-                Belum diverifikasi
-              </span>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -101,29 +97,25 @@ export function CustomerInfoCard({ booking }: Props) {
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3 border-t border-rule/50 pt-3.5">
         <DataField label="Titik jemput">
-          {booking.pickupRoute || "Kantor MobilJuragan (Jl. Raya Mandala, Merauke)"}
+          {booking.pickupRoute || "Kantor MobilJuragan"}
         </DataField>
 
         <DataField label="Rute perjalanan">
-          {isLuarKota ? "Luar Kota (Lintas Distrik)" : "Dalam Kota Merauke"}
+          {isLuarKota ? "Luar Kota Merauke" : "Dalam Kota Merauke"}
         </DataField>
 
         <DataField label="Jenis layanan">
-          {booking.serviceType || (isDriverService ? "Rental Dengan Supir" : "Rental Lepas Kunci")}
+          {booking.serviceType || (isDriverService ? "Dengan Supir" : "Lepas Kunci")}
         </DataField>
       </div>
 
-      {/* Catatan Kebutuhan Perjalanan Khusus */}
-      <div className="mt-3.5 rounded-sm border border-rule bg-canvas p-3">
-        <p className="text-micro font-bold uppercase text-ink-soft">
-          Catatan Khusus &amp; Konteks Perjalanan
-        </p>
-        <p className="mt-1 text-meta text-ink leading-relaxed">
-          {booking.customerContext && !hasValidPhone
-            ? booking.customerContext
-            : "Pemesanan sewa unit operasional resmi untuk kebutuhan mobilitas di area Merauke dan sekitarnya."}
-        </p>
-      </div>
+      {/* Catatan Kebutuhan Perjalanan Khusus — hanya tampil jika ada catatan nyata */}
+      {hasGenuineNote ? (
+        <div className="mt-3.5 rounded-sm border border-rule bg-canvas p-3">
+          <p className="text-micro font-bold uppercase text-ink-soft">Catatan Pelanggan</p>
+          <p className="mt-1 text-meta text-ink leading-relaxed">{booking.customerContext}</p>
+        </div>
+      ) : null}
     </Panel>
   );
 }

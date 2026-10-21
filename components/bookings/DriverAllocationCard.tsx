@@ -55,62 +55,16 @@ export function DriverAllocationCard({
     // Mode Lepas Kunci (Self-Drive)
     return (
       <Panel
-        title="Alokasi Operasional: Layanan Lepas Kunci (Self-Drive)"
-        action={<StatusChip tone="available">Verifikasi Mandiri</StatusChip>}
+        title="Layanan Lepas Kunci (Self-Drive)"
+        action={<StatusChip tone="available">Tanpa Supir</StatusChip>}
       >
-        <div className="space-y-3">
-          <p className="text-meta text-ink leading-relaxed">
-            Penyewa mengemudi secara mandiri tanpa pendampingan supir resmi MobilJuragan.
-            Serah terima unit dilakukan di kantor operasional MobilJuragan Merauke (Jl. Raya Mandala No. 12).
+        <div className="rounded-md border border-rule bg-canvas p-3.5 space-y-1.5">
+          <p className="text-meta font-medium text-ink">
+            Penyewa mengemudi secara mandiri. Serah terima unit dilakukan di kantor MobilJuragan Merauke.
           </p>
-
-          <div className="rounded-md border border-rule bg-canvas p-3.5">
-            <h3 className="text-micro font-bold uppercase tracking-wider text-ink-soft">
-              Checklist Standar Operasional Prosedur (SOP) Serah Terima Fisik Unit
-            </h3>
-            <ul className="mt-2.5 space-y-2 text-meta text-ink">
-              <li className="flex items-start gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal/10 text-teal text-micro font-bold">
-                  &#10003;
-                </span>
-                <span>
-                  <strong>Pemeriksaan KTP Fisik Asli:</strong> Nama dan foto pada KTP wajib dicocokkan dengan identitas akun pemesan.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal/10 text-teal text-micro font-bold">
-                  &#10003;
-                </span>
-                <span>
-                  <strong>Validasi SIM A Aktif Asli:</strong> Masa berlaku SIM A diverifikasi belum kedaluwarsa.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal/10 text-teal text-micro font-bold">
-                  &#10003;
-                </span>
-                <span>
-                  <strong>Penandatanganan Dokumen BAST:</strong> Lembar Berita Acara Serah Terima &amp; syarat ketentuan sewa ditandatangani kedua pihak.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal/10 text-teal text-micro font-bold">
-                  &#10003;
-                </span>
-                <span>
-                  <strong>Inspeksi Fisik Bersama:</strong> Pencatatan kondisi goresan bodi, kebersihan kabin, kelengkapan ban cadangan &amp; toolkit.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal/10 text-teal text-micro font-bold">
-                  &#10003;
-                </span>
-                <span>
-                  <strong>Pencatatan Odometer &amp; Indikator BBM:</strong> Angka kilometer awal dan tingkat bahan bakar difoto bersama penyewa.
-                </span>
-              </li>
-            </ul>
-          </div>
+          <p className="text-micro text-ink-soft">
+            Pastikan verifikasi fisik SIM A aktif &amp; KTP asli penyewa sebelum penyerahan kunci unit.
+          </p>
         </div>
       </Panel>
     );
@@ -130,19 +84,16 @@ export function DriverAllocationCard({
         )
       }
     >
-      <div className="space-y-3.5">
+      <div className="space-y-3">
         <div>
           <label
             htmlFor="driver-select-card"
             className="block text-meta font-semibold text-ink"
           >
-            Pilih Supir Resmi MobilJuragan (Status Siaga)
+            Pilih Supir Siaga
           </label>
-          <p className="mt-0.5 text-micro text-ink-soft">
-            Menampilkan pengemudi berstatus Siaga ({isLuarKota ? "Prioritas Rute Luar Kota" : "Prioritas Rute Dalam Kota"}). Penugasan otomatis tersimpan ke sistem saat dipilih.
-          </p>
 
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center">
             <select
               id="driver-select-card"
               value={selectedDriverId}
@@ -163,60 +114,57 @@ export function DriverAllocationCard({
 
             {isPending ? (
               <span className="text-micro font-medium text-teal animate-pulse">
-                Menyimpan alokasi...
+                Menyimpan...
               </span>
             ) : null}
           </div>
 
           {eligibleDrivers.length === 0 ? (
             <p className="mt-1.5 text-micro text-amber-700">
-              Perhatian: Tidak ada supir siaga untuk rute ini di roster operasional. Anda tetap dapat menugaskan supir lain saat status mereka kembali Siaga.
+              Perhatian: Tidak ada supir siaga untuk rute ini di roster operasional.
             </p>
           ) : null}
         </div>
 
         {/* Profil Supir Ditugaskan */}
         {hasAssignedDriver ? (
-          <div className="rounded-md border border-rule bg-canvas p-3.5">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule/60 pb-2.5">
+          <div className="rounded-md border border-rule bg-canvas p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule/60 pb-2">
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-navy text-micro font-bold text-white">
                   {(activeDriverLabel ?? "S").charAt(0)}
                 </span>
-                <div>
-                  <h3 className="text-body font-bold text-ink">
-                    {activeDriverLabel}
-                  </h3>
-                  <p className="text-micro text-ink-soft">Pengemudi Resmi MobilJuragan Merauke</p>
-                </div>
+                <h3 className="text-body font-bold text-ink">
+                  {activeDriverLabel}
+                </h3>
               </div>
               <StatusChip tone={assignedDriver ? DRIVER_STATUS[assignedDriver.status]?.tone ?? "available" : "available"}>
                 {assignedDriver ? DRIVER_STATUS[assignedDriver.status]?.label ?? "Siaga" : "Siaga"}
               </StatusChip>
             </div>
 
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div className="mt-2.5 grid gap-3 sm:grid-cols-3">
               <div>
-                <p className="text-micro font-semibold uppercase text-ink-soft">Lisensi Mengemudi</p>
+                <p className="text-micro font-semibold uppercase text-ink-soft">Lisensi</p>
                 <p className="mt-0.5 text-meta font-medium text-ink">
-                  {assignedDriver?.licenseNumber ?? "SIM B1 Umum Merauke"}
+                  {assignedDriver?.licenseNumber ?? "SIM B1 Umum"}
                 </p>
               </div>
 
               <div>
-                <p className="text-micro font-semibold uppercase text-ink-soft">Keahlian Rute</p>
+                <p className="text-micro font-semibold uppercase text-ink-soft">Rute Operasional</p>
                 <p className="mt-0.5 text-meta font-medium text-ink">
                   {assignedDriver?.route === "luar_kota"
-                    ? "Jalur Lintas Luar Kota Merauke"
-                    : "Dalam Kota Merauke & Sekitarnya"}
+                    ? "Luar Kota Merauke"
+                    : "Dalam Kota Merauke"}
                 </p>
               </div>
 
               <div>
-                <p className="text-micro font-semibold uppercase text-ink-soft">Kontak Pengemudi</p>
+                <p className="text-micro font-semibold uppercase text-ink-soft">Kontak</p>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span className="text-meta font-medium text-ink tabular-nums">
-                    {assignedDriver?.contact ?? "0812-3456-7890"}
+                    {assignedDriver?.contact ?? "-"}
                   </span>
                   {assignedDriver?.contact ? (
                     <a
@@ -225,7 +173,7 @@ export function DriverAllocationCard({
                       rel="noopener noreferrer"
                       className="text-micro font-medium text-teal hover:underline"
                     >
-                      WhatsApp
+                      WhatsApp ↗
                     </a>
                   ) : null}
                 </div>
@@ -233,12 +181,10 @@ export function DriverAllocationCard({
             </div>
           </div>
         ) : (
-          <div className="rounded-md border border-amber-300 bg-amber-50/70 p-3 text-meta text-amber-900">
-            <p className="font-semibold">
-              Perhatian Operasional: Supir resmi belum dialokasikan untuk pemesanan ini.
-            </p>
-            <p className="mt-0.5 text-micro text-amber-800">
-              Pemesanan dengan supir memerlukan penugasan pengemudi sebelum tarif sewa dapat disahkan dan disetujui.
+          <div className="rounded-sm border border-amber-300 bg-amber-50/70 px-3.5 py-2.5 text-meta text-amber-900 flex items-center gap-2">
+            <span>⚠️</span>
+            <p className="font-medium">
+              Supir belum dialokasikan. Pilih supir di atas sebelum menyetujui pesanan ini.
             </p>
           </div>
         )}
