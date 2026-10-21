@@ -186,7 +186,7 @@ export function BookingActionSidebar({
         <div className="rounded-md border border-rule bg-canvas p-3 space-y-2.5">
           <p className="text-meta font-semibold text-ink">Pengembalian &amp; Penyelesaian</p>
           <p className="text-micro text-ink-soft">
-            Periksa kondisi fisik unit, tingkat BBM, dan lepaskan supir kembali ke status Siaga di pool Merauke.
+            Periksa kondisi fisik unit, tingkat BBM, dan lepaskan supir kembali ke status Siaga di kantor Merauke.
           </p>
           <Button
             variant="confirm"
@@ -209,7 +209,7 @@ export function BookingActionSidebar({
         <div className="rounded-md border border-teal/40 bg-teal/10 p-3 text-meta text-teal">
           <p className="font-semibold">Pemesanan ini telah selesai.</p>
           <p className="mt-0.5 text-micro text-ink">
-            Armada telah kembali ke pool dan seluruh kewajiban sewa telah terpenuhi.
+            Armada telah kembali ke kantor dan seluruh kewajiban sewa telah terpenuhi.
           </p>
         </div>
       ) : null}

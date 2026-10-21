@@ -23,8 +23,6 @@ export function BillingLineItemsCard({
   onOpenSurcharge,
   onRemoveSurcharge,
 }: Props) {
-  const isTariffDecided = rawStatus !== "CREATED" && rawStatus !== "PENDING_CONFIRMATION";
-
   return (
     <Panel
       title="Rincian Tagihan & Penyesuaian Biaya"
@@ -65,8 +63,11 @@ export function BillingLineItemsCard({
                 const isNegative = raw.startsWith("-");
                 const numeric = Number(raw.replace(/[^\d]/g, "")) || 0;
                 subtotalDisplay = `${isNegative ? "-" : "+"} ${formatRupiah(numeric)}`;
-              } else if (isTariffDecided) {
+              } else if (quotedAmount > 0) {
                 subtotalDisplay = formatRupiah(quotedAmount);
+              } else if (item.amount) {
+                const numeric = Number(item.amount.replace(/[^\d]/g, "")) || 0;
+                subtotalDisplay = numeric > 0 ? formatRupiah(numeric) : AMOUNT_PLACEHOLDER;
               }
 
               return (

@@ -57,14 +57,7 @@ export function CustomerInfoCard({ booking }: Props) {
   return (
     <Panel
       title="Informasi Pelanggan & Pemesanan"
-      action={
-        <div className="flex items-center gap-1.5">
-          <StatusChip tone={isDriverService ? "busy" : "available"}>
-            {isDriverService ? "Dengan Supir" : "Lepas Kunci"}
-          </StatusChip>
-          {isLuarKota ? <StatusChip tone="pending">Luar Kota</StatusChip> : null}
-        </div>
-      }
+      action={isLuarKota ? <StatusChip tone="pending">Luar Kota</StatusChip> : null}
     >
       <div className="grid gap-4 sm:grid-cols-3">
         <DataField label={isDriverService ? "Nama pemesan / PIC" : "Nama lengkap"}>
