@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import type { AdminAccount, AdminRole, CanonicalBookingStatus } from "./types";
+import type { AdminAccount, AdminRole, CanonicalBookingStatus, FaqItem } from "./types";
 
 const API_BASE_URL =
   process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
@@ -766,3 +766,153 @@ export async function apiTestAiChat(
   };
 }
 
+// ==========================================
+// Manajemen FAQ (Admin & Publik)
+// ==========================================
+
+export async function getAdminFaqs(params?: {
+  category?: string;
+  search?: string;
+  isActive?: boolean;
+}): Promise<FaqItem[]> {
+  const token = await getSessionToken();
+  const query = new URLSearchParams();
+  if (params?.category) query.append("category", params.category);
+  if (params?.search) query.append("search", params.search);
+  if (params?.isActive !== undefined) query.append("isActive", String(params.isActive));
+
+  const url = `${API_BASE_URL}/admin/faqs${query.toString() ? `?${query.toString()}` : ""}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "FETCH_FAQS_FAILED",
+      json?.error?.message || "Gagal memuat daftar FAQ dari backend.",
+    );
+  }
+
+  return Array.isArray(json?.data) ? (json.data as FaqItem[]) : [];
+}
+
+export async function apiCreateFaq(data: {
+  question: string;
+  answer: string;
+  category: string;
+  orderIndex?: number;
+  isActive?: boolean;
+}): Promise<FaqItem> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/faqs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CREATE_FAQ_FAILED",
+      json?.error?.message || "Gagal menambahkan FAQ baru.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data as FaqItem;
+}
+
+export async function apiUpdateFaq(
+  id: string,
+  data: {
+    question?: string;
+    answer?: string;
+    category?: string;
+    orderIndex?: number;
+    isActive?: boolean;
+  },
+): Promise<FaqItem> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/faqs/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_FAQ_FAILED",
+      json?.error?.message || "Gagal memperbarui FAQ.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data as FaqItem;
+}
+
+export async function apiDeleteFaq(id: string): Promise<{ id: string }> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/faqs/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "DELETE_FAQ_FAILED",
+      json?.error?.message || "Gagal menghapus FAQ.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data as { id: string };
+}
+
+export async function apiToggleFaqActive(id: string, isActive?: boolean): Promise<FaqItem> {
+  if (isActive !== undefined) {
+    return apiUpdateFaq(id, { isActive });
+  }
+
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/faqs/${encodeURIComponent(id)}/toggle`, {
+    method: "PATCH",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "TOGGLE_FAQ_FAILED",
+      json?.error?.message || "Gagal mengubah status aktif FAQ.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data as FaqItem;
+}

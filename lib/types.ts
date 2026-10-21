@@ -97,3 +97,14 @@ export type TicketMessage = {
   from: "pelanggan" | "tim";
   text: string;
 };
+
+export type FaqItem = {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  orderIndex: number;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};

@@ -26,9 +26,13 @@ import {
   apiGetAiGatewayLogs,
   apiClearAiGatewayLogs,
   apiParseKnowledgeFile,
+  apiCreateFaq,
+  apiUpdateFaq,
+  apiDeleteFaq,
+  apiToggleFaqActive,
   ApiError,
 } from "@/lib/api";
-import type { AdminRole, CanonicalBookingStatus } from "@/lib/types";
+import type { AdminRole, CanonicalBookingStatus, FaqItem } from "@/lib/types";
 
 export type ActionState = {
   success?: boolean;
@@ -644,6 +648,166 @@ export async function testAiChatAction(
       message: err instanceof Error ? err.message : "Gagal memproses pesan chat.",
       data: null,
     };
+  }
+}
+
+/**
+ * Server Action untuk membuat entri FAQ baru.
+ */
+export async function createFaqAction(
+  _prevState: ActionState | null,
+  formData: FormData,
+): Promise<ActionState & { data?: FaqItem }> {
+  const question = (formData.get("question") as string)?.trim() || "";
+  const answer = (formData.get("answer") as string)?.trim() || "";
+  const category = (formData.get("category") as string)?.trim() || "Umum";
+  const orderIndexStr = formData.get("orderIndex") as string;
+  const orderIndex = orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : 0;
+  const activeVal = formData.get("isActive");
+  const isActive = activeVal !== null ? activeVal === "true" || activeVal === "on" : true;
+
+  const errors: Record<string, string> = {};
+  if (!question) errors.question = "Pertanyaan wajib diisi.";
+  if (!answer) errors.answer = "Jawaban wajib diisi.";
+  if (!category) errors.category = "Kategori wajib diisi.";
+
+  if (Object.keys(errors).length > 0) {
+    return { success: false, errors };
+  }
+
+  try {
+    const data = await apiCreateFaq({
+      question,
+      answer,
+      category,
+      orderIndex: isNaN(orderIndex) ? 0 : orderIndex,
+      isActive,
+    });
+    revalidatePath("/faqs");
+    return { success: true, message: "FAQ baru berhasil ditambahkan.", data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal membuat FAQ pada backend." };
+  }
+}
+
+/**
+ * Server Action untuk memperbarui data FAQ.
+ */
+export async function updateFaqAction(
+  _prevState: ActionState | null,
+  formData: FormData,
+): Promise<ActionState & { data?: FaqItem }> {
+  const id = (formData.get("id") as string)?.trim() || "";
+  const question = (formData.get("question") as string)?.trim();
+  const answer = (formData.get("answer") as string)?.trim();
+  const category = (formData.get("category") as string)?.trim();
+  const orderIndexStr = formData.get("orderIndex") as string;
+  const orderIndex = orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : undefined;
+  const activeVal = formData.get("isActive");
+  const isActive = activeVal !== null ? activeVal === "true" || activeVal === "on" : undefined;
+
+  if (!id) {
+    return { success: false, message: "ID FAQ tidak valid." };
+  }
+
+  const errors: Record<string, string> = {};
+  if (question !== undefined && !question) errors.question = "Pertanyaan tidak boleh kosong.";
+  if (answer !== undefined && !answer) errors.answer = "Jawaban tidak boleh kosong.";
+  if (category !== undefined && !category) errors.category = "Kategori tidak boleh kosong.";
+
+  if (Object.keys(errors).length > 0) {
+    return { success: false, errors };
+  }
+
+  try {
+    const data = await apiUpdateFaq(id, {
+      question,
+      answer,
+      category,
+      orderIndex: orderIndex !== undefined && !isNaN(orderIndex) ? orderIndex : undefined,
+      isActive,
+    });
+    revalidatePath("/faqs");
+    return { success: true, message: "FAQ berhasil diperbarui.", data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal memperbarui FAQ pada backend." };
+  }
+}
+
+/**
+ * Server Action untuk menghapus FAQ secara permanen.
+ */
+export async function deleteFaqAction(
+  _prevState: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = (formData.get("id") as string)?.trim() || "";
+  if (!id) {
+    return { success: false, message: "ID FAQ tidak valid." };
+  }
+
+  try {
+    await apiDeleteFaq(id);
+    revalidatePath("/faqs");
+    return { success: true, message: "FAQ berhasil dihapus." };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menghapus FAQ pada backend." };
+  }
+}
+
+/**
+ * Server Action untuk toggle status aktif / visibilitas mobile FAQ.
+ */
+export async function toggleFaqActiveAction(id: string): Promise<ActionState & { data?: FaqItem }> {
+  if (!id) {
+    return { success: false, message: "ID FAQ tidak valid." };
+  }
+
+  try {
+    const data = await apiToggleFaqActive(id);
+    revalidatePath("/faqs");
+    return {
+      success: true,
+      message: `Status FAQ berhasil diubah menjadi ${data.isActive ? "Tampil di Mobile" : "Disembunyikan"}.`,
+      data,
+    };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal mengubah status visibilitas FAQ." };
+  }
+}
+
+/**
+ * Server Action untuk penyesuaian cepat prioritas urutan FAQ.
+ */
+export async function updateFaqPriorityAction(
+  id: string,
+  orderIndex: number,
+): Promise<ActionState & { data?: FaqItem }> {
+  if (!id) {
+    return { success: false, message: "ID FAQ tidak valid." };
+  }
+
+  try {
+    const data = await apiUpdateFaq(id, { orderIndex });
+    revalidatePath("/faqs");
+    return { success: true, message: "Prioritas urutan berhasil diperbarui.", data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal memperbarui urutan FAQ." };
   }
 }
 

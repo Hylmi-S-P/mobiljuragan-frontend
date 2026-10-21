@@ -11,6 +11,7 @@ import {
   IconChat,
   IconChevronDown,
   IconDashboard,
+  IconHelpCircle,
   IconInbox,
   IconShield,
   IconSparkles,
@@ -33,6 +34,7 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
   "/customer-care": IconChat,
   "/finance": IconTrendingUp,
   "/admin/ai-hub": IconSparkles,
+  "/faqs": IconHelpCircle,
   "/admin": IconShield,
 };
 

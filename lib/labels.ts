@@ -109,3 +109,14 @@ export const VEHICLE_CATEGORY_OPTIONS = [
 export const VEHICLE_TRANSMISSION_OPTIONS = ["Manual", "Automatic"];
 
 export const VEHICLE_SEAT_OPTIONS = [3, 5, 7, 9, 12];
+
+/* Preset kategori FAQ resmi yang selaras dengan aplikasi mobile MobilJuragan. */
+export const FAQ_CATEGORY_PRESETS = [
+  "Booking & Sewa",
+  "Pembayaran",
+  "Armada",
+  "Layanan Darurat",
+  "Umum",
+] as const;
+
+export type FaqCategoryPreset = (typeof FAQ_CATEGORY_PRESETS)[number];
