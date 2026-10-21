@@ -44,7 +44,6 @@ export function VehicleFormModal({
   const [transmission, setTransmission] = useState(
     vehicle?.transmission ?? VEHICLE_TRANSMISSION_OPTIONS[0],
   );
-  const [seats, setSeats] = useState<number>(vehicle?.seats ?? 7);
   const [usage, setUsage] = useState(vehicle?.usage ?? "");
   const [priceInput, setPriceInput] = useState<string>(() => {
     const p = vehicle?.pricePerDay ?? 400000;
@@ -105,7 +104,7 @@ export function VehicleFormModal({
       status,
       category,
       transmission,
-      seats,
+      seats: vehicle?.seats ?? 7,
       pricePerDay: numericPrice,
       usage: usage.trim().length > 0 ? usage.trim() : null,
       allowedModes: modes,
@@ -192,7 +191,7 @@ export function VehicleFormModal({
           ) : null}
         </div>
 
-        <div className="grid gap-3.5 sm:grid-cols-3">
+        <div className="grid gap-3.5 sm:grid-cols-2">
           <div>
             <label htmlFor={`${fieldId}-category`} className="block text-meta font-medium text-ink">
               Kategori armada
@@ -230,27 +229,6 @@ export function VehicleFormModal({
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label htmlFor={`${fieldId}-seats`} className="block text-meta font-medium text-ink">
-              Kapasitas kursi
-            </label>
-            <div className="relative mt-1">
-              <input
-                id={`${fieldId}-seats`}
-                type="number"
-                min={1}
-                max={30}
-                value={seats}
-                onChange={(event) => setSeats(Math.max(1, Number(event.target.value) || 1))}
-                className="tabular-nums h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 pr-14 text-body font-semibold text-ink"
-                placeholder="7"
-              />
-              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-meta text-ink-soft">
-                Kursi
-              </span>
-            </div>
           </div>
         </div>
 

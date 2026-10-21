@@ -61,9 +61,9 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
           <Table caption="Katalog armada resmi MobilJuragan">
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="w-[300px]">Kendaraan &amp; Kategori</TableHeaderCell>
+                <TableHeaderCell className="w-[320px]">Kendaraan &amp; Kategori</TableHeaderCell>
                 <TableHeaderCell className="w-[180px]">Tarif Sewa / Hari</TableHeaderCell>
-                <TableHeaderCell className="w-[180px]">Transmisi &amp; Kursi</TableHeaderCell>
+                <TableHeaderCell className="w-[160px]">Transmisi</TableHeaderCell>
                 <TableHeaderCell className="w-[140px]">Ketersediaan</TableHeaderCell>
                 <TableHeaderCell className="w-[140px]">Status &amp; Aksi</TableHeaderCell>
               </TableRow>
@@ -84,10 +84,8 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
                     {formatRupiah(vehicle.pricePerDay ?? 400000)}
                     <span className="block text-micro font-normal text-ink-soft">/ hari (dasar)</span>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-body tabular-nums">
-                    {vehicle.transmission && vehicle.seats
-                      ? `${vehicle.transmission} • ${vehicle.seats} Kursi`
-                      : "[belum diisi]"}
+                  <TableCell className="whitespace-nowrap text-body">
+                    {vehicle.transmission ?? "Manual"}
                   </TableCell>
                   <TableCell>
                     <StatusChip tone={VEHICLE_STATUS[vehicle.status].tone}>
