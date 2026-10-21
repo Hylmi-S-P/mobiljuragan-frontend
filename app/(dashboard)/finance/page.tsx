@@ -18,26 +18,14 @@ export default async function FinancePage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header Halaman */}
-      <div className="flex flex-col gap-1 border-b border-rule pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-white">
-            <IconTrendingUp className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-ink">
-              Laporan Keuangan & Arus Kas Masuk
-            </h1>
-            <p className="text-meta text-ink-soft">
-              Rekapitulasi omzet sewa armada, piutang berjalan, dan rasio pemesanan MobilJuragan Merauke.
-            </p>
-          </div>
+      <div className="flex items-center gap-3 border-b border-rule pb-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-white">
+          <IconTrendingUp className="h-5 w-5" />
         </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-micro font-medium text-emerald-700 border border-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            Data Real-time MariaDB
-          </span>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-ink">
+            Laporan Keuangan &amp; Arus Kas Masuk
+          </h1>
         </div>
       </div>
 
