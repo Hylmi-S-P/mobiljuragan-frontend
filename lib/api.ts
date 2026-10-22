@@ -770,12 +770,6 @@ export async function apiTestAiChat(
     isFallbackTriggered?: boolean;
     fallbackReason?: string;
     gatewayNotice?: string;
-    // Tier 2 Semantic Guardrail Metadata
-    intent?: 'RENTAL_FAQ' | 'ORDER_TRACKING' | 'EMERGENCY_INCIDENT' | 'HARMFUL_OUT_OF_SCOPE';
-    confidence?: number;
-    reasoning?: string;
-    guardrailSource?: 'ai_classifier' | 'rule_fallback';
-    bypassedRag?: boolean;
   };
 }
 
