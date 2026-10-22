@@ -222,6 +222,10 @@ Seluruh data dashboard diambil dari REST API Express buatan sendiri di `http://l
 | Pemesanan Admin | `PATCH` | `/admin/bookings/:id/status` | Admin/Staff | Konfirmasi tarif & ubah status |
 | Pemesanan Admin | `PATCH` | `/admin/bookings/:id/driver` | Admin/Staff | Tugaskan supir |
 | Armada Admin | `GET` | `/admin/fleet/calendar` | Admin/Staff | Kalender Armada |
+| Armada Admin | `POST` | `/admin/vehicles` | Admin/Staff | Manajemen Armada — tambah armada baru |
+| Armada Admin | `PUT` | `/admin/vehicles/:id` | Admin/Staff | Manajemen Armada — perbarui spesifikasi armada |
+| Armada Admin | `PATCH` | `/admin/vehicles/:id` | Admin/Staff | Manajemen Armada — ubah data armada |
+| Armada Admin | `DELETE` | `/admin/vehicles/:id` | Admin/Staff | Manajemen Armada — hapus armada |
 | Armada Admin | `PATCH` | `/admin/vehicles/:id/status` | Admin/Staff | Ubah status unit di Katalog |
 | Supir Admin | `GET` | `/admin/drivers` | Admin/Staff | Manajemen Supir, Detail Pemesanan |
 | Supir Admin | `POST` | `/admin/drivers` | Admin/Staff | Tambah supir |
@@ -229,17 +233,51 @@ Seluruh data dashboard diambil dari REST API Express buatan sendiri di `http://l
 | Supir Admin | `PATCH` | `/admin/drivers/:id` | Admin/Staff | Ubah data supir |
 | Supir Admin | `PATCH` | `/admin/drivers/:id/readiness` | Admin/Staff | Sakelar kesiapan SIAGA/LIBUR |
 | Supir Admin | `DELETE` | `/admin/drivers/:id` | Admin/Staff | Nonaktifkan supir |
-| Customer Care | `GET` | `/admin/tickets` | Admin/Staff | Customer Care |
-| Customer Care | `POST` | `/admin/tickets` | Admin/Staff | Tersedia di API, belum dipanggil frontend |
-| Customer Care | `GET` | `/admin/tickets/:id` | Admin/Staff | Percakapan tiket |
-| Customer Care | `PATCH` | `/admin/tickets/:id/status` | Admin/Staff | Ubah status tiket |
-| Customer Care | `POST` | `/admin/tickets/:id/messages` | Admin/Staff | Kirim balasan tim |
-| Pemesanan Pelanggan | `POST` | `/bookings` | Pelanggan | Dipakai aplikasi mobile (rencana) |
-| Pemesanan Pelanggan | `GET` | `/bookings` | Pelanggan | Dipakai aplikasi mobile (rencana) |
-| Pemesanan Pelanggan | `GET` | `/bookings/:id` | Pelanggan | Dipakai aplikasi mobile (rencana) |
-| Pemesanan Pelanggan | `GET` | `/bookings/:id/status` | Pelanggan | Dipakai aplikasi mobile (rencana) |
-| Auth Pelanggan | `POST` | `/auth/otp/request` | Publik | Dipakai aplikasi mobile (rencana) |
-| Auth Pelanggan | `POST` | `/auth/otp/verify` | Publik | Dipakai aplikasi mobile (rencana) |
+| Pembayaran Admin | `GET` | `/admin/payments` | Admin/Staff | Verifikasi Pembayaran |
+| Pembayaran Admin | `PATCH` | `/admin/payments/:id/verify` | Admin/Staff | Verifikasi Pembayaran — setujui bukti |
+| Pembayaran Admin | `PATCH` | `/admin/payments/:id/reject` | Admin/Staff | Verifikasi Pembayaran — tolak bukti |
+| Keuangan Admin | `GET` | `/admin/finance/summary` | Admin/Staff | Ringkasan pendapatan & metrik keuangan |
+| Customer Care Admin | `GET` | `/admin/tickets` | Admin/Staff | Customer Care |
+| Customer Care Admin | `POST` | `/admin/tickets` | Admin/Staff | Customer Care — buat tiket staf |
+| Customer Care Admin | `GET` | `/admin/tickets/:id` | Admin/Staff | Percakapan tiket |
+| Customer Care Admin | `PATCH` | `/admin/tickets/:id/status` | Admin/Staff | Ubah status tiket |
+| Customer Care Admin | `POST` | `/admin/tickets/:id/messages` | Admin/Staff | Kirim balasan tim |
+| FAQ Admin | `GET` | `/admin/faqs` | Admin/Staff | Kelola FAQ — daftar FAQ |
+| FAQ Admin | `POST` | `/admin/faqs` | Admin/Staff | Kelola FAQ — tambah FAQ |
+| FAQ Admin | `GET` | `/admin/faqs/:id` | Admin/Staff | Kelola FAQ — detail FAQ |
+| FAQ Admin | `PUT` | `/admin/faqs/:id` | Admin/Staff | Kelola FAQ — perbarui FAQ |
+| FAQ Admin | `PATCH` | `/admin/faqs/:id` | Admin/Staff | Kelola FAQ — ubah FAQ |
+| FAQ Admin | `DELETE` | `/admin/faqs/:id` | Admin/Staff | Kelola FAQ — hapus FAQ |
+| FAQ Admin | `PATCH` | `/admin/faqs/:id/toggle` | Admin/Staff | Kelola FAQ — toggle status aktif |
+| AI Admin | `GET` | `/admin/ai/health` | Admin/Staff | Asisten AI — status kesehatan provider |
+| AI Admin | `GET` | `/admin/ai/models` | Admin/Staff | Asisten AI — daftar model |
+| AI Admin | `GET` | `/admin/ai/config` | Admin/Staff | Asisten AI — konfigurasi bot |
+| AI Admin | `PUT` | `/admin/ai/config` | Admin/Staff | Asisten AI — simpan konfigurasi |
+| AI Admin | `POST` | `/admin/ai/chat/test` | Admin/Staff | Asisten AI — uji coba chat playground |
+| AI Admin | `GET` | `/admin/ai/documents` | Admin/Staff | Asisten AI — daftar dokumen basis pengetahuan |
+| AI Admin | `POST` | `/admin/ai/documents` | Admin/Staff | Asisten AI — unggah dokumen basis pengetahuan |
+| AI Admin | `PUT` | `/admin/ai/documents/:id` | Admin/Staff | Asisten AI — perbarui dokumen pengetahuan |
+| AI Admin | `DELETE` | `/admin/ai/documents/:id` | Admin/Staff | Asisten AI — hapus dokumen pengetahuan |
+| AI Admin | `POST` | `/admin/ai/documents/parse-file` | Admin/Staff | Asisten AI — parse berkas pengetahuan |
+| AI Admin | `GET` | `/admin/ai/logs` | Admin/Staff | Asisten AI — log percakapan |
+| AI Admin | `DELETE` | `/admin/ai/logs` | Admin/Staff | Asisten AI — bersihkan log percakapan |
+| Pemesanan Pelanggan | `POST` | `/bookings` | Pelanggan | Dipakai aplikasi mobile |
+| Pemesanan Pelanggan | `GET` | `/bookings` | Pelanggan | Dipakai aplikasi mobile |
+| Pemesanan Pelanggan | `GET` | `/bookings/:id` | Pelanggan | Dipakai aplikasi mobile |
+| Pemesanan Pelanggan | `GET` | `/bookings/:id/status` | Pelanggan | Dipakai aplikasi mobile |
+| Auth Pelanggan | `POST` | `/auth/otp/request` | Publik | Dipakai aplikasi mobile |
+| Auth Pelanggan | `POST` | `/auth/otp/verify` | Publik | Dipakai aplikasi mobile |
+| Tiket Pelanggan | `GET` | `/tickets` | Pelanggan | Dipakai aplikasi mobile |
+| Tiket Pelanggan | `POST` | `/tickets` | Pelanggan | Dipakai aplikasi mobile |
+| Tiket Pelanggan | `GET` | `/tickets/:id` | Pelanggan | Dipakai aplikasi mobile |
+| Tiket Pelanggan | `POST` | `/tickets/:id/messages` | Pelanggan | Dipakai aplikasi mobile |
+| FAQ Pelanggan | `GET` | `/faqs` | Publik | Dipakai aplikasi mobile / web publik |
+| Pembayaran Pelanggan | `POST` | `/payments` | Pelanggan | Dipakai aplikasi mobile |
+| Pembayaran Pelanggan | `GET` | `/payments/:id` | Pelanggan | Dipakai aplikasi mobile |
+| Pembayaran Pelanggan | `POST` | `/payments/:id/proof` | Pelanggan | Dipakai aplikasi mobile |
+| Pembayaran Pelanggan | `GET` | `/payments/booking/:bookingId` | Pelanggan | Dipakai aplikasi mobile |
+| Pembayaran Sistem | `POST` | `/payments/simulate-mutation` | Dev/Staff | Simulasi mutasi rekening |
+| Pembayaran Sistem | `POST` | `/payments/webhook/mutation` | Sistem | Webhook mutasi rekening otomatis |
 
 **Catatan cara frontend memanggil API:**
 
