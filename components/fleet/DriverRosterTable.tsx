@@ -184,25 +184,35 @@ export function DriverRosterTable({ initialDrivers }: Props) {
           <Table caption="Roster supir resmi MobilJuragan Merauke">
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="w-[290px]">Nama Supir</TableHeaderCell>
-                <TableHeaderCell className="w-[180px]">Rute</TableHeaderCell>
-                <TableHeaderCell className="w-[295px]">Status Kesiapan</TableHeaderCell>
-                <TableHeaderCell className="w-[245px]">Aksi Operasional</TableHeaderCell>
+                <TableHeaderCell className="w-[320px]">Supir &amp; Kontak</TableHeaderCell>
+                <TableHeaderCell className="w-[180px]">Rute Penguasaan</TableHeaderCell>
+                <TableHeaderCell className="w-[240px]">Kesiapan Bertugas</TableHeaderCell>
+                <TableHeaderCell className="w-[100px] text-right">Aksi</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredDrivers.map((driver) => {
                 const onDuty = driver.status === "sedang_tugas";
+                const initial = driver.label.trim().charAt(0).toUpperCase() || "S";
                 return (
-                  <TableRow key={driver.id}>
+                  <TableRow key={driver.id} className="hover:bg-canvas/50">
                     <TableCell className="text-left">
-                      <span className="block font-semibold">{driver.label}</span>
-                      <span className="mt-1 block text-meta text-ink-soft">
-                        {driver.contact ?? "[kontak belum diverifikasi]"} •{" "}
-                        {driver.licenseNumber ? `SIM ${driver.licenseNumber}` : "[SIM belum diisi]"}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy/10 text-meta font-bold text-navy">
+                          {initial}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block font-semibold text-ink">{driver.label}</span>
+                          <span className="block text-micro text-ink-soft">
+                            {driver.contact ?? "Tanpa kontak"} &bull;{" "}
+                            {driver.licenseNumber ? `SIM ${driver.licenseNumber}` : "SIM belum diisi"}
+                          </span>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell>{DRIVER_ROUTE[driver.route]}</TableCell>
+                    <TableCell className="text-body font-medium text-ink">
+                      {DRIVER_ROUTE[driver.route]}
+                    </TableCell>
                     <TableCell>
                       {onDuty ? (
                         <StatusChip tone={DRIVER_STATUS.sedang_tugas.tone}>
@@ -218,14 +228,15 @@ export function DriverRosterTable({ initialDrivers }: Props) {
                         />
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
+                    <TableCell className="text-right">
+                      <button
+                        type="button"
                         onClick={() => setFormTarget({ driverId: driver.id })}
+                        className="inline-flex items-center gap-1 rounded-sm border border-rule bg-canvas px-2.5 py-1 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
                       >
-                        <IconPencil className="h-4 w-4" />
-                        Kelola
-                      </Button>
+                        <IconPencil className="h-3 w-3" />
+                        <span>Kelola</span>
+                      </button>
                     </TableCell>
                   </TableRow>
                 );

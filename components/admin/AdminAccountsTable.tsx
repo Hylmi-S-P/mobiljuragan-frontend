@@ -196,11 +196,11 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
           <Table caption="Akun staf dan hak akses portal admin">
             <TableHead>
               <TableRow>
-                <TableHeaderCell className="w-[265px]">Nama</TableHeaderCell>
-                <TableHeaderCell className="w-[205px]">Nomor Telepon / Username</TableHeaderCell>
-                <TableHeaderCell className="w-[280px]">Peran</TableHeaderCell>
-                <TableHeaderCell className="w-[140px]">Status Akun</TableHeaderCell>
-                <TableHeaderCell className="w-[250px]">Aksi Kelola</TableHeaderCell>
+                <TableHeaderCell className="w-[300px]">Nama &amp; Akun</TableHeaderCell>
+                <TableHeaderCell className="w-[200px]">Kontak / Telepon</TableHeaderCell>
+                <TableHeaderCell className="w-[240px]">Hak Akses</TableHeaderCell>
+                <TableHeaderCell className="w-[130px]">Status</TableHeaderCell>
+                <TableHeaderCell className="w-[100px] text-right">Aksi</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -209,48 +209,66 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
                   <TableCell colSpan={5} className="py-6 text-center text-meta text-ink-soft">
                     {(initialAccounts ?? []).length === 0
                       ? "Belum ada akun staf atau admin yang terdaftar."
-                      : `Tidak ada akun staf atau admin yang cocok dengan pencarian "${searchQuery}".`}
+                      : `Tidak ada akun yang cocok dengan pencarian "${searchQuery}".`}
                   </TableCell>
                 </TableRow>
               ) : (
-                optimisticAccounts.map((account) => (
-                  <TableRow key={account.id}>
-                    <TableCell className="text-left font-semibold">{account.name}</TableCell>
-                    <TableCell>{account.username}</TableCell>
-                    <TableCell>{ADMIN_ROLE[account.role]}</TableCell>
-                    <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(account)}
-                        title="Klik untuk mengaktifkan atau menonaktifkan akun ini"
-                        className="cursor-pointer transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
-                      >
-                        <StatusChip tone={account.active ? "available" : "neutral"}>
-                          {account.active ? "Aktif" : "Nonaktif"}
-                        </StatusChip>
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setFormTarget({ accountId: account.id })}
+                optimisticAccounts.map((account) => {
+                  const initial = account.name.trim().charAt(0).toUpperCase() || "A";
+                  return (
+                    <TableRow key={account.id} className="hover:bg-canvas/50">
+                      <TableCell className="text-left font-semibold">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy/10 text-meta font-bold text-navy">
+                            {initial}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block font-semibold text-ink">{account.name}</span>
+                            <span className="block text-micro text-ink-soft font-normal">{account.username}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-meta text-ink">{account.username}</TableCell>
+                      <TableCell>
+                        <span className="rounded-badge bg-canvas border border-rule px-2 py-0.5 text-micro font-medium text-ink">
+                          {ADMIN_ROLE[account.role]}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(account)}
+                          title="Klik untuk mengaktifkan atau menonaktifkan akun ini"
+                          className="cursor-pointer transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
                         >
-                          Edit Admin
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          onClick={() => setDeleteTargetId(account.id)}
-                          aria-label={`Hapus akun ${account.name}`}
-                          className="text-danger hover:bg-danger/10"
-                        >
-                          <IconTrash className="h-4 w-4" />
-                          Hapus
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          <StatusChip tone={account.active ? "available" : "neutral"}>
+                            {account.active ? "Aktif" : "Nonaktif"}
+                          </StatusChip>
+                        </button>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setFormTarget({ accountId: account.id })}
+                            className="rounded-xs border border-rule bg-canvas px-2.5 py-1 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTargetId(account.id)}
+                            aria-label={`Hapus akun ${account.name}`}
+                            className="rounded-xs border border-rule bg-canvas p-1.5 text-danger/80 hover:border-danger hover:text-danger transition-colors"
+                            title="Hapus Akun"
+                          >
+                            <IconTrash className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

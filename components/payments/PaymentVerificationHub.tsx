@@ -174,10 +174,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Lead Text */}
-      <PageLead lead="Antrean verifikasi bukti transfer bank dan rekonsiliasi mutasi nominal unik sistem pembayaran MobilJuragan Merauke." />
-
+    <div className="space-y-4">
       {/* Toast Notice */}
       {notice ? (
         <div
@@ -205,28 +202,9 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
 
       <Panel>
         {/* Controls: Search and Segmented Tab Filter */}
-        <div className="mb-4 space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1">
-              <label htmlFor="payment-search" className="block text-meta font-medium text-ink">
-                Cari kode booking, nama pelanggan, rekening, atau bank
-              </label>
-              <div className="relative mt-1">
-                <input
-                  id="payment-search"
-                  maxLength={80}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Ketik untuk mencari (contoh: Maria Mahuze, MBJ-2026, BRI, BCA)..."
-                  className="h-11 w-full rounded-sm border border-rule-strong bg-canvas pl-9 pr-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-                />
-                <IconSearch className="pointer-events-none absolute left-3 top-3 h-5 w-5 text-ink-soft" />
-              </div>
-            </div>
-          </div>
-
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* Segmented Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5 rounded-sm border border-rule bg-canvas p-1.5">
+          <div className="flex flex-wrap items-center gap-1 rounded-sm border border-rule bg-canvas p-1">
             <button
               type="button"
               onClick={() => setActiveTab("semua")}
@@ -281,6 +259,19 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
             >
               Ditolak {counts.rejected > 0 ? `(${counts.rejected})` : ""}
             </button>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative min-w-[280px]">
+            <input
+              id="payment-search"
+              maxLength={80}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari kode booking, nama, rekening..."
+              className="h-10 w-full rounded-sm border border-rule bg-canvas pl-9 pr-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
+            />
+            <IconSearch className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-ink-soft" />
           </div>
         </div>
 
@@ -412,14 +403,18 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
 
                     {/* Aksi */}
                     <TableCell className="text-right">
-                      <Button
-                        variant={isPending ? "confirm" : "outline"}
-                        size="sm"
+                      <button
+                        type="button"
                         onClick={() => handleOpenModal(payment)}
+                        className={`inline-flex items-center gap-1 rounded-sm px-2.5 py-1 text-meta font-medium transition-colors ${
+                          isPending
+                            ? "bg-navy text-white hover:bg-navy-hover"
+                            : "border border-rule bg-canvas text-ink hover:border-navy hover:text-navy"
+                        }`}
                       >
-                        {isPending ? "Periksa & Verifikasi" : "Detail"}
-                        <IconArrowRight className="h-4 w-4" />
-                      </Button>
+                        <span>{isPending ? "Periksa" : "Rincian"}</span>
+                        <IconArrowRight className="h-3 w-3" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 );

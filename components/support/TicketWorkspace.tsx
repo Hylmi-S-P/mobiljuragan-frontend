@@ -300,10 +300,50 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                 <div className="border-t border-rule px-4 py-3">
                   {isResolvedOrClosed ? (
                     <div className="rounded-sm border border-rule bg-canvas p-2.5 text-center text-meta text-ink-soft">
-                      Tiket ini telah ditandai selesai/ditutup. Klik &quot;Buka Kembali Tiket&quot; di atas untuk melanjutkan percakapan.
+                      Tiket ini telah selesai/ditutup. Klik &quot;Buka Kembali Tiket&quot; untuk mengirim balasan lanjutan.
                     </div>
                   ) : (
                     <>
+                      {/* Template Balasan Cepat (Canned Responses) */}
+                      <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+                        <span className="text-micro font-semibold uppercase text-ink-soft mr-1">
+                          Balasan Cepat:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDraft(
+                              "Halo, armada yang Anda tanyakan tersedia dan siap digunakan sesuai jadwal.",
+                            )
+                          }
+                          className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy"
+                        >
+                          + Unit Tersedia
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDraft(
+                              "Silakan lakukan transfer pelunasan ke rekening resmi BCA 1234567890 a/n CV Mobil Juragan Express Transport.",
+                            )
+                          }
+                          className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy"
+                        >
+                          + Rekening Resmi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDraft(
+                              "Supir resmi kami telah ditugaskan dan akan segera menghubungi nomor Anda sebelum jadwal penjemputan.",
+                            )
+                          }
+                          className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy"
+                        >
+                          + Konfirmasi Supir
+                        </button>
+                      </div>
+
                       <label htmlFor="ticket-reply" className="sr-only">
                         Tulis balasan
                       </label>
@@ -315,7 +355,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           placeholder="Tulis balasan solusi resmi ke pelanggan..."
                           aria-invalid={Boolean(draftError)}
                           aria-describedby={draftError ? "ticket-reply-error" : undefined}
-                          className="h-11 min-w-0 flex-1 rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
+                          className="h-10 min-w-0 flex-1 rounded-sm border border-rule bg-canvas px-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
                         />
                         <Button variant="confirm" size="md" onClick={sendReply} disabled={isSending}>
                           {isSending ? "Mengirim..." : "Kirim Balasan"}

@@ -156,11 +156,11 @@ export function BookingsTable({ initialBookings, vehicles }: Props) {
         <Table caption="Antrean pesanan pelanggan">
           <TableHead>
             <TableRow>
-              <TableHeaderCell className="w-[225px]">Pemesan</TableHeaderCell>
-              <TableHeaderCell className="w-[230px]">Kendaraan</TableHeaderCell>
-              <TableHeaderCell className="w-[160px]">Tanggal</TableHeaderCell>
-              <TableHeaderCell className="w-[190px]">Status</TableHeaderCell>
-              <TableHeaderCell className="w-[240px]">Aksi</TableHeaderCell>
+              <TableHeaderCell className="w-[240px]">Pemesan &amp; Kode</TableHeaderCell>
+              <TableHeaderCell className="w-[240px]">Armada</TableHeaderCell>
+              <TableHeaderCell className="w-[180px]">Rentang Tanggal</TableHeaderCell>
+              <TableHeaderCell className="w-[170px]">Status</TableHeaderCell>
+              <TableHeaderCell className="w-[110px] text-right">Aksi</TableHeaderCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -168,11 +168,14 @@ export function BookingsTable({ initialBookings, vehicles }: Props) {
               const vehicle = vehicleById(booking.vehicleId);
               const statusMeta = BOOKING_STATUS[booking.status];
               return (
-                <TableRow key={booking.id}>
+                <TableRow key={booking.id} className="hover:bg-canvas/50">
                   <TableCell className="text-left">
-                    <span className="block text-body font-semibold text-ink">
+                    <Link
+                      href={`/bookings/${booking.id}`}
+                      className="block text-body font-semibold text-ink hover:text-navy hover:underline"
+                    >
                       {booking.customerName}
-                    </span>
+                    </Link>
                     <span className="mt-0.5 block text-micro text-ink-soft">
                       {booking.code} &bull; {BOOKING_MODE_LABEL[booking.mode]}
                     </span>
@@ -187,13 +190,13 @@ export function BookingsTable({ initialBookings, vehicles }: Props) {
                   <TableCell>
                     <StatusChip tone={statusMeta.tone}>{statusMeta.label}</StatusChip>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-right">
                     <Link
                       href={`/bookings/${booking.id}`}
-                      className="inline-flex h-11 items-center gap-2 rounded-sm border border-rule-strong px-3.5 text-body font-medium text-ink hover:bg-canvas"
+                      className="inline-flex items-center gap-1 rounded-sm border border-rule bg-canvas px-2.5 py-1 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
                     >
-                      {ACTION_LABEL[booking.status]}
-                      <IconArrowRight className="h-4 w-4" />
+                      <span>Buka</span>
+                      <IconArrowRight className="h-3 w-3" />
                     </Link>
                   </TableCell>
                 </TableRow>

@@ -38,6 +38,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -147,10 +148,8 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
 
   return (
     <>
-      <PageLead lead="Kelola daftar tanya jawab pelanggan, kelompokkan kategori, dan kendalikan visibilitas langsung ke aplikasi mobile serta basis pengetahuan RAG AI Gateway." />
-
       {notice ? (
-        <div className="mt-3 flex items-center justify-between rounded-sm border border-teal/40 bg-teal/10 px-3.5 py-2 text-meta text-teal transition-all animate-in fade-in">
+        <div className="mb-3 flex items-center justify-between rounded-sm border border-teal/40 bg-teal/10 px-3.5 py-2 text-meta text-teal transition-all">
           <span>{notice}</span>
           <button
             type="button"
@@ -162,16 +161,16 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
         </div>
       ) : null}
 
-      <div className="mt-6 flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         <Panel
-          title="Daftar FAQ & Pengaturan Tampilan Mobile"
+          title="Daftar FAQ &amp; Basis Pengetahuan Mobile"
           action={
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="relative w-72">
+              <div className="relative w-64">
                 <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
                 <input
                   type="text"
-                  placeholder="Cari pertanyaan, jawaban, atau kategori..."
+                  placeholder="Cari pertanyaan, jawaban..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-10 w-full rounded-sm border border-rule bg-canvas pl-9 pr-3 text-meta text-ink placeholder:text-ink-soft focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
@@ -179,20 +178,20 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
               </div>
 
               <Button
-                variant="primary"
+                variant="confirm"
                 onClick={() => {
                   setEditingFaq(null);
                   setIsFormOpen(true);
                 }}
               >
                 <IconPlus className="h-4 w-4" />
-                Tambah FAQ Baru
+                Tambah FAQ
               </Button>
             </div>
           }
         >
           {/* Category Filter Chips */}
-          <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-rule pb-3.5">
+          <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-rule pb-3">
             <span className="mr-2 text-micro font-semibold uppercase text-ink-soft">Kategori:</span>
             {filterCategories.map((cat) => {
               const active = selectedCategory === cat;
@@ -203,7 +202,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
                   onClick={() => setSelectedCategory(cat)}
                   className={`rounded-sm px-3 py-1 text-meta font-medium transition-colors ${
                     active
-                      ? "bg-navy text-white shadow-xs"
+                      ? "bg-navy text-white shadow-xs font-semibold"
                       : "border border-rule bg-surface text-ink hover:bg-canvas"
                   }`}
                 >
@@ -213,17 +212,13 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
             })}
           </div>
 
-          {isFetching ? (
-            <p className="mb-2 text-micro text-ink-soft">Menyinkronkan data terbaru dari server...</p>
-          ) : null}
-
           <Table caption="Daftar FAQ resmi MobilJuragan dan pengaturan visibilitas">
             <TableHead>
               <TableRow>
                 <TableHeaderCell className="w-[520px]">Pertanyaan &amp; Jawaban</TableHeaderCell>
-                <TableHeaderCell className="w-[170px]">Kategori</TableHeaderCell>
-                <TableHeaderCell className="w-[170px] text-center">Visibilitas Mobile</TableHeaderCell>
-                <TableHeaderCell className="w-[160px] text-right">Aksi</TableHeaderCell>
+                <TableHeaderCell className="w-[160px]">Kategori</TableHeaderCell>
+                <TableHeaderCell className="w-[150px] text-center">Tampil Mobile</TableHeaderCell>
+                <TableHeaderCell className="w-[100px] text-right">Aksi</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -231,65 +226,83 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
                 <TableRow>
                   <TableCell colSpan={4} className="py-8 text-center text-meta text-ink-soft">
                     {faqs.length === 0
-                      ? "Belum ada FAQ yang tersimpan. Klik tombol 'Tambah FAQ Baru' untuk mulai menambahkan."
-                      : `Tidak ada FAQ yang cocok dengan filter atau pencarian "${searchQuery}".`}
+                      ? "Belum ada FAQ yang tersimpan."
+                      : `Tidak ada FAQ yang cocok dengan kata kunci "${searchQuery}".`}
                   </TableCell>
                 </TableRow>
               ) : (
-                optimisticFaqs.map((faq) => (
-                  <TableRow key={faq.id}>
-                    {/* Pertanyaan & Jawaban */}
-                    <TableCell>
-                      <p className="text-body font-semibold text-ink">{faq.question}</p>
-                      <p className="mt-1 line-clamp-2 text-meta text-ink-soft">{faq.answer}</p>
-                    </TableCell>
-
-                    {/* Kategori */}
-                    <TableCell>
-                      <StatusChip tone="neutral">{faq.category}</StatusChip>
-                    </TableCell>
-
-                    {/* Visibilitas Mobile Switch */}
-                    <TableCell className="text-center">
-                      <div className="flex justify-center">
-                        <Toggle
-                          checked={faq.isActive}
-                          disabled={toggleVisibilityMutation.isPending}
-                          onChange={() => handleToggleVisibility(faq)}
-                          labelOn="Tampil"
-                          labelOff="Sembunyi"
-                        />
-                      </div>
-                    </TableCell>
-
-                    {/* Aksi Edit & Hapus */}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingFaq(faq);
-                            setIsFormOpen(true);
-                          }}
-                          aria-label={`Edit FAQ: ${faq.question}`}
+                optimisticFaqs.map((faq) => {
+                  const isExpanded = expandedId === faq.id;
+                  return (
+                    <TableRow key={faq.id} className="hover:bg-canvas/50">
+                      {/* Pertanyaan & Jawaban (Bisa Diklik untuk Expand) */}
+                      <TableCell>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(isExpanded ? null : faq.id)}
+                          className="w-full text-left focus:outline-none"
                         >
-                          <IconPencil className="h-3.5 w-3.5" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeletingFaq(faq)}
-                          aria-label={`Hapus FAQ: ${faq.question}`}
-                        >
-                          <IconTrash className="h-3.5 w-3.5 text-danger" />
-                          Hapus
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          <p className="text-body font-semibold text-ink hover:text-navy">
+                            {faq.question}
+                          </p>
+                          <p
+                            className={`mt-1 text-meta text-ink-soft transition-all ${
+                              isExpanded ? "whitespace-pre-line" : "line-clamp-1"
+                            }`}
+                          >
+                            {faq.answer}
+                          </p>
+                          <span className="mt-0.5 inline-block text-micro font-medium text-navy hover:underline">
+                            {isExpanded ? "Tutup ringkasan ▲" : "Lihat selengkapnya ▼"}
+                          </span>
+                        </button>
+                      </TableCell>
+
+                      {/* Kategori */}
+                      <TableCell>
+                        <StatusChip tone="neutral">{faq.category}</StatusChip>
+                      </TableCell>
+
+                      {/* Visibilitas Mobile Switch */}
+                      <TableCell className="text-center">
+                        <div className="flex justify-center">
+                          <Toggle
+                            checked={faq.isActive}
+                            disabled={toggleVisibilityMutation.isPending}
+                            onChange={() => handleToggleVisibility(faq)}
+                            labelOn="Aktif"
+                            labelOff="Sembunyi"
+                          />
+                        </div>
+                      </TableCell>
+
+                      {/* Aksi Edit & Hapus */}
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingFaq(faq);
+                              setIsFormOpen(true);
+                            }}
+                            className="rounded-xs border border-rule bg-canvas p-1.5 text-ink hover:border-navy hover:text-navy transition-colors"
+                            title="Edit FAQ"
+                          >
+                            <IconPencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingFaq(faq)}
+                            className="rounded-xs border border-rule bg-canvas p-1.5 text-danger/80 hover:border-danger hover:text-danger transition-colors"
+                            title="Hapus FAQ"
+                          >
+                            <IconTrash className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

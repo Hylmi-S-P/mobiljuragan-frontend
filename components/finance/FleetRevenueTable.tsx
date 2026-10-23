@@ -75,7 +75,15 @@ export function FleetRevenueTable({ fleetBreakdown, totalRevenue }: Props) {
                     {formatRupiah(unit.totalRevenue)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    <span className="font-semibold text-ink">{contributionPct}%</span>
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-canvas border border-rule">
+                        <div
+                          className="h-full bg-teal rounded-full transition-all"
+                          style={{ width: `${Math.min(contributionPct, 100)}%` }}
+                        />
+                      </div>
+                      <span className="font-semibold text-ink text-meta">{contributionPct}%</span>
+                    </div>
                   </TableCell>
                 </TableRow>
               );

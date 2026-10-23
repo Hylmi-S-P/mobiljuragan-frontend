@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
-import { AiTelemetryCards } from "@/components/ai/AiTelemetryCards";
-import { NineRouterConsoleWidget } from "@/components/ai/NineRouterConsoleWidget";
-import { SystemPromptDrawer } from "@/components/ai/SystemPromptDrawer";
-import { KnowledgeBaseManager } from "@/components/ai/KnowledgeBaseManager";
-import { AiChatSandbox } from "@/components/ai/AiChatSandbox";
+import { AiHubTabbedWorkspace } from "@/components/ai/AiHubTabbedWorkspace";
 import {
   getAiConfig,
   getKnowledgeDocuments,
   getAiGatewayHealth,
   getAiGatewayLogs,
   type AiGatewayHealth,
-  type AiGatewayLog,
   type AiGatewayLogData,
 } from "@/lib/operations";
 
@@ -44,34 +39,12 @@ export default async function AiHubPage() {
   const activeDocCount = documents.filter((d) => d.isActive).length;
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* 1. Tiga Kartu Telemetri Operasional (Model Aktif, Latensi Respon TTFT, Kecepatan Token/s) */}
-      <AiTelemetryCards
-        initialHealth={healthData}
-        latestTps={52.4}
-      />
-
-      {/* 2. Live Console Trace 9Router (Terminal Log Aktivitas Gateway) */}
-      <NineRouterConsoleWidget
-        initialLogs={initialLogs.httpLogs}
-        initialRawLogs={initialLogs.rawLogs}
-        gatewayUrl={healthData.gatewayUrl}
-      />
-
-      {/* 3. Instruksi Sistem & Persona Asisten (Injeksi Konteks Rental Merauke) */}
-      <SystemPromptDrawer
-        initialConfig={aiData.config}
-        activeDocCount={activeDocCount}
-      />
-
-      {/* 4. Manajemen Basis Pengetahuan RAG (Upload Berkas Dokumen & Input Manual) */}
-      <KnowledgeBaseManager initialDocuments={documents} />
-
-      {/* 5. Sandbox Uji Chatbot (Live Model & RAG Simulator) */}
-      <AiChatSandbox
-        initialTemperature={aiData.config.temperature}
-        initialMaxTokens={aiData.config.maxTokens}
-      />
-    </div>
+    <AiHubTabbedWorkspace
+      healthData={healthData}
+      initialLogs={initialLogs}
+      config={aiData.config}
+      documents={documents}
+      activeDocCount={activeDocCount}
+    />
   );
 }
