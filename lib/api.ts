@@ -264,6 +264,7 @@ export async function apiUpdateBookingStatus(
   status: CanonicalBookingStatus,
   quotedAmount?: number,
   note?: string,
+  surcharges?: Array<{ title: string; amount: number; note?: string }>,
 ) {
   const token = await getSessionToken();
 
@@ -276,6 +277,7 @@ export async function apiUpdateBookingStatus(
     body: JSON.stringify({
       status,
       ...(quotedAmount !== undefined ? { quotedAmount } : {}),
+      ...(surcharges !== undefined ? { surcharges } : {}),
       ...(note ? { note } : {}),
     }),
   });

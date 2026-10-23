@@ -266,13 +266,14 @@ export async function updateBookingStatusAction(
   status: CanonicalBookingStatus,
   quotedAmount?: number,
   note?: string,
+  surcharges?: Array<{ title: string; amount: number; note?: string }>,
 ): Promise<ActionState & { data?: unknown }> {
   if (!bookingId) {
     return { success: false, message: "Kode pemesanan tidak valid." };
   }
 
   try {
-    const data = await apiUpdateBookingStatus(bookingId, status, quotedAmount, note);
+    const data = await apiUpdateBookingStatus(bookingId, status, quotedAmount, note, surcharges);
     revalidatePath("/bookings");
     revalidatePath(`/bookings/${bookingId}`);
     revalidatePath("/");

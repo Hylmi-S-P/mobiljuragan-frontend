@@ -179,11 +179,26 @@ export function BookingDetailClient({
     }
 
     startTransition(async () => {
+      const surchargePayload = items
+        .filter((i) => i.amount !== null && i.amount !== undefined)
+        .map((i) => {
+          const raw = String(i.amount);
+          const isNegative = raw.startsWith("-");
+          const val = Number(raw.replace(/[^\d]/g, "")) || 0;
+          return {
+            title: i.label,
+            amount: isNegative ? -val : val,
+            note: i.note || undefined,
+          };
+        })
+        .filter((i) => i.amount !== 0);
+
       const result = await updateBookingStatusAction(
         booking.id,
         "CONFIRMED",
         totalCleanBill,
         "Tarif disepakati dan dikonfirmasi admin.",
+        surchargePayload,
       );
 
       if (result.success) {
