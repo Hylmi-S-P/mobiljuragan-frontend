@@ -196,8 +196,9 @@ type ApiBooking = {
   tariffStatus: string;
   quotedAmount: string | number | null;
   status: CanonicalBookingStatus;
+  surcharges?: Array<{ title: string; amount: number; note?: string }> | null;
   customer?: { fullName: string; phoneNumber: string } | null;
-  vehicle?: { externalId: string | null; id: string; name: string; licensePlate: string } | null;
+  vehicle?: { externalId: string | null; id: string; name: string; licensePlate: string; pricePerDay?: number } | null;
   driver?: { fullName: string; readiness?: string } | null;
 };
 
@@ -220,6 +221,20 @@ function mapBooking(b: ApiBooking): Booking {
       note: `${countDays(b.startDateTime, b.endDateTime)} hari`,
     },
   ];
+
+  if (Array.isArray(b.surcharges)) {
+    b.surcharges.forEach((sc, idx) => {
+      if (sc && sc.title) {
+        const amt = Number(sc.amount) || 0;
+        lineItems.push({
+          id: `li-${b.id}-${idx}`,
+          label: sc.title,
+          amount: `${amt >= 0 ? "+" : "-"}${Math.abs(amt)}`,
+          note: sc.note || undefined,
+        });
+      }
+    });
+  }
 
   return {
     id: b.id,

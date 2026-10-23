@@ -50,9 +50,34 @@ export function BookingDetailClient({
   const [rawStatus, setRawStatus] = useState<CanonicalBookingStatus>(
     booking.rawStatus ?? "CREATED",
   );
-  const [quotedAmount, setQuotedAmount] = useState<number>(
-    booking.quotedAmount ?? (isDriverService ? 750000 : 500000) * (booking.dayCount || 1),
-  );
+
+  const vehicleBaseRate =
+    vehicle?.pricePerDay && vehicle.pricePerDay > 0
+      ? vehicle.pricePerDay
+      : isDriverService
+        ? 600000
+        : 450000;
+  const driverFeePerDay = isDriverService ? 150000 : 0;
+  const calculatedBaseRate = (vehicleBaseRate + driverFeePerDay) * (booking.dayCount || 1);
+
+  // Jika quotedAmount sudah tersimpan di DB, kurangi dengan surcharge yang ada agar menjadi tarif pokok
+  const initialBaseQuoted = useMemo(() => {
+    if (booking.quotedAmount === null || booking.quotedAmount === undefined) {
+      return calculatedBaseRate;
+    }
+    const existingSurchargesSum = booking.lineItems
+      .filter((i) => i.id.startsWith("li-") && i.amount)
+      .reduce((sum, item) => {
+        const raw = item.amount ?? "";
+        const isNegative = raw.startsWith("-");
+        const val = Number(raw.replace(/[^\d]/g, "")) || 0;
+        return isNegative ? sum - val : sum + val;
+      }, 0);
+
+    return Math.max(0, booking.quotedAmount - existingSurchargesSum);
+  }, [booking.quotedAmount, booking.lineItems, calculatedBaseRate]);
+
+  const [quotedAmount, setQuotedAmount] = useState<number>(initialBaseQuoted);
   const [selectedDriverId, setSelectedDriverId] = useState<string>(
     booking.driverId ?? "",
   );
