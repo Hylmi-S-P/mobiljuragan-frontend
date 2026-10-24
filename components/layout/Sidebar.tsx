@@ -60,7 +60,7 @@ export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
 
   function isNavActive(entryHref: string): boolean {
     if (entryHref === "/bookings?tab=pembayaran") {
-      return pathname === "/bookings" && currentTab === "pembayaran";
+      return (pathname === "/bookings" && currentTab === "pembayaran") || pathname === "/payments";
     }
     if (entryHref === "/bookings") {
       return pathname === "/bookings" && currentTab !== "pembayaran";

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/axios";
 import { BookingCardGrid } from "@/components/bookings/BookingCardGrid";
 import { PaymentVerificationHub } from "@/components/payments/PaymentVerificationHub";
 import { Tabs } from "@/components/ui/Tabs";
@@ -45,23 +47,31 @@ export function BookingsUnifiedHub({
     return initialTab;
   });
 
-  // Sinkronisasi bila query param URL berubah dari luar (misal: tombol navigasi sidebar atau browser history)
+  // Sinkronisasi bila query param URL berubah dari luar (tombol sidebar, browser back/forward, deep link)
   useEffect(() => {
-    const effectiveTab =
-      queryTab ||
-      (typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("tab")
-        : null);
-    if (effectiveTab === "pembayaran" || effectiveTab === "pesanan") {
-      setActiveTab(effectiveTab);
+    function syncTab() {
+      const search = typeof window !== "undefined" ? window.location.search : "";
+      const urlTab = new URLSearchParams(search).get("tab");
+      const targetTab =
+        urlTab === "pembayaran" || urlTab === "pesanan"
+          ? urlTab
+          : queryTab === "pembayaran" || queryTab === "pesanan"
+            ? queryTab
+            : initialTab;
+      setActiveTab(targetTab);
     }
-  }, [queryTab]);
+
+    syncTab();
+
+    window.addEventListener("popstate", syncTab);
+    return () => window.removeEventListener("popstate", syncTab);
+  }, [queryTab, initialTab]);
 
   function handleTabChange(tabId: string) {
     setActiveTab(tabId);
-    // Perbarui query param URL tanpa memicu reload penuh halaman
+    // Tambahkan entri riwayat browser agar tombol Back/Forward bekerja sinkron antar tab
     const targetUrl = tabId === "pembayaran" ? "/bookings?tab=pembayaran" : "/bookings?tab=pesanan";
-    router.replace(targetUrl, { scroll: false });
+    router.push(targetUrl, { scroll: false });
   }
 
   // Hitung jumlah pesanan yang membutuhkan tindakan staf operasional (konfirmasi tarif atau alokasi supir)
@@ -71,12 +81,24 @@ export function BookingsUnifiedHub({
     ).length;
   }, [initialBookings]);
 
+  // Sinkronkan badge pembayaran dengan TanStack Query agar otomatis terbarui saat verifikasi selesai
+  const { data: paymentsData } = useQuery<AdminPaymentsResponse>({
+    queryKey: ["adminPayments", "menunggu", ""],
+    queryFn: async (): Promise<AdminPaymentsResponse> => {
+      const res = await apiClient.get("/admin/payments", {
+        params: { status: "PENDING_VERIFICATION", limit: "100" },
+      });
+      return (res.data?.data || res.data) as AdminPaymentsResponse;
+    },
+    initialData: initialPayments,
+    staleTime: 30 * 1000,
+  });
+
   // Hitung jumlah pembayaran yang berstatus menunggu verifikasi bukti transfer bank
   const paymentPendingCount = useMemo(() => {
-    return (initialPayments?.items ?? []).filter(
-      (p) => p.status === "PENDING_VERIFICATION",
-    ).length;
-  }, [initialPayments]);
+    const list = paymentsData?.items ?? initialPayments?.items ?? [];
+    return list.filter((p) => p.status === "PENDING_VERIFICATION").length;
+  }, [paymentsData, initialPayments]);
 
   const tabItems = [
     {
