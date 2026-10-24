@@ -230,6 +230,32 @@ export function BookingCardGrid({ initialBookings, vehicles }: Props) {
                       <span className="italic text-ink-soft">Tarif belum ditetapkan</span>
                     )}
                   </div>
+
+                  {/* Lencana Status Pembayaran / Bukti Transfer */}
+                  {booking.payment ? (
+                    <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+                      {booking.payment.status === "PAID" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-micro font-semibold text-emerald-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Pembayaran Lunas
+                        </span>
+                      ) : booking.payment.proofImageUrl || booking.payment.status === "PENDING_VERIFICATION" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-micro font-semibold text-amber-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          Bukti Transfer Terlampir
+                        </span>
+                      ) : booking.payment.status === "FAILED" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200/80 px-2 py-0.5 text-micro font-semibold text-red-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                          Bukti Ditolak
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-micro font-medium text-slate-600">
+                          Menunggu Pembayaran
+                        </span>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Footer Tombol Aksi */}

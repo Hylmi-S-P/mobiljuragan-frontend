@@ -131,7 +131,11 @@ export function ComparisonMetricCard({
               >
                 <span>{arrowSymbol}</span>
                 <span>
-                  {trend.percentage > 0 ? `+${trend.percentage}%` : `${trend.percentage}%`}
+                  {isUp
+                    ? `+${Math.abs(trend.percentage)}%`
+                    : isDown
+                      ? `-${Math.abs(trend.percentage)}%`
+                      : `${trend.percentage}%`}
                 </span>
               </span>
               {trend.label ? (

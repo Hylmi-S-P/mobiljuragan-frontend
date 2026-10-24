@@ -217,6 +217,13 @@ type ApiBooking = {
   customer?: { fullName: string; phoneNumber: string } | null;
   vehicle?: { externalId: string | null; id: string; name: string; licensePlate: string } | null;
   driver?: { fullName: string; readiness?: string } | null;
+  payment?: {
+    id: string;
+    status: any;
+    proofImageUrl?: string | null;
+    method?: string | null;
+    totalAmount?: string | number | null;
+  } | null;
 };
 
 function countDays(start: string, end: string): number {
@@ -260,6 +267,18 @@ function mapBooking(b: ApiBooking): Booking {
     driverStatus: b.driver?.readiness ? (DRIVER_READINESS[b.driver.readiness] ?? null) : null,
     whatsappIntent: (b as { whatsappIntent?: { message: string; url: string } }).whatsappIntent ?? null,
     lineItems,
+    payment: b.payment
+      ? {
+          id: b.payment.id,
+          status: b.payment.status,
+          proofImageUrl: b.payment.proofImageUrl ?? null,
+          method: b.payment.method ?? null,
+          totalAmount:
+            b.payment.totalAmount !== null && b.payment.totalAmount !== undefined
+              ? Number(b.payment.totalAmount)
+              : null,
+        }
+      : null,
   };
 }
 

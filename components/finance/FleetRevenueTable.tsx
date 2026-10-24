@@ -104,7 +104,7 @@ export function FleetRevenueTable({ fleetBreakdown }: Props) {
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas border border-rule/60">
                   <div
                     className="h-full bg-teal transition-all duration-500 rounded-full"
-                    style={{ width: `${Math.max(sharePercentage, 3)}%` }}
+                    style={{ width: `${sharePercentage > 0 ? Math.max(sharePercentage, 3) : 0}%` }}
                   />
                 </div>
               </div>

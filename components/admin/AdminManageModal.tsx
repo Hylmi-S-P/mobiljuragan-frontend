@@ -26,11 +26,16 @@ type Props = {
 
 const MIN_PASSWORD_LENGTH = 8;
 
-function SubmitButton({ formId }: { formId: string }) {
+function SubmitButton({ formId, disabled }: { formId: string; disabled?: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" form={formId} variant="confirm" disabled={pending}>
+    <Button
+      type="submit"
+      form={formId}
+      variant="confirm"
+      disabled={pending || disabled}
+    >
       {pending ? "Menyimpan Perubahan..." : "Simpan Perubahan"}
     </Button>
   );
@@ -138,7 +143,7 @@ export function AdminManageModal({
             <Button type="button" variant="outline" onClick={onClose}>
               Batal
             </Button>
-            <SubmitButton formId={formId} />
+            <SubmitButton formId={formId} disabled={!isPasswordValid} />
           </div>
         </div>
       }
@@ -249,16 +254,16 @@ export function AdminManageModal({
             id={`${fieldId}-role`}
             name="role"
             value={role}
-            disabled={isSelf && account.role === "super_admin"}
+            disabled={isSelf}
             onChange={(e) => setRole(e.target.value as AdminRole)}
             className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy disabled:bg-rule/40"
           >
             <option value="staf_operasional">{ADMIN_ROLE.staf_operasional}</option>
             <option value="super_admin">{ADMIN_ROLE.super_admin}</option>
           </select>
-          {isSelf && account.role === "super_admin" ? (
+          {isSelf ? (
             <p className="mt-1 text-micro text-ink-soft">
-              Role tidak dapat diubah ke tingkat yang lebih rendah untuk akun sesi aktif.
+              Hak akses tidak dapat diubah untuk akun sesi aktif yang sedang digunakan.
             </p>
           ) : null}
         </div>
@@ -329,6 +334,11 @@ export function AdminManageModal({
                   {hasNumber ? "✓" : "✗"} Angka (0-9)
                 </span>
               </div>
+              {!isPasswordValid ? (
+                <p className="mt-2 text-micro font-medium text-danger">
+                  Kata sandi baru belum memenuhi syarat keamanan. Tombol simpan dinonaktifkan sampai semua kriteria terpenuhi.
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>

@@ -50,12 +50,22 @@ export default async function OverviewPage() {
   const revenueDelta =
     prevTrend && prevTrend.revenue > 0 && lastTrend
       ? Math.round(((lastTrend.revenue - prevTrend.revenue) / prevTrend.revenue) * 100)
-      : 0;
+      : prevTrend && prevTrend.revenue === 0 && lastTrend && lastTrend.revenue > 0
+        ? 100
+        : 0;
 
   const bookingsDelta =
     prevTrend && prevTrend.bookings > 0 && lastTrend
       ? Math.round(((lastTrend.bookings - prevTrend.bookings) / prevTrend.bookings) * 100)
-      : 0;
+      : prevTrend && prevTrend.bookings === 0 && lastTrend && lastTrend.bookings > 0
+        ? 100
+        : 0;
+
+  const revenueDirection =
+    revenueDelta > 0 ? "up" : revenueDelta < 0 ? "down" : "neutral";
+
+  const bookingsDirection =
+    bookingsDelta > 0 ? "up" : bookingsDelta < 0 ? "down" : "neutral";
 
   const readinessPercent = Math.round((unitTersedia.length / Math.max(vehicles.length, 1)) * 100);
   const utilizationPercent = Math.round((unitDisewa.length / Math.max(vehicles.length, 1)) * 100);
@@ -116,7 +126,7 @@ export default async function OverviewPage() {
           trend={
             bookingsDelta !== 0
               ? {
-                  direction: bookingsDelta >= 0 ? "up" : "down",
+                  direction: bookingsDirection,
                   percentage: Math.abs(bookingsDelta),
                   label: "vs bulan lalu",
                 }
@@ -158,7 +168,7 @@ export default async function OverviewPage() {
               : `${bookings.length} Pesanan`
           }
           trend={{
-            direction: revenueDelta >= 0 ? "up" : "down",
+            direction: revenueDirection,
             percentage: Math.abs(revenueDelta),
             label: "vs bulan lalu",
           }}

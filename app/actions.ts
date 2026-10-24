@@ -153,6 +153,18 @@ export async function updateAdminAction(
     return { success: false, message: "ID akun tidak valid." };
   }
 
+  if (password) {
+    if (password.length < 8) {
+      return { success: false, message: "Kata sandi baru minimal 8 karakter." };
+    }
+    if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return {
+        success: false,
+        message: "Kata sandi baru wajib mengandung minimal 1 huruf besar (A-Z) dan 1 angka (0-9).",
+      };
+    }
+  }
+
   try {
     await apiUpdateAdminAccount(id, {
       fullName,

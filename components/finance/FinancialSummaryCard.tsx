@@ -21,7 +21,23 @@ export function FinancialSummaryCard({ initialData }: Props) {
   const revenueDelta =
     prevTrend && prevTrend.revenue > 0 && lastTrend
       ? Math.round(((lastTrend.revenue - prevTrend.revenue) / prevTrend.revenue) * 100)
-      : 0;
+      : prevTrend && prevTrend.revenue === 0 && lastTrend && lastTrend.revenue > 0
+        ? 100
+        : 0;
+
+  const revenueDirection =
+    revenueDelta > 0 ? "up" : revenueDelta < 0 ? "down" : "neutral";
+
+  const lastAov = lastTrend && lastTrend.bookings > 0 ? lastTrend.revenue / lastTrend.bookings : 0;
+  const prevAov = prevTrend && prevTrend.bookings > 0 ? prevTrend.revenue / prevTrend.bookings : 0;
+  const aovDelta =
+    prevAov > 0
+      ? Math.round(((lastAov - prevAov) / prevAov) * 100)
+      : prevAov === 0 && lastAov > 0
+        ? 100
+        : 0;
+  const aovDirection =
+    aovDelta > 0 ? "up" : aovDelta < 0 ? "down" : "neutral";
 
   const ringkasan = (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -30,7 +46,7 @@ export function FinancialSummaryCard({ initialData }: Props) {
         title="Total Omzet Bersih"
         value={formatRupiah(summary.totalRevenue)}
         trend={{
-          direction: revenueDelta >= 0 ? "up" : "down",
+          direction: revenueDirection,
           percentage: Math.abs(revenueDelta),
           label: "vs bulan lalu",
         }}
@@ -68,9 +84,9 @@ export function FinancialSummaryCard({ initialData }: Props) {
         baselineLabel="Rata-rata per transaksi selesai"
         subtitle={`Total ${summary.totalAllBookings} transaksi`}
         trend={{
-          direction: "up",
-          percentage: 4.8,
-          label: "stabil",
+          direction: aovDirection,
+          percentage: Math.abs(aovDelta),
+          label: prevTrend ? `vs ${prevTrend.label}` : "stabil",
         }}
         sparklineData={monthlyTrends.map((t) =>
           t.bookings > 0 ? Math.round(t.revenue / t.bookings) : 0,

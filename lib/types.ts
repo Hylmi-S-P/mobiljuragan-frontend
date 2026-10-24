@@ -62,6 +62,13 @@ export type Booking = {
   driverStatus: DriverStatus | null;
   whatsappIntent?: { message: string; url: string } | null;
   lineItems: LineItem[];
+  payment?: {
+    id: string;
+    status: PaymentStatus;
+    proofImageUrl?: string | null;
+    method?: PaymentMethod | string | null;
+    totalAmount?: number | null;
+  } | null;
 };
 
 export type DriverStatus = "siaga" | "libur" | "sedang_tugas";

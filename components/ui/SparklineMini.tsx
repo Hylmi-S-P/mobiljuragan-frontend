@@ -27,7 +27,9 @@ export function SparklineMini({
 }: SparklineMiniProps) {
   const gradientId = useId();
 
-  if (!data || data.length === 0) {
+  const validData = (data || []).filter((v) => Number.isFinite(v));
+
+  if (validData.length === 0) {
     return (
       <div
         className={`h-8 w-24 rounded bg-canvas/60 ${className}`}
@@ -41,14 +43,17 @@ export function SparklineMini({
   const usableWidth = width - paddingX * 2;
   const usableHeight = height - paddingY * 2;
 
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
+  const min = Math.min(...validData);
+  const max = Math.max(...validData);
+  const isFlat = max === min;
+  const range = isFlat ? 1 : max - min;
 
   // Koordinat titik [x, y]
-  const points: [number, number][] = data.map((val, idx) => {
-    const x = paddingX + (idx / Math.max(data.length - 1, 1)) * usableWidth;
-    const y = height - paddingY - ((val - min) / range) * usableHeight;
+  const points: [number, number][] = validData.map((val, idx) => {
+    const x = paddingX + (idx / Math.max(validData.length - 1, 1)) * usableWidth;
+    const y = isFlat
+      ? height / 2
+      : height - paddingY - ((val - min) / range) * usableHeight;
     return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
   });
 
@@ -79,7 +84,7 @@ export function SparklineMini({
         ) : null}
       </defs>
 
-      {fillGradient && data.length > 1 ? (
+      {fillGradient && validData.length > 1 ? (
         <path d={areaPath} fill={`url(#${gradientId})`} />
       ) : null}
 

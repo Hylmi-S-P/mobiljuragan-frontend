@@ -23,6 +23,8 @@ export function Toast({
   onClose,
 }: ToastProps) {
   const [progress, setProgress] = useState(100);
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const startTime = Date.now();
@@ -32,12 +34,12 @@ export function Toast({
       setProgress(remaining);
       if (remaining <= 0) {
         clearInterval(interval);
-        onClose();
+        onCloseRef.current();
       }
     }, 50);
 
     return () => clearInterval(interval);
-  }, [durationMs, onClose]);
+  }, [durationMs]);
 
   const toneConfig = {
     success: {
