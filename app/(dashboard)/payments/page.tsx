@@ -1,6 +1,7 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { PaymentVerificationHub } from "@/components/payments/PaymentVerificationHub";
-import { getAdminPayments } from "@/lib/operations";
+import { BookingsUnifiedHub } from "@/components/bookings/BookingsUnifiedHub";
+import { getAllVehicles, getBookings, getAdminPayments } from "@/lib/operations";
 import type { AdminPaymentsResponse } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -17,15 +18,28 @@ export default async function PaymentsPage() {
     pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
   };
 
+  const [bookings, vehicles] = await Promise.all([
+    getBookings(),
+    getAllVehicles(),
+  ]);
+
   try {
     initialData = await getAdminPayments({ limit: 100 });
   } catch {
-    // Fallback ke objek kosong jika backend belum aktif saat proses SSR/build
     initialData = {
       items: [],
       pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
     };
   }
 
-  return <PaymentVerificationHub initialResponse={initialData} />;
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-ink-soft">Memuat verifikasi pembayaran...</div>}>
+      <BookingsUnifiedHub
+        initialBookings={bookings}
+        vehicles={vehicles}
+        initialPayments={initialData}
+        initialTab="pembayaran"
+      />
+    </Suspense>
+  );
 }

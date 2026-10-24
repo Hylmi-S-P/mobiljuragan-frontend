@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { NAV_ENTRIES, WORKSPACE_NAME, WORKSPACE_ROLE, isNavGroup } from "@/lib/navigation";
@@ -33,6 +33,7 @@ type SidebarProps = {
 const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactElement> = {
   "/": IconDashboard,
   "/bookings": IconInbox,
+  "/bookings?tab=pembayaran": IconCreditCard,
   "/payments": IconCreditCard,
   "/fleet/catalog": IconCar,
   "/fleet/calendar": IconCalendar,
@@ -46,6 +47,8 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
 
 export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const fleetActive = NAV_ENTRIES.some(
     (entry) => isNavGroup(entry) && entry.items.some((item) => pathname.startsWith(item.href)),
@@ -54,6 +57,19 @@ export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
   /* Akordeon mengikuti rute armada; pilihan manual pengguna menang sampai ia mengubahnya lagi. */
   const [fleetOverride, setFleetOverride] = useState<boolean | null>(null);
   const fleetOpen = fleetOverride ?? fleetActive;
+
+  function isNavActive(entryHref: string): boolean {
+    if (entryHref === "/bookings?tab=pembayaran") {
+      return pathname === "/bookings" && currentTab === "pembayaran";
+    }
+    if (entryHref === "/bookings") {
+      return pathname === "/bookings" && currentTab !== "pembayaran";
+    }
+    if (entryHref === "/payments") {
+      return pathname === "/payments" || (pathname === "/bookings" && currentTab === "pembayaran");
+    }
+    return pathname === entryHref;
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -153,7 +169,7 @@ export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
               );
             }
 
-            const active = pathname === entry.href;
+            const active = isNavActive(entry.href);
             const Ikon = IKON_NAV[entry.href] ?? IconDashboard;
             const jumlah = navCounts?.[entry.href] ?? 0;
             return (

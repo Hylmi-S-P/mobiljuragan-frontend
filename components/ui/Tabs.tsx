@@ -15,6 +15,8 @@ type Props = {
      disembunyikan, supaya berpindah tab tidak membuang state di dalamnya. */
   panels: Record<string, ReactNode>;
   defaultTab?: string;
+  activeTab?: string;
+  onChange?: (id: string) => void;
 };
 
 /**
@@ -25,9 +27,18 @@ type Props = {
  * Komponen ini menyatukan polanya sekaligus menjaga agar panel tidak dilepas dari
  * pohon React saat tab tidak aktif.
  */
-export function Tabs({ items, panels, defaultTab }: Props) {
-  const [aktif, setAktif] = useState<string>(defaultTab ?? items[0]?.id ?? "");
+export function Tabs({ items, panels, defaultTab, activeTab, onChange }: Props) {
+  const [internalAktif, setInternalAktif] = useState<string>(defaultTab ?? items[0]?.id ?? "");
   const dasarId = useId();
+
+  const aktif = activeTab !== undefined ? activeTab : internalAktif;
+
+  function handleSelect(id: string) {
+    if (activeTab === undefined) {
+      setInternalAktif(id);
+    }
+    onChange?.(id);
+  }
 
   return (
     <div>
@@ -46,7 +57,7 @@ export function Tabs({ items, panels, defaultTab }: Props) {
               id={`${dasarId}-tab-${item.id}`}
               aria-selected={terpilih}
               aria-controls={`${dasarId}-panel-${item.id}`}
-              onClick={() => setAktif(item.id)}
+              onClick={() => handleSelect(item.id)}
               className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-meta font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
                 terpilih
                   ? "bg-surface font-semibold text-ink shadow-xs"

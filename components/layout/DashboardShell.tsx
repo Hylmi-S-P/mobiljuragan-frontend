@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 
 import type { NavCounts } from "@/lib/navCounts";
 
@@ -25,7 +25,9 @@ export function DashboardShell({
       >
         Lewati ke konten
       </a>
-      <Sidebar open={navOpen} onClose={() => setNavOpen(false)} navCounts={navCounts} />
+      <Suspense fallback={null}>
+        <Sidebar open={navOpen} onClose={() => setNavOpen(false)} navCounts={navCounts} />
+      </Suspense>
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenNav={() => setNavOpen(true)} />
         <main id="konten" className="flex-1 px-5 py-5 lg:px-7">

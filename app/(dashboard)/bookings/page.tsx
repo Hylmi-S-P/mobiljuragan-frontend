@@ -1,18 +1,53 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { BookingCardGrid } from "@/components/bookings/BookingCardGrid";
-import { getAllVehicles, getBookings } from "@/lib/operations";
+import { BookingsUnifiedHub } from "@/components/bookings/BookingsUnifiedHub";
+import { getAllVehicles, getBookings, getAdminPayments } from "@/lib/operations";
+import type { AdminPaymentsResponse } from "@/lib/types";
 
 export const metadata: Metadata = {
-  title: "Pesanan Masuk | MobilJuragan",
+  title: "Pemesanan & Pembayaran | MobilJuragan",
   description:
-    "Antrean pesanan sewa yang masuk dari aplikasi pelanggan MobilJuragan Merauke, siap diverifikasi tim operasional.",
+    "Pusat operasional terpadu antrean pesanan sewa dan verifikasi bukti transfer pembayaran CV. Mobil Juragan Express Transport Merauke.",
 };
 
-// Antrean pesanan berubah setiap ada pemesanan baru, jadi data diambil segar tiap request.
+// Data antrean berubah secara dinamis setiap ada transaksi baru
 export const dynamic = "force-dynamic";
 
-export default async function BookingsPage() {
-  const [bookings, vehicles] = await Promise.all([getBookings(), getAllVehicles()]);
+type PageProps = {
+  searchParams?: Promise<{ tab?: string }>;
+};
 
-  return <BookingCardGrid initialBookings={bookings} vehicles={vehicles} />;
+export default async function BookingsPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const initialTab = resolvedSearchParams?.tab === "pembayaran" ? "pembayaran" : "pesanan";
+
+  let payments: AdminPaymentsResponse = {
+    items: [],
+    pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
+  };
+
+  const [bookings, vehicles] = await Promise.all([
+    getBookings(),
+    getAllVehicles(),
+  ]);
+
+  try {
+    payments = await getAdminPayments({ limit: 100 });
+  } catch {
+    payments = {
+      items: [],
+      pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
+    };
+  }
+
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-ink-soft">Memuat antrean...</div>}>
+      <BookingsUnifiedHub
+        initialBookings={bookings}
+        vehicles={vehicles}
+        initialPayments={payments}
+        initialTab={initialTab}
+      />
+    </Suspense>
+  );
 }
