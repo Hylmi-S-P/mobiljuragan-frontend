@@ -42,30 +42,8 @@ export default async function OverviewPage() {
   const unitDisewa = vehicles.filter((vehicle) => vehicle.status === "disewa");
   const vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
 
-  // Kalkulasi tren bulanan untuk ComparisonMetricCard
+  // Data tren bulanan untuk sparkline ComparisonMetricCard
   const monthlyTrends = finance?.monthlyTrends ?? [];
-  const lastTrend = monthlyTrends.length > 0 ? monthlyTrends[monthlyTrends.length - 1] : null;
-  const prevTrend = monthlyTrends.length > 1 ? monthlyTrends[monthlyTrends.length - 2] : null;
-
-  const revenueDelta =
-    prevTrend && prevTrend.revenue > 0 && lastTrend
-      ? Math.round(((lastTrend.revenue - prevTrend.revenue) / prevTrend.revenue) * 100)
-      : prevTrend && prevTrend.revenue === 0 && lastTrend && lastTrend.revenue > 0
-        ? 100
-        : 0;
-
-  const bookingsDelta =
-    prevTrend && prevTrend.bookings > 0 && lastTrend
-      ? Math.round(((lastTrend.bookings - prevTrend.bookings) / prevTrend.bookings) * 100)
-      : prevTrend && prevTrend.bookings === 0 && lastTrend && lastTrend.bookings > 0
-        ? 100
-        : 0;
-
-  const revenueDirection =
-    revenueDelta > 0 ? "up" : revenueDelta < 0 ? "down" : "neutral";
-
-  const bookingsDirection =
-    bookingsDelta > 0 ? "up" : bookingsDelta < 0 ? "down" : "neutral";
 
   const readinessPercent = Math.round((unitTersedia.length / Math.max(vehicles.length, 1)) * 100);
   const utilizationPercent = Math.round((unitDisewa.length / Math.max(vehicles.length, 1)) * 100);
@@ -99,7 +77,7 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      {/* 4 KPI Comparison Metric Cards (Pola Zoho IoT & Dribbble Clean Card) */}
+      {/* 4 KPI Metric Cards (Pola Zoho IoT & Dribbble Clean Card) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* 1. Kesiapan Armada dengan Circular Progress Ring */}
         <ComparisonMetricCard
@@ -112,8 +90,6 @@ export default async function OverviewPage() {
             color: "#0e7c7b",
             label: "Kesiapan Armada",
           }}
-          subtitle={`${readinessPercent}% Rasio Kesiapan`}
-          baselineLabel={`${unitDisewa.length} unit sedang beroperasi`}
           icon={<IconCar className="h-4 w-4" />}
           iconBgColor="bg-emerald-50 text-emerald-600"
         />
@@ -123,21 +99,8 @@ export default async function OverviewPage() {
           title="Pesanan Masuk"
           value={queue.length}
           unitLabel="Menunggu"
-          trend={
-            bookingsDelta !== 0
-              ? {
-                  direction: bookingsDirection,
-                  percentage: Math.abs(bookingsDelta),
-                  label: "vs bulan lalu",
-                }
-              : undefined
-          }
           sparklineData={monthlyTrends.map((t) => t.bookings)}
           sparklineColor="#d97706"
-          subtitle={`Dari ${bookings.length} pesanan tercatat`}
-          baselineLabel={
-            queue.length > 0 ? "Perlu konfirmasi tarif / supir" : "Semua pesanan tuntas"
-          }
           icon={<IconInbox className="h-4 w-4" />}
           iconBgColor="bg-amber-50 text-amber-600"
         />
@@ -153,8 +116,6 @@ export default async function OverviewPage() {
             color: "#1e3a5f",
             label: "Utilisasi Armada",
           }}
-          subtitle={`${utilizationPercent}% Utilisasi Armada`}
-          baselineLabel={`${vehicles.length - unitDisewa.length} unit di pool Merauke`}
           icon={<IconCalendar className="h-4 w-4" />}
           iconBgColor="bg-navy/10 text-navy"
         />
@@ -167,17 +128,8 @@ export default async function OverviewPage() {
               ? formatRupiah(finance.summary.totalRevenue)
               : `${bookings.length} Pesanan`
           }
-          trend={{
-            direction: revenueDirection,
-            percentage: Math.abs(revenueDelta),
-            label: "vs bulan lalu",
-          }}
           sparklineData={monthlyTrends.map((t) => t.revenue)}
           sparklineColor="#059669"
-          subtitle={`${finance?.summary.completedBookingsCount ?? 0} transaksi selesai`}
-          baselineLabel={
-            prevTrend ? `vs ${prevTrend.label}: ${formatRupiah(prevTrend.revenue)}` : "Target omzet berjalan"
-          }
           icon={<IconTrendingUp className="h-4 w-4" />}
           iconBgColor="bg-emerald-50 text-emerald-600"
         />
