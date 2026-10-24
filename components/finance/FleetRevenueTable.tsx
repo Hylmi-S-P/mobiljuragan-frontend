@@ -24,7 +24,7 @@ export function FleetRevenueTable({ fleetBreakdown }: Props) {
       {/* Header Section */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-rule pb-4">
         <div>
-          <h3 className="text-subtitle font-bold text-ink">Kontribusi Omzet per Unit Armada</h3>
+          <h3 className="text-subtitle font-bold text-ink">Pendapatan per Unit Armada</h3>
           <p className="text-meta text-ink-soft">
             Rincian performa finansial 9 unit kendaraan operasional resmi MobilJuragan Merauke.
           </p>
@@ -73,7 +73,7 @@ export function FleetRevenueTable({ fleetBreakdown }: Props) {
                     size={42}
                     strokeWidth={4}
                     color="#0e7c7b"
-                    label={`Kontribusi ${sharePercentage}%`}
+                    label={`Porsi ${sharePercentage}%`}
                   />
                 </div>
 
@@ -95,7 +95,7 @@ export function FleetRevenueTable({ fleetBreakdown }: Props) {
                 </div>
               </div>
 
-              {/* Progress Bar Kontribusi ke Total Omzet */}
+              {/* Progress Bar Porsi ke Total Omzet */}
               <div className="mt-3.5 pt-2.5 border-t border-rule/60">
                 <div className="flex items-center justify-between text-micro text-ink-soft mb-1">
                   <span>Porsi dari total armada</span>
