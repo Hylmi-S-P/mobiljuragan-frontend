@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { DRIVER_STATUS } from "@/lib/labels";
@@ -29,26 +29,33 @@ export function DriverAllocationCard({
 }: Props) {
   const isDriverService = booking.mode === "dengan_supir";
 
-  // Filter supir berstatus 'siaga' dan urutkan sesuai kecocokan rute
+  const isCurrentDriver = useCallback(
+    (d: Driver) =>
+      d.id === selectedDriverId ||
+      d.uuid === selectedDriverId ||
+      (Boolean(assignedDriverName) && d.label === assignedDriverName),
+    [selectedDriverId, assignedDriverName],
+  );
+
+  // Filter supir yang dapat dipilih: berstatus 'siaga' atau yang saat ini sedang aktif dialokasikan di pesanan ini
   const eligibleDrivers = useMemo(() => {
-    const siagaOnly = availableDrivers.filter((d) => d.status === "siaga");
-    const routeMatched = siagaOnly.filter((d) =>
+    const selectableDrivers = availableDrivers.filter(
+      (d) => d.status === "siaga" || isCurrentDriver(d),
+    );
+    const routeMatched = selectableDrivers.filter((d) =>
       isLuarKota ? d.route === "luar_kota" : d.route === "dalam_kota",
     );
-    // Jika ada supir dengan rute cocok, prioritaskan; jika tidak, tampilkan seluruh supir siaga
-    return routeMatched.length > 0 ? routeMatched : siagaOnly;
-  }, [availableDrivers, isLuarKota]);
+    // Jika ada supir dengan rute cocok, prioritaskan; jika tidak, tampilkan seluruh supir yang dapat dipilih
+    return routeMatched.length > 0 ? routeMatched : selectableDrivers;
+  }, [availableDrivers, isLuarKota, isCurrentDriver]);
 
   // Supir aktif yang saat ini ditugaskan
   const assignedDriver = useMemo(() => {
-    return (
-      availableDrivers.find(
-        (d) => d.id === selectedDriverId || (assignedDriverName && d.label === assignedDriverName),
-      ) ?? null
-    );
-  }, [availableDrivers, selectedDriverId, assignedDriverName]);
+    return availableDrivers.find((d) => isCurrentDriver(d)) ?? null;
+  }, [availableDrivers, isCurrentDriver]);
 
   const activeDriverLabel = assignedDriver?.label || (assignedDriverName?.trim() ? assignedDriverName : null);
+  const currentSelectValue = assignedDriver?.id ?? selectedDriverId;
   const hasAssignedDriver = Boolean(activeDriverLabel);
 
   if (!isDriverService) {
@@ -96,7 +103,7 @@ export function DriverAllocationCard({
           <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center">
             <select
               id="driver-select-card"
-              value={selectedDriverId}
+              value={currentSelectValue}
               onChange={(e) => {
                 const val = e.target.value;
                 onAssignDriver(val);
@@ -105,11 +112,15 @@ export function DriverAllocationCard({
               className="h-11 w-full rounded-sm border border-rule-strong bg-surface px-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy sm:max-w-md"
             >
               <option value="">-- Pilih Supir Siaga --</option>
-              {eligibleDrivers.map((driver) => (
-                <option key={driver.id} value={driver.id}>
-                  {driver.label} ({driver.route === "luar_kota" ? "Luar Kota" : "Dalam Kota"})
-                </option>
-              ))}
+              {eligibleDrivers.map((driver) => {
+                const isCurrent = isCurrentDriver(driver);
+                return (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.label} ({driver.route === "luar_kota" ? "Luar Kota" : "Dalam Kota"})
+                    {isCurrent ? " (Ditugaskan)" : ""}
+                  </option>
+                );
+              })}
             </select>
 
             {isPending ? (

@@ -157,6 +157,7 @@ type ApiDriver = {
 function mapDriver(d: ApiDriver): Driver {
   return {
     id: d.externalId || d.id,
+    uuid: d.id,
     label: d.fullName,
     route: DRIVER_ROUTE[d.routeScope] ?? "dalam_kota",
     contact: d.phoneNumber,

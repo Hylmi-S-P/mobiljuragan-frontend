@@ -65,6 +65,7 @@ export type DriverRoute = "dalam_kota" | "luar_kota";
 
 export type Driver = {
   id: string;
+  uuid?: string;
   label: string;
   route: DriverRoute;
   contact: string | null;

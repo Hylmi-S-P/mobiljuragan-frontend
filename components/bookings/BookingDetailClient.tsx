@@ -78,13 +78,24 @@ export function BookingDetailClient({
   }, [booking.quotedAmount, booking.lineItems, calculatedBaseRate]);
 
   const [quotedAmount, setQuotedAmount] = useState<number>(initialBaseQuoted);
-  const [selectedDriverId, setSelectedDriverId] = useState<string>(
-    booking.driverId ?? "",
-  );
+  const initialDriverId = useMemo(() => {
+    if (booking.driverId) {
+      const match = availableDrivers.find(
+        (d) => d.id === booking.driverId || d.uuid === booking.driverId,
+      );
+      if (match) return match.id;
+      return booking.driverId;
+    }
+    return "";
+  }, [booking.driverId, availableDrivers]);
+
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(initialDriverId);
   const initialDriverName = useMemo(() => {
     if (booking.driverName) return booking.driverName;
     if (booking.driverId) {
-      const match = availableDrivers.find((d) => d.id === booking.driverId);
+      const match = availableDrivers.find(
+        (d) => d.id === booking.driverId || d.uuid === booking.driverId,
+      );
       if (match) return match.label;
     }
     return null;
@@ -164,7 +175,7 @@ export function BookingDetailClient({
     startTransition(async () => {
       const result = await assignDriverAction(booking.id, driverId);
       if (result.success) {
-        const chosen = availableDrivers.find((d) => d.id === driverId);
+        const chosen = availableDrivers.find((d) => d.id === driverId || d.uuid === driverId);
         setAssignedDriverName(chosen ? chosen.label : "Supir Ditugaskan");
         setNotice({
           text: result.message ?? `Supir resmi ${chosen?.label ?? ""} berhasil ditugaskan.`,
@@ -182,7 +193,7 @@ export function BookingDetailClient({
   }
 
   const hasAssignedDriver = Boolean(
-    assignedDriverName || (selectedDriverId && availableDrivers.some((d) => d.id === selectedDriverId)),
+    assignedDriverName || (selectedDriverId && availableDrivers.some((d) => d.id === selectedDriverId || d.uuid === selectedDriverId)),
   );
 
   // Konfirmasi tarif dan persetujuan pesanan
