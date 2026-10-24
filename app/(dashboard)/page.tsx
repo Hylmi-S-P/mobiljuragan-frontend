@@ -1,17 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { PlateBadge } from "@/components/ui/PlateBadge";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/Table";
 import {
   IconArrowRight,
   IconCalendar,
@@ -20,7 +11,7 @@ import {
   IconTrendingUp,
 } from "@/components/ui/icons";
 import { BOOKING_STATUS, VEHICLE_STATUS } from "@/lib/labels";
-import { formatDateRange } from "@/lib/format";
+import { formatDateRange, formatDateSingle } from "@/lib/format";
 import { getAllVehicles, getBookings, getFleetCalendar } from "@/lib/operations";
 
 export const metadata: Metadata = {
@@ -64,11 +55,7 @@ export default async function OverviewPage() {
           bookingCode: schedule.bookingCode,
           customerName: schedule.customerName,
           mulai,
-          tanggalMulai: formatDateRange(
-            schedule.startDateTime,
-            schedule.startDateTime,
-            1,
-          ),
+          tanggalMulai: formatDateSingle(schedule.startDateTime),
           durasi: `${jumlahHari} hari`,
         };
       }),
@@ -155,55 +142,43 @@ export default async function OverviewPage() {
             <p>Tidak ada antrean yang menunggu konfirmasi saat ini.</p>
           </div>
         ) : (
-          <Table caption="Antrean booking menunggu konfirmasi tarif">
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell className="w-[200px]">Pemesan &amp; Kode</TableHeaderCell>
-                <TableHeaderCell className="w-[260px]">Armada</TableHeaderCell>
-                <TableHeaderCell className="w-[180px]">Tanggal Sewa</TableHeaderCell>
-                <TableHeaderCell className="w-[140px]">Status</TableHeaderCell>
-                <TableHeaderCell className="w-[130px] text-right">Aksi</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {queue.map((booking) => {
-                const vehicle = vehicleById.get(booking.vehicleId);
-                const status = BOOKING_STATUS[booking.status];
-                return (
-                  <TableRow key={booking.id} className="hover:bg-canvas/50">
-                    <TableCell className="text-left">
-                      <Link
-                        href={`/bookings/${booking.id}`}
-                        className="block font-semibold text-ink hover:text-navy hover:underline"
-                      >
+          /* Antrean disajikan sebagai kartu, bukan tabel. Di layar sempit tabel lima
+             kolom memaksa gulir mendatar, sementara tiap baris sebenarnya hanya
+             membawa satu keputusan: periksa pesanan ini. */
+          <ul className="space-y-2.5">
+            {queue.map((booking) => {
+              const vehicle = vehicleById.get(booking.vehicleId);
+              const status = BOOKING_STATUS[booking.status];
+              return (
+                <li key={booking.id}>
+                  <Link
+                    href={`/bookings/${booking.id}`}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-rule bg-canvas/40 px-3.5 py-3 transition-colors hover:border-navy/40 hover:bg-canvas"
+                  >
+                    <div className="min-w-0">
+                      <span className="block font-semibold text-ink">
                         {booking.customerName}
-                      </Link>
-                      <span className="block text-micro text-ink-soft">{booking.code}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="block font-medium text-ink">{vehicle?.name}</span>
-                      {vehicle ? <PlateBadge plate={vehicle.plate} className="mt-1" /> : null}
-                    </TableCell>
-                    <TableCell className="tabular-nums text-meta text-ink">
-                      {formatDateRange(booking.startDate, booking.endDate, booking.dayCount)}
-                    </TableCell>
-                    <TableCell>
+                      </span>
+                      <span className="block text-micro text-ink-soft">
+                        {booking.code} · {vehicle?.name ?? "Armada belum dipilih"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-meta tabular-nums text-ink-soft">
+                        {formatDateRange(booking.startDate, booking.endDate, booking.dayCount)}
+                      </span>
                       <StatusChip tone={status.tone}>{status.label}</StatusChip>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link
-                        href={`/bookings/${booking.id}`}
-                        className="inline-flex items-center gap-1 rounded-sm px-2.5 py-1 text-meta font-medium text-navy hover:bg-navy/10"
-                      >
+                      <span className="inline-flex items-center gap-1 text-meta font-medium text-navy">
                         Periksa
                         <IconArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </Panel>
 
@@ -220,10 +195,12 @@ export default async function OverviewPage() {
                   className="flex items-center justify-between rounded-sm border border-rule/60 bg-canvas/40 p-2.5"
                 >
                   <div className="min-w-0 pr-2">
+                    {/* Plat nomor tidak ditampilkan di sini. Panel ini untuk melihat
+                        kesiapan unit sekilas, dan plat sudah tersedia di katalog serta
+                        kalender armada. */}
                     <span className="block truncate text-body font-medium text-ink">
                       {vehicle.name}
                     </span>
-                    <PlateBadge plate={vehicle.plate} className="mt-0.5" />
                   </div>
                   <StatusChip tone={VEHICLE_STATUS[vehicle.status].tone}>
                     {VEHICLE_STATUS[vehicle.status].label}

@@ -10,7 +10,12 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { TICKET_STATUS, formatTicketCategory } from "@/lib/labels";
+import {
+  TICKET_STAGE,
+  TICKET_STATUS,
+  formatTicketCategory,
+  ticketStageOf,
+} from "@/lib/labels";
 import { useDebounce } from "@/lib/useDebounce";
 import type { SupportTicketView, TicketMessageView } from "@/lib/operations";
 import type { SupportTicketStatus } from "@/lib/types";
@@ -76,6 +81,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
   const activeTicket = tickets.find((ticket) => ticket.id === activeId) ?? null;
   const isResolvedOrClosed = activeTicket?.status === "selesai";
+  const tahapAktif = TICKET_STAGE[ticketStageOf(activeTicket?.status ?? "baru")];
 
   function handleStatusChange(
     newStatus: "OPEN" | "IN_PROGRESS" | "WAITING_CUSTOMER" | "RESOLVED" | "CLOSED",
@@ -174,10 +180,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
             <ul className="mt-3 space-y-1.5">
               {filteredTickets.map((ticket) => {
                 const active = ticket.id === activeId;
-                const status = TICKET_STATUS[ticket.status as SupportTicketStatus] ?? {
-                  label: ticket.status,
-                  tone: "neutral" as const,
-                };
+                const tahap = TICKET_STAGE[ticketStageOf(ticket.status)];
                 return (
                   <li key={ticket.id}>
                     <button
@@ -199,7 +202,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           <span className="text-body font-semibold text-ink">
                             {ticket.customerLabel}
                           </span>
-                          <StatusChip tone={status.tone}>{status.label}</StatusChip>
+                          <StatusChip tone={tahap.tone}>{tahap.label}</StatusChip>
                         </span>
                         <span className="mt-1 block truncate text-meta text-ink-soft">
                           {ticket.title}
@@ -228,34 +231,34 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           <section className="flex min-h-[460px] flex-col rounded-md border border-rule bg-surface">
             {activeTicket ? (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-rule px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2.5">
+                <div className="border-b border-rule px-4 py-3">
+                  {/* Urutan header: judul tiket paling atas dan paling menonjol, baru
+                      identitas pelanggan, status, nomor, dan jenis bantuan. Sebelumnya
+                      yang paling menonjol justru nama pelanggan, sementara judul tiket
+                      terpisah di blok lain di bawahnya sehingga sulit dipindai. */}
+                  <h3 className="text-subtitle font-semibold leading-snug text-ink">
+                    {activeTicket.title}
+                  </h3>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
                     <span
                       aria-hidden="true"
-                      className="flex h-9 w-9 items-center justify-center rounded-full bg-navy text-body font-semibold text-white"
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-navy text-meta font-semibold text-white"
                     >
                       {initialOf(activeTicket.customerLabel)}
                     </span>
-                    <span className="text-body font-semibold text-ink">
+                    <span className="text-meta font-medium text-ink">
                       {activeTicket.customerLabel}
                     </span>
-                    <StatusChip
-                      tone={
-                        (TICKET_STATUS[activeTicket.status as SupportTicketStatus] ?? {
-                          tone: "neutral" as const,
-                        }).tone
-                      }
-                    >
-                      {
-                        (TICKET_STATUS[activeTicket.status as SupportTicketStatus] ?? {
-                          label: activeTicket.status,
-                        }).label
-                      }
-                    </StatusChip>
+                    <StatusChip tone={tahapAktif.tone}>{tahapAktif.label}</StatusChip>
+                    <span className="text-micro text-ink-soft">{activeTicket.ticketNumber}</span>
+                    <span className="text-micro text-ink-soft">
+                      {formatTicketCategory(activeTicket.category)}
+                    </span>
                   </div>
 
                   {/* Tombol Aksi Status Tiket Sederhana & Terpusat */}
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
                     {!isResolvedOrClosed ? (
                       <Button
                         variant="confirm"
@@ -276,28 +279,6 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                       </Button>
                     )}
                   </div>
-                </div>
-
-                <div className="border-b border-rule px-4 py-3">
-                  <h3 className="text-body font-semibold text-ink">Informasi tiket</h3>
-                  <dl className="mt-2 grid gap-2.5 sm:grid-cols-2">
-                    <div>
-                      <dt className="text-micro font-bold uppercase text-ink-soft">Judul tiket</dt>
-                      <dd className="mt-1 text-meta text-ink">{activeTicket.title}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-micro font-bold uppercase text-ink-soft">
-                        Jenis bantuan
-                      </dt>
-                      <dd className="mt-1 text-meta font-medium text-ink">
-                        {formatTicketCategory(activeTicket.category)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-micro font-bold uppercase text-ink-soft">Nomor tiket</dt>
-                      <dd className="mt-1 text-meta text-ink">{activeTicket.ticketNumber}</dd>
-                    </div>
-                  </dl>
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
@@ -323,8 +304,13 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                               : "border-rule bg-surface text-ink"
                           }`}
                         >
+                          {/* Nama admin yang benar-benar membalas ditampilkan di sini,
+                              bukan label tim yang seragam. Ini memberi tahu siapa yang
+                              menjawab tanpa perlu memisahkan tiket per admin. */}
                           <span className="block text-micro font-semibold uppercase text-ink-soft">
-                            {message.from === "tim" ? "Tim MobilJuragan" : "Pelanggan"}
+                            {message.from === "tim"
+                              ? `oleh ${message.senderName || "Tim"}`
+                              : "Pelanggan"}
                           </span>
                           <span className="mt-1 block">{message.text}</span>
                         </li>

@@ -204,8 +204,7 @@ export function DriverRosterTable({ initialDrivers }: Props) {
                         <div className="min-w-0">
                           <span className="block font-semibold text-ink">{driver.label}</span>
                           <span className="block text-micro text-ink-soft">
-                            {driver.contact ?? "Tanpa kontak"} &bull;{" "}
-                            {driver.licenseNumber ? `SIM ${driver.licenseNumber}` : "SIM belum diisi"}
+                            {driver.contact ?? "Tanpa kontak"}
                           </span>
                         </div>
                       </div>

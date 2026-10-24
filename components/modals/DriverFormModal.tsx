@@ -22,7 +22,6 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
   const [label, setLabel] = useState(driver?.label ?? "");
   const [contact, setContact] = useState(driver?.contact ?? "");
   const [route, setRoute] = useState<DriverRoute>(driver?.route ?? "dalam_kota");
-  const [licenseNumber, setLicenseNumber] = useState(driver?.licenseNumber ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSave() {
@@ -38,11 +37,6 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
       }
     }
 
-    const trimmedLicense = licenseNumber.trim();
-    if (trimmedLicense.length > 0 && trimmedLicense.length < 4) {
-      nextErrors.licenseNumber = "Nomor SIM minimal 4 karakter kalau diisi.";
-    }
-
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -51,7 +45,10 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
       label: label.trim(),
       route,
       contact: trimmedContact.length > 0 ? trimmedContact : null,
-      licenseNumber: trimmedLicense.length > 0 ? trimmedLicense : null,
+      /* Nomor SIM tidak lagi diisi dari form. Kelayakan mengemudi diperiksa saat
+         wawancara dengan melihat dokumen fisik, jadi kolom ini hanya dipertahankan
+         agar data lama tidak terhapus saat profil supir disunting. */
+      licenseNumber: driver?.licenseNumber ?? null,
       status: driver?.status ?? "siaga",
     });
   }
@@ -161,40 +158,6 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
               </option>
             ))}
           </select>
-        </div>
-
-        <div>
-          <label htmlFor={`${fieldId}-license`} className="block text-meta font-medium text-ink">
-            Nomor SIM (SIM A atau SIM B1)
-          </label>
-          <input
-            id={`${fieldId}-license`}
-            maxLength={30}
-            value={licenseNumber}
-            onChange={(event) => setLicenseNumber(event.target.value)}
-            aria-invalid={Boolean(errors.licenseNumber)}
-            aria-describedby={
-              errors.licenseNumber ? `${fieldId}-license-error` : `${fieldId}-license-hint`
-            }
-            className="tabular-nums mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-            placeholder="Nomor SIM sesuai dokumen"
-          />
-          {errors.licenseNumber ? (
-            <p id={`${fieldId}-license-error`} className="mt-1 text-meta text-danger">
-              {errors.licenseNumber}
-            </p>
-          ) : (
-            <p id={`${fieldId}-license-hint`} className="mt-1 text-micro text-ink-soft">
-              Boleh dikosongkan dulu; nomor SIM diisi manual dari dokumen fisik supir.
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-sm border border-rule bg-canvas px-3.5 py-2.5">
-          <p className="text-micro font-semibold uppercase text-ink-soft">ID supir</p>
-          <p className="mt-1 text-meta text-ink">
-            {driver ? driver.id : "Dibuat sistem saat data disimpan"}
-          </p>
         </div>
 
         {driver ? null : (

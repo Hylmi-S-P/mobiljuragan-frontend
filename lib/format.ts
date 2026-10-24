@@ -49,6 +49,15 @@ export function formatDateRange(startIso: string, endIso: string, dayCount: numb
   return `${range} ${end.year} (${dayCount} Hari)`;
 }
 
+/* Satu tanggal saja, tanpa rentang dan tanpa jumlah hari.
+   Dipakai di tempat yang memang hanya butuh tanggal mulai, supaya tidak muncul
+   tulisan berulang seperti "20 - 20 Nov 2026 (1 Hari)". */
+export function formatDateSingle(iso: string): string {
+  const bagian = bagianTanggalWit(iso);
+  if (!bagian) return "Tanggal tidak tersedia";
+  return `${bagian.day} ${MONTHS[bagian.month]} ${bagian.year}`;
+}
+
 export function formatCurrencyInput(value: string): string {
   const digits = value.replace(/\D/g, "");
   if (digits.length === 0) return "";

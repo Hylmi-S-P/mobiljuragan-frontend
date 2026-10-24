@@ -19,7 +19,7 @@ export function FleetRevenueTable({ fleetBreakdown }: Props) {
     <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-rule pb-4">
         <div>
-          <h3 className="text-body font-semibold text-ink">Kontribusi Pendapatan per Unit Armada</h3>
+          <h3 className="text-body font-semibold text-ink">Pendapatan per Unit Armada</h3>
           <p className="text-meta text-ink-soft">
             Rincian performa finansial dari 9 unit kendaraan operasional resmi MobilJuragan Merauke.
           </p>

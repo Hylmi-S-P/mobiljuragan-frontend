@@ -76,6 +76,27 @@ export const TICKET_STATUS: Record<SupportTicketStatus, { label: string; tone: C
   selesai: { label: "Selesai", tone: "available" },
 };
 
+/* Tiga tahap yang ditampilkan ke pengguna.
+
+   Backend menyimpan lima status, tetapi di layar admin perbedaan antara
+   "ditangani" dan "menunggu pelanggan" tidak mengubah apa pun yang harus
+   dikerjakan. Yang perlu dibedakan hanya: belum disentuh, sedang dikerjakan,
+   dan sudah selesai. Status internal tetap utuh supaya alur dan riwayat tidak
+   berubah; ini murni cara menampilkannya. */
+export type TicketStage = "baru" | "diproses" | "selesai";
+
+export const TICKET_STAGE: Record<TicketStage, { label: string; tone: ChipTone }> = {
+  baru: { label: "Baru", tone: "pending" },
+  diproses: { label: "Diproses", tone: "busy" },
+  selesai: { label: "Selesai", tone: "available" },
+};
+
+export function ticketStageOf(status: string): TicketStage {
+  if (status === "baru" || status === "OPEN") return "baru";
+  if (status === "selesai" || status === "RESOLVED" || status === "CLOSED") return "selesai";
+  return "diproses";
+}
+
 /* Penamaan jenis bantuan tiket bantuan pelanggan selaras dengan aplikasi mobile MobilJuragan */
 export const TICKET_CATEGORY_LABEL: Record<string, string> = {
   VEHICLE_ISSUE: "Kondisi Unit Armada",
