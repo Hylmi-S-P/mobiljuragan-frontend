@@ -34,18 +34,7 @@ export function BookingsUnifiedHub({
   const searchParams = useSearchParams();
   const queryTab = searchParams.get("tab");
 
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const urlTab = new URLSearchParams(window.location.search).get("tab");
-      if (urlTab === "pembayaran" || urlTab === "pesanan") {
-        return urlTab;
-      }
-    }
-    if (queryTab === "pembayaran" || queryTab === "pesanan") {
-      return queryTab;
-    }
-    return initialTab;
-  });
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
 
   // Sinkronisasi bila query param URL berubah dari luar (tombol sidebar, browser back/forward, deep link)
   useEffect(() => {
