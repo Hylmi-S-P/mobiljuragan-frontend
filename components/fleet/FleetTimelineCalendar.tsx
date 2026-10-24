@@ -1,276 +1,318 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { PlateBadge } from "@/components/ui/PlateBadge";
 import { StatusChip } from "@/components/ui/StatusChip";
-import {
-  IconCalendar,
-  IconChevronDown,
-  IconArrowRight,
-} from "@/components/ui/icons";
+import { IconCalendar } from "@/components/ui/icons";
 import { VEHICLE_STATUS } from "@/lib/labels";
+import { formatDateSingle } from "@/lib/format";
 import type { FleetCalendar, FleetEntry } from "@/lib/operations";
 
 type Props = {
   calendar: FleetCalendar;
 };
 
-function formatDayName(date: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { weekday: "short" }).format(date);
+/* Rentang durasi yang bisa dipilih. Nilai 0 berarti tanpa batas durasi.
+   Ini menjawab pertanyaan "mobil mana yang kosong untuk sekian hari ke depan",
+   bukan sekadar menyaring jadwal yang sedang berjalan. */
+const DURASI_OPTIONS: Array<{ label: string; hari: number }> = [
+  { label: "Semua durasi", hari: 0 },
+  { label: "2–3 hari", hari: 3 },
+  { label: "Sebulan", hari: 30 },
+  { label: "Setahun", hari: 365 },
+];
+
+type RingkasanKunci = "semua" | "tersedia" | "disewa" | "servis";
+
+function awalHariIni(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-function formatDateShort(date: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
+/* Status yang ditampilkan diturunkan dari jadwal, bukan dari kolom status operasional.
+   Kolom itu menyimpan keadaan unit di gudang (servis, tidak tersedia) dan tidak
+   diperbarui saat ada sewa berjalan. Tanpa penurunan ini, unit yang sedang disewa
+   tetap tampil "Tersedia" di kalender. */
+function statusTampil(entry: FleetEntry, hariIni: Date): "tersedia" | "disewa" | "servis" | "tidak_tersedia" {
+  if (entry.status === "servis" || entry.status === "tidak_tersedia") {
+    return entry.status;
+  }
+
+  const sedangDisewa = (entry.schedules ?? []).some((jadwal) => {
+    const mulai = new Date(jadwal.startDateTime);
+    mulai.setHours(0, 0, 0, 0);
+    const selesai = new Date(jadwal.endDateTime);
+    selesai.setHours(23, 59, 59, 999);
+    return hariIni >= mulai && hariIni <= selesai;
+  });
+
+  return sedangDisewa ? "disewa" : "tersedia";
 }
 
-function isSameDay(d1: Date, d2: Date): boolean {
-  return (
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate()
-  );
+/* Keterangan singkat di bawah plat: jadwal terdekat kalau sedang disewa,
+   atau penanda kesiapan kalau kosong. */
+function keterangan(entry: FleetEntry, status: string, hariIni: Date): string {
+  if (status === "servis") return "Sedang perawatan";
+  if (status === "tidak_tersedia") return "Tidak dioperasikan";
+
+  const jadwal = (entry.schedules ?? [])
+    .slice()
+    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime());
+
+  const berjalan = jadwal.find((j) => {
+    const mulai = new Date(j.startDateTime);
+    mulai.setHours(0, 0, 0, 0);
+    const selesai = new Date(j.endDateTime);
+    selesai.setHours(23, 59, 59, 999);
+    return hariIni >= mulai && hariIni <= selesai;
+  });
+
+  if (berjalan) {
+    return `Sewa ${formatDateSingle(berjalan.startDateTime)} – ${formatDateSingle(berjalan.endDateTime)}`;
+  }
+
+  const berikutnya = jadwal.find((j) => new Date(j.startDateTime) > hariIni);
+  if (berikutnya) {
+    return `Kosong sampai ${formatDateSingle(berikutnya.startDateTime)}`;
+  }
+
+  return "Siap disewa";
+}
+
+/* Sebuah unit dianggap tersedia untuk seluruh rentang bila tidak ada satu pun
+   jadwal yang beririsan dengan rentang itu. */
+function tersediaUntukRentang(entry: FleetEntry, hariIni: Date, jumlahHari: number): boolean {
+  if (jumlahHari <= 0) return true;
+
+  const batas = new Date(hariIni);
+  batas.setDate(batas.getDate() + jumlahHari);
+  batas.setHours(23, 59, 59, 999);
+
+  return !(entry.schedules ?? []).some((jadwal) => {
+    const mulai = new Date(jadwal.startDateTime);
+    mulai.setHours(0, 0, 0, 0);
+    const selesai = new Date(jadwal.endDateTime);
+    selesai.setHours(23, 59, 59, 999);
+    return mulai <= batas && selesai >= hariIni;
+  });
 }
 
 export function FleetTimelineCalendar({ calendar }: Props) {
-  // Mode tampilan: "timeline" (Gantt visual) vs "table" (Tabel ringkas)
-  const [viewMode, setViewMode] = useState<"timeline" | "table">("timeline");
+  const hariIni = useMemo(() => awalHariIni(), []);
 
-  // Offset hari dari hari ini untuk navigasi timeline (0 = mulai hari ini)
-  const [dayOffset, setDayOffset] = useState<number>(0);
-  const daysToShow = 7; // Menampilkan 7 hari berturut-turut
+  /* Default "tersedia": saat halaman dibuka, yang tampil hanya unit yang benar-benar
+     bisa disewa. Unit lain tetap terjangkau lewat kartu ringkasan di atas. */
+  const [saringan, setSaringan] = useState<RingkasanKunci>("tersedia");
+  const [durasiHari, setDurasiHari] = useState<number>(0);
+  const [tampilan, setTampilan] = useState<"kartu" | "jadwal">("kartu");
 
-  const today = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now;
-  }, []);
+  const denganStatus = useMemo(
+    () =>
+      calendar.fleet.map((entry) => {
+        const status = statusTampil(entry, hariIni);
+        return {
+          entry,
+          status,
+          keterangan: keterangan(entry, status, hariIni),
+          tersediaRentang: tersediaUntukRentang(entry, hariIni, durasiHari),
+        };
+      }),
+    [calendar.fleet, hariIni, durasiHari],
+  );
 
-  const timelineDates = useMemo(() => {
-    const dates: Date[] = [];
-    for (let i = 0; i < daysToShow; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + dayOffset + i);
-      dates.push(d);
-    }
-    return dates;
-  }, [today, dayOffset]);
+  const jumlah = useMemo(
+    () => ({
+      semua: denganStatus.length,
+      tersedia: denganStatus.filter((v) => v.status === "tersedia").length,
+      disewa: denganStatus.filter((v) => v.status === "disewa").length,
+      servis: denganStatus.filter((v) => v.status === "servis" || v.status === "tidak_tersedia").length,
+    }),
+    [denganStatus],
+  );
 
-  const activeVehicles = calendar.fleet;
+  const ditampilkan = useMemo(() => {
+    const cocokStatus = denganStatus.filter((v) => {
+      if (saringan === "semua") return true;
+      if (saringan === "servis") return v.status === "servis" || v.status === "tidak_tersedia";
+      return v.status === saringan;
+    });
+
+    if (durasiHari <= 0) return cocokStatus;
+    return cocokStatus.filter((v) => v.tersediaRentang);
+  }, [denganStatus, saringan, durasiHari]);
+
+  const kartuRingkasan: Array<{ kunci: RingkasanKunci; label: string; nilai: number; ket: string; warna: string }> = [
+    { kunci: "semua", label: "Total armada", nilai: jumlah.semua, ket: "kendaraan terdaftar", warna: "bg-navy" },
+    { kunci: "tersedia", label: "Tersedia", nilai: jumlah.tersedia, ket: "siap disewa", warna: "bg-teal" },
+    { kunci: "disewa", label: "Disewa", nilai: jumlah.disewa, ket: "punya jadwal bulan ini", warna: "bg-navy" },
+    { kunci: "servis", label: "Servis", nilai: jumlah.servis, ket: "sedang perawatan", warna: "bg-gold" },
+  ];
 
   return (
     <div className="space-y-4">
-      {/* Bilah Kontrol Kalender & Legenda */}
-      <div className="flex flex-col gap-3 rounded-md border border-rule bg-surface p-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
-        {/* Navigasi Tanggal */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setDayOffset((prev) => prev - 7)}
-            className="inline-flex h-9 items-center justify-center rounded-sm border border-rule bg-canvas px-3 text-meta font-medium text-ink hover:bg-surface hover:border-rule-strong"
-          >
-            &larr; 7 Hari Lalu
-          </button>
-          <button
-            type="button"
-            onClick={() => setDayOffset(0)}
-            className={`inline-flex h-9 items-center justify-center rounded-sm border px-3 text-meta font-medium transition-colors ${
-              dayOffset === 0
-                ? "border-navy bg-navy text-white"
-                : "border-rule bg-canvas text-ink hover:bg-surface"
-            }`}
-          >
-            Hari Ini
-          </button>
-          <button
-            type="button"
-            onClick={() => setDayOffset((prev) => prev + 7)}
-            className="inline-flex h-9 items-center justify-center rounded-sm border border-rule bg-canvas px-3 text-meta font-medium text-ink hover:bg-surface hover:border-rule-strong"
-          >
-            7 Hari Depan &rarr;
-          </button>
+      {/* Ringkasan sekaligus saringan. Kartu ini bukan sekadar angka: mengkliknya
+          menyaring daftar di bawah, sehingga unit yang tidak sedang tersedia tetap
+          terjangkau tanpa memenuhi halaman sejak awal. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {kartuRingkasan.map((kartu) => {
+          const aktif = saringan === kartu.kunci;
+          return (
+            <button
+              key={kartu.kunci}
+              type="button"
+              onClick={() => setSaringan(kartu.kunci)}
+              aria-pressed={aktif}
+              className={`rounded-card border bg-surface p-4 text-left shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
+                aktif ? "border-navy ring-1 ring-navy/20" : "border-rule hover:border-navy/40"
+              }`}
+            >
+              <span className="flex items-center gap-1.5 text-meta text-ink-soft">
+                <span className={`h-2 w-2 rounded-full ${kartu.warna}`} />
+                {kartu.label}
+              </span>
+              <span className="mt-1 block text-2xl font-bold tabular-nums text-ink">{kartu.nilai}</span>
+              <span className="mt-0.5 block text-micro text-ink-soft">{kartu.ket}</span>
+            </button>
+          );
+        })}
+      </div>
 
-          <span className="ml-2 text-meta font-medium text-ink-soft">
-            {formatDateShort(timelineDates[0])} – {formatDateShort(timelineDates[timelineDates.length - 1])}
+      {/* Kendali tambahan: durasi sewa dan pilihan tampilan jadwal */}
+      <div className="flex flex-col gap-3 rounded-md border border-rule bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="durasi-sewa" className="text-meta font-medium text-ink">
+            Butuh berapa lama
+          </label>
+          <select
+            id="durasi-sewa"
+            value={durasiHari}
+            onChange={(event) => setDurasiHari(Number(event.target.value))}
+            className="h-9 rounded-sm border border-rule-strong bg-canvas px-2 text-meta text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
+          >
+            {DURASI_OPTIONS.map((opsi) => (
+              <option key={opsi.hari} value={opsi.hari}>
+                {opsi.label}
+              </option>
+            ))}
+          </select>
+          <span className="text-micro text-ink-soft">
+            {ditampilkan.length} unit cocok
           </span>
         </div>
 
-        {/* Pilihan Mode & Legenda */}
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Legenda Warna */}
-          <div className="hidden items-center gap-3 text-micro text-ink-soft md:flex">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Tersedia
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-navy" /> Disewa / Berjalan
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-gold" /> Booking Masuk
-            </span>
-          </div>
-
-          {/* Switch Mode */}
-          <div className="flex items-center rounded-sm border border-rule bg-canvas p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode("timeline")}
-              className={`rounded-xs px-2.5 py-1 text-meta font-medium ${
-                viewMode === "timeline" ? "bg-surface font-semibold text-ink shadow-xs" : "text-ink-soft"
-              }`}
-            >
-              Timeline
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("table")}
-              className={`rounded-xs px-2.5 py-1 text-meta font-medium ${
-                viewMode === "table" ? "bg-surface font-semibold text-ink shadow-xs" : "text-ink-soft"
-              }`}
-            >
-              Tabel
-            </button>
-          </div>
+        <div className="flex items-center rounded-sm border border-rule bg-canvas p-0.5">
+          <button
+            type="button"
+            onClick={() => setTampilan("kartu")}
+            className={`rounded-xs px-2.5 py-1 text-meta font-medium ${
+              tampilan === "kartu" ? "bg-surface font-semibold text-ink shadow-xs" : "text-ink-soft"
+            }`}
+          >
+            Kartu
+          </button>
+          <button
+            type="button"
+            onClick={() => setTampilan("jadwal")}
+            className={`rounded-xs px-2.5 py-1 text-meta font-medium ${
+              tampilan === "jadwal" ? "bg-surface font-semibold text-ink shadow-xs" : "text-ink-soft"
+            }`}
+          >
+            Jadwal
+          </button>
         </div>
       </div>
 
-      {viewMode === "timeline" ? (
-        /* Matriks Gantt Visual */
-        <div className="overflow-x-auto rounded-lg border border-rule bg-surface shadow-card">
-          <div className="min-w-[860px]">
-            {/* Header Kalender.
-                Kolom armada memakan dua track, lalu tujuh kolom hari: 2 + 7 = 9.
-                Sebelumnya ditulis grid-cols-8, sehingga hari terakhir terlempar ke
-                baris baru dan garis vertikal antar-kolom tidak lagi sejajar. */}
-            <div className="grid grid-cols-9 border-b border-rule bg-canvas text-center">
-              <div className="col-span-2 border-r border-rule p-3 text-left text-meta font-semibold text-ink">
-                Armada ({activeVehicles.length} Unit)
+      {ditampilkan.length === 0 ? (
+        <div className="rounded-md border border-rule bg-canvas px-4 py-6 text-center">
+          <p className="text-body font-semibold text-ink">Tidak ada unit yang cocok</p>
+          <p className="mt-1 text-meta text-ink-soft">
+            Coba pilih kartu ringkasan lain, atau longgarkan pilihan durasi sewa.
+          </p>
+        </div>
+      ) : tampilan === "kartu" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {ditampilkan.map(({ entry, status, keterangan: ket }) => (
+            <div
+              key={entry.id}
+              className="rounded-lg border border-rule bg-surface p-4 shadow-card"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <StatusChip tone={VEHICLE_STATUS[status].tone}>
+                  {VEHICLE_STATUS[status].label}
+                </StatusChip>
+                <IconCalendar className="h-4 w-4 text-ink-soft" />
               </div>
-              {timelineDates.map((date) => {
-                const isCurrent = isSameDay(date, today);
-                return (
-                  <div
-                    key={date.toISOString()}
-                    className={`border-r border-rule p-2.5 text-center last:border-r-0 ${
-                      isCurrent ? "bg-teal/10 font-bold text-teal" : "text-ink"
-                    }`}
-                  >
-                    <span className="block text-micro uppercase tracking-wider text-ink-soft">
-                      {formatDayName(date)}
-                    </span>
-                    <span className="block text-body font-semibold">{formatDateShort(date)}</span>
-                    {isCurrent ? (
-                      <span className="mt-0.5 inline-block rounded-full bg-teal px-1.5 py-0.2 text-[9px] font-bold text-white uppercase">
-                        Hari Ini
-                      </span>
-                    ) : null}
-                  </div>
-                );
-              })}
+
+              <div className="mt-3 flex justify-center py-2">
+                <div className="flex h-12 w-20 items-center justify-center rounded-md bg-canvas text-ink-soft">
+                  <svg viewBox="0 0 48 28" className="h-7 w-12" fill="none" stroke="currentColor" strokeWidth="1.6">
+                    <path d="M3 20h42M7 20v-4l4-6h14l5 6h8l3 4v4M13 20a3 3 0 1 0 6 0 3 3 0 1 0-6 0M30 20a3 3 0 1 0 6 0 3 3 0 1 0-6 0" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Nama dan plat ditumpuk atas-bawah, bukan sejajar. Sejajar membuat
+                  nama panjang dan plat berebut lebar yang sama. */}
+              <div className="mt-2 space-y-1.5">
+                <p className="text-body font-semibold uppercase leading-tight text-ink">
+                  {entry.name}
+                </p>
+                <PlateBadge plate={entry.plate} />
+              </div>
+
+              <p className="mt-2.5 text-meta text-ink-soft">{ket}</p>
             </div>
-
-            {/* Baris per Kendaraan */}
-            <div className="divide-y divide-rule">
-              {activeVehicles.map((vehicle) => {
-                return (
-                  <div key={vehicle.id} className="grid grid-cols-9 hover:bg-canvas/40 transition-colors">
-                    {/* Info Kendaraan */}
-                    <div className="col-span-2 border-r border-rule p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-body font-semibold text-ink">{vehicle.name}</span>
-                        <StatusChip tone={VEHICLE_STATUS[vehicle.status].tone}>
-                          {VEHICLE_STATUS[vehicle.status].label}
-                        </StatusChip>
-                      </div>
-                      <PlateBadge plate={vehicle.plate} className="mt-1" />
-                    </div>
-
-                    {/* Kolom 6 Hari */}
-                    {timelineDates.map((date) => {
-                      const isCurrent = isSameDay(date, today);
-
-                      // Cek apakah tanggal ini bertabrakan dengan jadwal sewa kendaraan
-                      const activeSchedule = vehicle.schedules?.find((sch) => {
-                        const start = new Date(sch.startDateTime);
-                        start.setHours(0, 0, 0, 0);
-                        const end = new Date(sch.endDateTime);
-                        end.setHours(23, 59, 59, 999);
-                        return date >= start && date <= end;
-                      });
-
-                      return (
-                        <div
-                          key={date.toISOString()}
-                          className={`relative border-r border-rule p-1.5 last:border-r-0 flex items-center justify-center ${
-                            isCurrent ? "bg-teal/5" : ""
-                          }`}
-                        >
-                          {activeSchedule ? (
-                            <div
-                              title={`Pesanan ${activeSchedule.bookingCode || "Booking"}: ${activeSchedule.customerName || "Pelanggan"}`}
-                              className={`w-full rounded-xs px-2 py-1.5 text-center transition-all ${
-                                activeSchedule.status === "CONFIRMED" || activeSchedule.status === "IN_PROGRESS"
-                                  ? "bg-navy text-white"
-                                  : "bg-gold/20 text-ink border border-gold/40"
-                              }`}
-                            >
-                              <span className="block truncate text-micro font-bold">
-                                {activeSchedule.bookingCode || "Sewa"}
-                              </span>
-                              <span className="block truncate text-[10px] opacity-90">
-                                {activeSchedule.customerName || "Pelanggan"}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-micro text-ink-soft/40">—</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          ))}
         </div>
       ) : (
-        /* Tabel Ringkas Alternatif */
+        /* Tampilan jadwal: satu baris per unit, tanggal dipisah dari rentangnya
+           supaya kolom tanggal tidak memanjang. */
         <div className="overflow-x-auto rounded-lg border border-rule bg-surface shadow-card">
           <table className="w-full text-left">
             <thead className="border-b border-rule bg-canvas text-meta font-semibold text-ink">
               <tr>
-                <th className="px-4 py-3">Kendaraan & Plat</th>
-                <th className="px-4 py-3">Status Armada</th>
-                <th className="px-4 py-3">Jadwal Terdekat</th>
+                <th className="px-4 py-3">Kendaraan &amp; Plat</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Tanggal</th>
+                <th className="px-4 py-3">Lama</th>
                 <th className="px-4 py-3">Pelanggan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-rule text-body">
-              {activeVehicles.map((vehicle) => {
-                const nearest = vehicle.schedules?.[0];
+              {ditampilkan.map(({ entry, status }) => {
+                const jadwal = (entry.schedules ?? [])
+                  .slice()
+                  .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())[0];
+
+                const jumlahHari = jadwal
+                  ? Math.max(
+                      1,
+                      Math.ceil(
+                        (new Date(jadwal.endDateTime).getTime() - new Date(jadwal.startDateTime).getTime()) /
+                          (1000 * 60 * 60 * 24),
+                      ),
+                    )
+                  : 0;
+
                 return (
-                  <tr key={vehicle.id} className="hover:bg-canvas/50">
+                  <tr key={entry.id} className="hover:bg-canvas/50">
                     <td className="px-4 py-3">
-                      <span className="font-semibold text-ink">{vehicle.name}</span>
-                      <PlateBadge plate={vehicle.plate} className="mt-1" />
+                      <span className="block font-semibold text-ink">{entry.name}</span>
+                      <PlateBadge plate={entry.plate} className="mt-1" />
                     </td>
                     <td className="px-4 py-3">
-                      <StatusChip tone={VEHICLE_STATUS[vehicle.status].tone}>
-                        {VEHICLE_STATUS[vehicle.status].label}
+                      <StatusChip tone={VEHICLE_STATUS[status].tone}>
+                        {VEHICLE_STATUS[status].label}
                       </StatusChip>
                     </td>
-                    <td className="px-4 py-3 text-meta">
-                      {nearest ? (
-                        <span className="font-medium text-ink">
-                          {formatDateShort(new Date(nearest.startDateTime))} – {formatDateShort(new Date(nearest.endDateTime))}
-                        </span>
-                      ) : (
-                        <span className="text-ink-soft">Tidak ada jadwal aktif</span>
-                      )}
-                    </td>
                     <td className="px-4 py-3 text-meta text-ink">
-                      {nearest?.customerName ?? "—"}
+                      {jadwal ? formatDateSingle(jadwal.startDateTime) : "—"}
                     </td>
+                    <td className="px-4 py-3 text-meta tabular-nums text-ink-soft">
+                      {jadwal ? `${jumlahHari} hari` : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-meta text-ink">{jadwal?.customerName ?? "—"}</td>
                   </tr>
                 );
               })}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatRupiah } from "@/lib/format";
 import type { FinanceSummary } from "@/lib/operations";
 import { IconTrendingUp } from "@/components/ui/icons";
+import { Tabs } from "@/components/ui/Tabs";
 
 type Props = {
   initialData: FinanceSummary;
@@ -13,138 +14,153 @@ export function FinancialSummaryCard({ initialData }: Props) {
   const [data] = useState<FinanceSummary>(initialData);
   const { summary, rentalTypes, monthlyTrends } = data;
 
-  const maxMonthlyRevenue = Math.max(...monthlyTrends.map((m) => m.revenue), 1);
+  const ringkasan = (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-meta font-medium text-ink-soft">Total Omzet Bersih</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <IconTrendingUp className="h-4 w-4" />
+          </div>
+        </div>
+        <p className="mt-3 text-2xl font-bold tracking-tight text-ink tabular-nums">
+          {formatRupiah(summary.totalRevenue)}
+        </p>
+        <div className="mt-2 flex items-center gap-1.5 text-micro text-ink-soft">
+          <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+          <span>Dari {summary.completedBookingsCount} transaksi selesai</span>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Kartu Metrik Utama.
+      {/* Tiga kelompok tampilan dipisah jadi pil tab, bukan ditumpuk dalam satu
+          halaman. Sebelumnya metrik, komparasi model sewa, dan tren bulanan tampil
+          sekaligus sehingga halaman penuh dan tidak ada yang menonjol. */}
+      <Tabs
+        items={[
+          { id: "ringkasan", label: "Ringkasan" },
+          { id: "tren", label: "Tren Bulanan" },
+          { id: "model", label: "Model Sewa" },
+        ]}
+        panels={{
+          ringkasan,
+          tren: <PanelTren monthlyTrends={monthlyTrends} />,
+          model: <PanelModel rentalTypes={rentalTypes} />,
+        }}
+        defaultTab="ringkasan"
+      />
+    </div>
+  );
+}
 
-          Tiga kartu lain sengaja dihapus: Estimasi Piutang Berjalan, Transaksi Sewa
-          Selesai, dan Rata-rata Transaksi (AOV). Angka AOV dihitung dengan membagi
-          omzet lunas dengan seluruh pesanan selesai tanpa melihat status bayarnya,
-          sehingga selalu tampak lebih kecil dari seharusnya. Piutang juga bukan
-          angka yang dipakai mengambil keputusan di skala operasional ini. */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Total Omzet */}
-        <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-meta font-medium text-ink-soft">Total Omzet Bersih</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-              <IconTrendingUp className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-3 text-2xl font-bold tracking-tight text-ink tabular-nums">
-            {formatRupiah(summary.totalRevenue)}
-          </p>
-          <div className="mt-2 flex items-center gap-1.5 text-micro text-ink-soft">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-            <span>Dari {summary.completedBookingsCount} transaksi selesai</span>
-          </div>
+/* Panel tren dan model dipisah jadi komponen sendiri supaya isinya tidak
+   memperpanjang fungsi utama. Keduanya tetap ter-mount saat tab lain aktif,
+   jadi tidak ada perhitungan ulang saat berpindah tab. */
+function PanelTren({ monthlyTrends }: { monthlyTrends: FinanceSummary["monthlyTrends"] }) {
+  const maxMonthlyRevenue = Math.max(...monthlyTrends.map((m) => m.revenue), 1);
+
+  return (
+    <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
+      <div className="flex items-center justify-between border-b border-rule pb-3">
+        <div>
+          <h3 className="text-body font-semibold text-ink">Tren Omzet Bulanan</h3>
+          <p className="text-micro text-ink-soft">Histori pendapatan sewa (6 bulan terakhir)</p>
         </div>
+        <span className="text-micro font-medium text-ink-soft">IDR (Rupiah)</span>
       </div>
 
-      {/* Komparasi Sewa Lepas Kunci vs Dengan Supir & Tren Bulanan */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Komparasi Tipe Sewa */}
-        <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-rule pb-3">
-            <div>
-              <h3 className="text-body font-semibold text-ink">Komparasi Model Penyewaan</h3>
-              <p className="text-micro text-ink-soft">
-                Proporsi pendapatan sewa lepas kunci vs dengan supir
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-4">
-            {/* Visual Bar Proporsi */}
-            <div className="h-3.5 w-full overflow-hidden rounded-full bg-canvas flex">
-              <div
-                className="bg-navy transition-all duration-500"
-                style={{ width: `${rentalTypes.withoutDriver.percentage}%` }}
-                title={`Lepas Kunci: ${rentalTypes.withoutDriver.percentage}%`}
-              />
-              <div
-                className="bg-teal transition-all duration-500"
-                style={{ width: `${rentalTypes.withDriver.percentage}%` }}
-                title={`Dengan Supir: ${rentalTypes.withDriver.percentage}%`}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              {/* Lepas Kunci */}
-              <div className="rounded-md border border-rule/60 bg-canvas/60 p-3.5">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-navy shrink-0" />
-                  <span className="text-micro font-semibold uppercase tracking-wider text-ink">
-                    Lepas Kunci
-                  </span>
-                </div>
-                <p className="mt-2 text-lg font-bold text-ink tabular-nums">
-                  {formatRupiah(rentalTypes.withoutDriver.revenue)}
-                </p>
-                <div className="mt-1 flex items-center justify-between text-micro text-ink-soft">
-                  <span>{rentalTypes.withoutDriver.count} transaksi</span>
-                  <span className="font-semibold text-ink">{rentalTypes.withoutDriver.percentage}%</span>
-                </div>
+      <div className="mt-5 flex flex-col gap-3">
+        {monthlyTrends.map((trend) => {
+          const pct = maxMonthlyRevenue > 0 ? Math.round((trend.revenue / maxMonthlyRevenue) * 100) : 0;
+          return (
+            <div key={trend.label} className="flex items-center gap-3">
+              <span className="w-20 shrink-0 text-micro font-medium text-ink-soft">
+                {trend.label}
+              </span>
+              <div className="relative h-6 flex-1 overflow-hidden rounded bg-canvas">
+                <div
+                  className="h-full rounded bg-teal/20 transition-all duration-500"
+                  style={{ width: `${Math.max(pct, trend.revenue > 0 ? 5 : 0)}%` }}
+                />
+                <span className="absolute inset-y-0 left-2 flex items-center text-micro font-medium tabular-nums text-ink">
+                  {trend.revenue > 0 ? formatRupiah(trend.revenue) : "Rp 0"}
+                </span>
               </div>
-
-              {/* Dengan Supir */}
-              <div className="rounded-md border border-rule/60 bg-canvas/60 p-3.5">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-teal shrink-0" />
-                  <span className="text-micro font-semibold uppercase tracking-wider text-ink">
-                    Dengan Supir
-                  </span>
-                </div>
-                <p className="mt-2 text-lg font-bold text-ink tabular-nums">
-                  {formatRupiah(rentalTypes.withDriver.revenue)}
-                </p>
-                <div className="mt-1 flex items-center justify-between text-micro text-ink-soft">
-                  <span>{rentalTypes.withDriver.count} transaksi</span>
-                  <span className="font-semibold text-ink">{rentalTypes.withDriver.percentage}%</span>
-                </div>
-              </div>
+              <span className="w-16 text-right text-micro tabular-nums text-ink-soft">
+                {trend.bookings} sewa
+              </span>
             </div>
-          </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PanelModel({ rentalTypes }: { rentalTypes: FinanceSummary["rentalTypes"] }) {
+  return (
+    <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
+      <div className="border-b border-rule pb-3">
+        <h3 className="text-body font-semibold text-ink">Komparasi Model Penyewaan</h3>
+        <p className="text-micro text-ink-soft">
+          Proporsi pendapatan sewa lepas kunci vs dengan supir
+        </p>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-4">
+        <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-canvas">
+          <div
+            className="bg-navy transition-all duration-500"
+            style={{ width: `${rentalTypes.withoutDriver.percentage}%` }}
+            title={`Lepas Kunci: ${rentalTypes.withoutDriver.percentage}%`}
+          />
+          <div
+            className="bg-teal transition-all duration-500"
+            style={{ width: `${rentalTypes.withDriver.percentage}%` }}
+            title={`Dengan Supir: ${rentalTypes.withDriver.percentage}%`}
+          />
         </div>
 
-        {/* Tren Omzet 6 Bulan Terakhir */}
-        <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-rule pb-3">
-            <div>
-              <h3 className="text-body font-semibold text-ink">Tren Omzet Bulanan</h3>
-              <p className="text-micro text-ink-soft">Histori pendapatan sewa (6 bulan terakhir)</p>
+        <div className="grid grid-cols-2 gap-4 pt-2">
+          <div className="rounded-md border border-rule/60 bg-canvas/60 p-3.5">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-navy" />
+              <span className="text-micro font-semibold uppercase tracking-wider text-ink">
+                Lepas Kunci
+              </span>
             </div>
-            <span className="text-micro font-medium text-ink-soft">IDR (Rupiah)</span>
+            <p className="mt-2 text-lg font-bold tabular-nums text-ink">
+              {formatRupiah(rentalTypes.withoutDriver.revenue)}
+            </p>
+            <div className="mt-1 flex items-center justify-between text-micro text-ink-soft">
+              <span>{rentalTypes.withoutDriver.count} transaksi</span>
+              <span className="font-semibold text-ink">
+                {rentalTypes.withoutDriver.percentage}%
+              </span>
+            </div>
           </div>
 
-          <div className="mt-5 flex flex-col gap-3">
-            {monthlyTrends.map((trend) => {
-              const pct = maxMonthlyRevenue > 0 ? Math.round((trend.revenue / maxMonthlyRevenue) * 100) : 0;
-              return (
-                <div key={trend.label} className="flex items-center gap-3">
-                  <span className="w-20 shrink-0 text-micro font-medium text-ink-soft">
-                    {trend.label}
-                  </span>
-                  <div className="relative h-6 flex-1 overflow-hidden rounded bg-canvas">
-                    <div
-                      className="h-full rounded bg-teal/20 transition-all duration-500"
-                      style={{ width: `${Math.max(pct, trend.revenue > 0 ? 5 : 0)}%` }}
-                    />
-                    <span className="absolute inset-y-0 left-2 flex items-center text-micro font-medium tabular-nums text-ink">
-                      {trend.revenue > 0 ? formatRupiah(trend.revenue) : "Rp 0"}
-                    </span>
-                  </div>
-                  <span className="w-16 text-right text-micro tabular-nums text-ink-soft">
-                    {trend.bookings} sewa
-                  </span>
-                </div>
-              );
-            })}
+          <div className="rounded-md border border-rule/60 bg-canvas/60 p-3.5">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-teal" />
+              <span className="text-micro font-semibold uppercase tracking-wider text-ink">
+                Dengan Supir
+              </span>
+            </div>
+            <p className="mt-2 text-lg font-bold tabular-nums text-ink">
+              {formatRupiah(rentalTypes.withDriver.revenue)}
+            </p>
+            <div className="mt-1 flex items-center justify-between text-micro text-ink-soft">
+              <span>{rentalTypes.withDriver.count} transaksi</span>
+              <span className="font-semibold text-ink">{rentalTypes.withDriver.percentage}%</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
