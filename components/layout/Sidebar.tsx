@@ -25,6 +25,8 @@ import {
 type SidebarProps = {
   open: boolean;
   onClose: () => void;
+  /* Angka pekerjaan yang menunggu, dipetakan per tujuan navigasi. */
+  navCounts?: Record<string, number>;
 };
 
 /* Satu ikon per tujuan navigasi, semuanya dari keluarga ikon yang sama. */
@@ -42,7 +44,7 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
   "/admin": IconShield,
 };
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const fleetActive = NAV_ENTRIES.some(
@@ -153,13 +155,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
             const active = pathname === entry.href;
             const Ikon = IKON_NAV[entry.href] ?? IconDashboard;
+            const jumlah = navCounts?.[entry.href] ?? 0;
             return (
               <Link
                 key={entry.href}
                 href={entry.href}
                 aria-current={active ? "page" : undefined}
                 onClick={onClose}
-                className={`flex h-11 items-center gap-2.5 rounded-nav px-3 text-body font-medium transition-colors ${
+                className={`flex h-11 items-center gap-2 rounded-nav px-2.5 text-body font-medium transition-colors ${
                   active
                     ? "bg-teal text-white"
                     : "text-white/85 hover:bg-navy-hover hover:text-white"
@@ -168,7 +171,20 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <Ikon
                   className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/70"}`}
                 />
-                {entry.label}
+                <span className="flex-1 whitespace-nowrap">{entry.label}</span>
+                {/* Angka hanya muncul kalau memang ada yang menunggu, supaya tidak
+                    ada lingkaran nol yang menambah keramaian tanpa arti. Ukurannya
+                    dijaga kecil agar label menu tetap utuh. */}
+                {jumlah > 0 ? (
+                  <span
+                    aria-label={`${jumlah} menunggu tindakan`}
+                    className={`inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none ${
+                      active ? "bg-white text-teal" : "bg-gold text-ink"
+                    }`}
+                  >
+                    {jumlah > 99 ? "99+" : jumlah}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

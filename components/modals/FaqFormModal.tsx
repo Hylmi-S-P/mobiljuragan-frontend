@@ -4,6 +4,7 @@ import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createFaqAction, updateFaqAction, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
+import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import { Modal } from "@/components/ui/Modal";
 import { Toggle } from "@/components/ui/Toggle";
 import { FAQ_CATEGORY_PRESETS } from "@/lib/labels";
@@ -132,10 +133,11 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
           <label htmlFor={`${fieldId}-answer`} className="block text-meta font-medium text-ink">
             Jawaban Lengkap <span className="text-danger">*</span>
           </label>
-          <textarea
+          <AutoGrowTextarea
             id={`${fieldId}-answer`}
             name="answer"
             rows={4}
+            maxHeight={320}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             aria-invalid={Boolean(state?.errors?.answer)}

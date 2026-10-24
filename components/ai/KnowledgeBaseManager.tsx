@@ -7,6 +7,7 @@ import {
   deleteKnowledgeDocumentAction,
   parseKnowledgeFileAction,
 } from "@/app/actions";
+import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import {
   Table,
   TableBody,
@@ -397,8 +398,9 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-meta font-semibold text-ink">Isi Dokumen Pengetahuan</label>
-                <textarea
+                <AutoGrowTextarea
                   rows={6}
+                  maxHeight={420}
                   value={formContent}
                   onChange={(e) => setFormContent(e.target.value)}
                   placeholder="Tuliskan poin-poin persyaratan, aturan jalan, atau ketentuan operasional di sini..."
