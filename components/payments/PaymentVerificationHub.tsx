@@ -424,8 +424,12 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
         </Table>
       </Panel>
 
-      {/* Modal Pemeriksaan Bukti & Verifikasi Pembayaran */}
+      {/* Modal Pemeriksaan Bukti & Verifikasi Pembayaran.
+          `key` mengikat state modal ke pembayaran yang sedang dibuka. Tanpa ini,
+          centang "sudah dicocokkan" dan tahap konfirmasi terbawa ke pembayaran
+          berikutnya, sehingga admin bisa menandai lunas tanpa membaca peringatan. */}
       <PaymentProofModal
+        key={selectedPayment?.id ?? "tanpa-pembayaran"}
         open={isModalOpen}
         payment={selectedPayment}
         onClose={() => {

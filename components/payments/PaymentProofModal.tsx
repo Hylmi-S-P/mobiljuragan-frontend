@@ -33,6 +33,13 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
 
+  /* Menandai lunas tidak bisa dibatalkan dari layar ini: setelah PAID, tombol
+     setujui dan tolak hilang, dan backend menolak perubahan status apa pun. Karena
+     itu persetujuan dibuat dua tahap — admin harus menyatakan sudah mencocokkan
+     dana lebih dulu, baru tombolnya aktif. */
+  const [danaDicocokkan, setDanaDicocokkan] = useState(false);
+  const [setujuKedua, setSetujuKedua] = useState(false);
+
   if (!payment) return null;
 
   const resolvedImageUrl = resolveImageUrl(payment.proofImageUrl);
@@ -46,6 +53,14 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
     if (!payment) return;
     if (action === "REJECT" && !notes.trim()) {
       setError("Mohon isi alasan penolakan pada kolom catatan verifikasi.");
+      return;
+    }
+
+    /* Tahap kedua untuk persetujuan: satu klik lagi setelah peringatan. Ini
+       mencegah admin menandai lunas karena salah tekan, bukan karena ragu. */
+    if (action === "APPROVE" && !setujuKedua) {
+      setSetujuKedua(true);
+      setError(null);
       return;
     }
 
@@ -78,21 +93,48 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
       </Button>
 
       {isPending ? (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="danger"
-            onClick={() => handleVerify("REJECT")}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Memproses..." : "Tolak Pembayaran"}
-          </Button>
-          <Button
-            variant="confirm"
-            onClick={() => handleVerify("APPROVE")}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Memproses..." : "Setujui Pembayaran"}
-          </Button>
+        <div className="flex flex-col items-end gap-2">
+          {/* Peringatan muncul sebelum tombol setujui bisa ditekan. */}
+          {!setujuKedua ? (
+            <label className="flex max-w-md items-start gap-2 text-meta text-ink">
+              <input
+                type="checkbox"
+                checked={danaDicocokkan}
+                onChange={(event) => setDanaDicocokkan(event.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded-xs border border-rule-strong"
+              />
+              <span>
+                Saya sudah mencocokkan dana masuk dengan nominal tagihan. Status lunas
+                tidak bisa dibatalkan setelah disimpan.
+              </span>
+            </label>
+          ) : (
+            <p className="max-w-md rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-meta text-danger">
+              Tekan sekali lagi untuk menandai pembayaran ini lunas. Tindakan ini tidak
+              bisa dibatalkan.
+            </p>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="danger"
+              onClick={() => handleVerify("REJECT")}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Memproses..." : "Tolak Pembayaran"}
+            </Button>
+            <Button
+              variant="confirm"
+              onClick={() => handleVerify("APPROVE")}
+              disabled={isSubmitting || (!setujuKedua && !danaDicocokkan)}
+            >
+              {isSubmitting
+                ? "Memproses..."
+                : setujuKedua
+                  ? "Ya, Tandai Lunas"
+                  : "Setujui Pembayaran"}
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="text-meta text-ink-soft">
