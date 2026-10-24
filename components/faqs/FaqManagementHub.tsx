@@ -3,25 +3,15 @@
 import { useState, useEffect, useOptimistic, startTransition } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FaqFormModal } from "@/components/modals/FaqFormModal";
-import { DeleteFaqModal } from "@/components/modals/DeleteFaqModal";
+import { FaqDetailModal } from "@/components/faqs/FaqDetailModal";
+import { FaqCardGrid } from "@/components/faqs/FaqCardGrid";
 import { Button } from "@/components/ui/Button";
-import { Panel, PageLead } from "@/components/ui/PageLayout";
-import { StatusChip } from "@/components/ui/StatusChip";
-import { Toggle } from "@/components/ui/Toggle";
+import { Panel } from "@/components/ui/PageLayout";
+import { Toast } from "@/components/ui/Toast";
 import {
   IconPlus,
   IconSearch,
-  IconPencil,
-  IconTrash,
 } from "@/components/ui/icons";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/Table";
 import { FAQ_CATEGORY_PRESETS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
 import { useDebounce } from "@/lib/useDebounce";
@@ -42,18 +32,16 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
-  const [deletingFaq, setDeletingFaq] = useState<FaqItem | null>(null);
+  const [detailFaq, setDetailFaq] = useState<FaqItem | null>(null);
 
-  // Notice notification (dengan auto-dismiss otomatis 2.5 detik)
-  const [notice, setNotice] = useState<string | null>(null);
+  // Toast notification
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<"success" | "error" | "info">("success");
 
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => {
-      setNotice(null);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [notice]);
+  const showToast = (msg: string, tone: "success" | "error" | "info" = "success") => {
+    setToastMessage(msg);
+    setToastTone(tone);
+  };
 
   // TanStack Query for caching and server state synchronization
   const { data: faqs = initialFaqs, isFetching } = useQuery<FaqItem[]>({
@@ -91,11 +79,12 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
       if (context?.previous) {
         queryClient.setQueryData(["adminFaqs"], context.previous);
       }
-      setNotice("Gagal memperbarui status visibilitas FAQ.");
+      showToast("Gagal memperbarui status visibilitas FAQ.", "error");
     },
     onSuccess: (data) => {
-      setNotice(
-        `Status FAQ berhasil diubah menjadi ${data.isActive ? "Tampil di Mobile" : "Disembunyikan"}.`,
+      showToast(
+        `FAQ berhasil diubah menjadi ${data.isActive ? "Tampil di Mobile" : "Disembunyikan"}.`,
+        "success",
       );
     },
     onSettled: () => {
@@ -112,11 +101,9 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
 
   // Filtering
   const filteredFaqs = faqs.filter((faq) => {
-    // Kategori
     if (selectedCategory !== "Semua" && faq.category !== selectedCategory) {
       return false;
     }
-    // Search
     const q = debouncedSearchQuery.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -137,6 +124,10 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
     startTransition(async () => {
       const nextActive = !faq.isActive;
       setOptimisticFaq({ id: faq.id, isActive: nextActive });
+      // Juga update detailFaq jika sedang dibuka
+      if (detailFaq && detailFaq.id === faq.id) {
+        setDetailFaq({ ...detailFaq, isActive: nextActive });
+      }
       try {
         await toggleVisibilityMutation.mutateAsync(faq.id);
       } catch {
@@ -147,31 +138,25 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
 
   return (
     <>
-      <PageLead lead="Kelola daftar tanya jawab pelanggan, kelompokkan kategori, dan kendalikan visibilitas langsung ke aplikasi mobile serta basis pengetahuan RAG AI Gateway." />
-
-      {notice ? (
-        <div className="mt-3 flex items-center justify-between rounded-sm border border-teal/40 bg-teal/10 px-3.5 py-2 text-meta text-teal transition-all animate-in fade-in">
-          <span>{notice}</span>
-          <button
-            type="button"
-            onClick={() => setNotice(null)}
-            className="text-micro font-semibold hover:underline"
-          >
-            Tutup
-          </button>
-        </div>
+      {toastMessage ? (
+        <Toast
+          message={toastMessage}
+          tone={toastTone}
+          durationMs={3000}
+          onClose={() => setToastMessage(null)}
+        />
       ) : null}
 
-      <div className="mt-6 flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         <Panel
-          title="Daftar FAQ & Pengaturan Tampilan Mobile"
+          title="Daftar FAQ &amp; Basis Pengetahuan Mobile"
           action={
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="relative w-72">
+              <div className="relative w-64">
                 <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
                 <input
                   type="text"
-                  placeholder="Cari pertanyaan, jawaban, atau kategori..."
+                  placeholder="Cari pertanyaan, panduan..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-10 w-full rounded-sm border border-rule bg-canvas pl-9 pr-3 text-meta text-ink placeholder:text-ink-soft focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
@@ -179,20 +164,20 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
               </div>
 
               <Button
-                variant="primary"
+                variant="confirm"
                 onClick={() => {
                   setEditingFaq(null);
                   setIsFormOpen(true);
                 }}
               >
                 <IconPlus className="h-4 w-4" />
-                Tambah FAQ Baru
+                Tambah FAQ
               </Button>
             </div>
           }
         >
           {/* Category Filter Chips */}
-          <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-rule pb-3.5">
+          <div className="mb-5 flex flex-wrap items-center gap-1.5 border-b border-rule pb-3.5">
             <span className="mr-2 text-micro font-semibold uppercase text-ink-soft">Kategori:</span>
             {filterCategories.map((cat) => {
               const active = selectedCategory === cat;
@@ -203,7 +188,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
                   onClick={() => setSelectedCategory(cat)}
                   className={`rounded-sm px-3 py-1 text-meta font-medium transition-colors ${
                     active
-                      ? "bg-navy text-white shadow-xs"
+                      ? "bg-navy text-white shadow-xs font-semibold"
                       : "border border-rule bg-surface text-ink hover:bg-canvas"
                   }`}
                 >
@@ -213,88 +198,34 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
             })}
           </div>
 
-          {isFetching ? (
-            <p className="mb-2 text-micro text-ink-soft">Menyinkronkan data terbaru dari server...</p>
-          ) : null}
-
-          <Table caption="Daftar FAQ resmi MobilJuragan dan pengaturan visibilitas">
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell className="w-[520px]">Pertanyaan &amp; Jawaban</TableHeaderCell>
-                <TableHeaderCell className="w-[170px]">Kategori</TableHeaderCell>
-                <TableHeaderCell className="w-[170px] text-center">Visibilitas Mobile</TableHeaderCell>
-                <TableHeaderCell className="w-[160px] text-right">Aksi</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {optimisticFaqs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-meta text-ink-soft">
-                    {faqs.length === 0
-                      ? "Belum ada FAQ yang tersimpan. Klik tombol 'Tambah FAQ Baru' untuk mulai menambahkan."
-                      : `Tidak ada FAQ yang cocok dengan filter atau pencarian "${searchQuery}".`}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                optimisticFaqs.map((faq) => (
-                  <TableRow key={faq.id}>
-                    {/* Pertanyaan & Jawaban */}
-                    <TableCell>
-                      <p className="text-body font-semibold text-ink">{faq.question}</p>
-                      <p className="mt-1 line-clamp-2 text-meta text-ink-soft">{faq.answer}</p>
-                    </TableCell>
-
-                    {/* Kategori */}
-                    <TableCell>
-                      <StatusChip tone="neutral">{faq.category}</StatusChip>
-                    </TableCell>
-
-                    {/* Visibilitas Mobile Switch */}
-                    <TableCell className="text-center">
-                      <div className="flex justify-center">
-                        <Toggle
-                          checked={faq.isActive}
-                          disabled={toggleVisibilityMutation.isPending}
-                          onChange={() => handleToggleVisibility(faq)}
-                          labelOn="Tampil"
-                          labelOff="Sembunyi"
-                        />
-                      </div>
-                    </TableCell>
-
-                    {/* Aksi Edit & Hapus */}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingFaq(faq);
-                            setIsFormOpen(true);
-                          }}
-                          aria-label={`Edit FAQ: ${faq.question}`}
-                        >
-                          <IconPencil className="h-3.5 w-3.5" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeletingFaq(faq)}
-                          aria-label={`Hapus FAQ: ${faq.question}`}
-                        >
-                          <IconTrash className="h-3.5 w-3.5 text-danger" />
-                          Hapus
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          {/* Grid Kartu FAQ */}
+          <FaqCardGrid
+            faqs={optimisticFaqs}
+            onSelectFaq={(faq) => setDetailFaq(faq)}
+            onToggleActive={handleToggleVisibility}
+            isPendingToggle={toggleVisibilityMutation.isPending}
+          />
         </Panel>
       </div>
+
+      {/* Modal Detail & Kelola FAQ (Termasuk Konfirmasi Hapus 2 Tahap) */}
+      {detailFaq ? (
+        <FaqDetailModal
+          faq={detailFaq}
+          isOpen={Boolean(detailFaq)}
+          onClose={() => setDetailFaq(null)}
+          onEdit={(faq) => {
+            setDetailFaq(null);
+            setEditingFaq(faq);
+            setIsFormOpen(true);
+          }}
+          onToggleActive={handleToggleVisibility}
+          onDeleted={(_id) => {
+            queryClient.invalidateQueries({ queryKey: ["adminFaqs"] });
+            showToast("FAQ berhasil dihapus permanen.", "info");
+          }}
+        />
+      ) : null}
 
       {/* Modal Tambah / Edit FAQ */}
       {isFormOpen ? (
@@ -307,23 +238,12 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
           }}
           onSave={(saved) => {
             queryClient.invalidateQueries({ queryKey: ["adminFaqs"] });
-            setNotice(
+            showToast(
               editingFaq
                 ? `FAQ "${saved.question.slice(0, 30)}..." berhasil diperbarui.`
                 : "FAQ baru berhasil ditambahkan.",
+              "success",
             );
-          }}
-        />
-      ) : null}
-
-      {/* Modal Konfirmasi Hapus FAQ */}
-      {deletingFaq ? (
-        <DeleteFaqModal
-          faq={deletingFaq}
-          onClose={() => setDeletingFaq(null)}
-          onDeleted={() => {
-            queryClient.invalidateQueries({ queryKey: ["adminFaqs"] });
-            setNotice("FAQ berhasil dihapus.");
           }}
         />
       ) : null}

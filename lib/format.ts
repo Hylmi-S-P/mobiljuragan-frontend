@@ -49,6 +49,15 @@ export function formatDateRange(startIso: string, endIso: string, dayCount: numb
   return `${range} ${end.year} (${dayCount} Hari)`;
 }
 
+/* Satu tanggal saja, tanpa rentang dan tanpa jumlah hari.
+   Dipakai di tempat yang memang hanya butuh tanggal mulai, supaya tidak muncul
+   tulisan berulang seperti "20 - 20 Nov 2026 (1 Hari)". */
+export function formatDateSingle(iso: string): string {
+  const bagian = bagianTanggalWit(iso);
+  if (!bagian) return "Tanggal tidak tersedia";
+  return `${bagian.day} ${MONTHS[bagian.month]} ${bagian.year}`;
+}
+
 export function formatCurrencyInput(value: string): string {
   const digits = value.replace(/\D/g, "");
   if (digits.length === 0) return "";
@@ -76,3 +85,25 @@ export function parseRupiahDots(value: string): number {
   const digits = value.replace(/\D/g, "");
   return digits ? Number(digits) : 0;
 }
+
+export function formatDateTimeWit(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  try {
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return String(iso);
+    return (
+      new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jayapura",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date) + " WIT"
+    );
+  } catch {
+    return String(iso);
+  }
+}
+
+

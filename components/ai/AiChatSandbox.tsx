@@ -13,11 +13,6 @@ type Message = {
   tokensPerSecond?: number;
   tokens?: number | null;
   referencedDocuments?: string[];
-  intent?: "RENTAL_FAQ" | "ORDER_TRACKING" | "EMERGENCY_INCIDENT" | "HARMFUL_OUT_OF_SCOPE";
-  confidence?: number;
-  reasoning?: string;
-  guardrailSource?: "ai_classifier" | "rule_fallback";
-  bypassedRag?: boolean;
 };
 
 type Props = {
@@ -26,11 +21,10 @@ type Props = {
 };
 
 const SUGGESTIONS = [
-  "Apa saja syarat sewa lepas kunci Innova?",
-  "Berapa sewa harian Fortuner ke Distrik Sota?",
-  "Tolong mobil saya mogok di jalan poros Kurik!",
-  "Cek status pesanan #BKG-1002",
-  "Tuliskan script exploit python database!",
+  "Bisa sewa mobil ke Distrik Sota?",
+  "Apa saja syarat sewa lepas kunci?",
+  "Berapa denda keterlambatan pengembalian unit?",
+  "Rekomendasi armada untuk jalan ke Boven Digoel?",
 ];
 
 export function AiChatSandbox({
@@ -81,11 +75,6 @@ export function AiChatSandbox({
           tokensPerSecond: res.data.tokensPerSecond,
           tokens: res.data.tokens,
           referencedDocuments: res.data.referencedDocuments,
-          intent: res.data.intent,
-          confidence: res.data.confidence,
-          reasoning: res.data.reasoning,
-          guardrailSource: res.data.guardrailSource,
-          bypassedRag: res.data.bypassedRag,
         };
         setMessages((prev) => [...prev, botMsg]);
       } else {
@@ -131,9 +120,7 @@ export function AiChatSandbox({
             <IconChat className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-body font-semibold text-ink">
-              Test Chat Sandbox (Live Model &amp; RAG Simulator)
-            </h2>
+            <h2 className="text-body font-semibold text-ink">Test Chat AI</h2>
             <p className="text-meta text-ink-soft">
               Uji coba respons asisten AI secara interaktif dengan basis pengetahuan RAG resmi.
             </p>
@@ -185,49 +172,15 @@ export function AiChatSandbox({
                 }`}
               >
                 {!isUser ? (
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-rule/50 pb-1.5">
-                    <div className="flex items-center gap-1.5 text-micro font-semibold text-teal">
-                      <IconSparkles className="h-3.5 w-3.5" />
-                      <span>MobilJuragan AI Assistant</span>
-                    </div>
-
-                    {msg.intent ? (
-                      <div
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
-                          msg.intent === "EMERGENCY_INCIDENT"
-                            ? "bg-rose-50 text-rose-700 border-rose-300 animate-pulse"
-                            : msg.intent === "HARMFUL_OUT_OF_SCOPE"
-                            ? "bg-amber-50 text-amber-800 border-amber-300"
-                            : msg.intent === "ORDER_TRACKING"
-                            ? "bg-sky-50 text-sky-700 border-sky-300"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-300"
-                        }`}
-                        title={
-                          msg.reasoning
-                            ? `Alasan: ${msg.reasoning} (${msg.guardrailSource ?? "guardrail"})`
-                            : undefined
-                        }
-                      >
-                        <span>
-                          {msg.intent === "EMERGENCY_INCIDENT" && "🚨"}
-                          {msg.intent === "HARMFUL_OUT_OF_SCOPE" && "🛡️"}
-                          {msg.intent === "ORDER_TRACKING" && "📦"}
-                          {msg.intent === "RENTAL_FAQ" && "📋"}
-                        </span>
-                        <span>{msg.intent}</span>
-                        {msg.confidence !== undefined ? (
-                          <span className="opacity-80 font-mono text-[10px]">
-                            ({Math.round(msg.confidence * 100)}%)
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
+                  <div className="mb-1 flex items-center gap-1.5 text-micro font-semibold text-teal">
+                    <IconSparkles className="h-3.5 w-3.5" />
+                    <span>MobilJuragan AI Assistant</span>
                   </div>
                 ) : null}
 
                 <div className="whitespace-pre-line text-sm">{msg.content}</div>
 
-                {/* Metadata Badges: Model, Latency, TPS, RAG / Bypass status */}
+                {/* 4 Metadata Badges: Model, Latency, TPS, Referenced Docs */}
                 {!isUser && msg.modelUsed ? (
                   <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-rule/60 pt-2 text-[11px] text-ink-soft">
                     <span className="font-mono bg-canvas px-1.5 py-0.5 rounded border border-rule/80">
@@ -241,11 +194,7 @@ export function AiChatSandbox({
                         ⚡ {msg.tokensPerSecond} tok/s
                       </span>
                     ) : null}
-                    {msg.bypassedRag ? (
-                      <span className="rounded bg-rose-50 px-1.5 py-0.5 font-medium text-rose-700 border border-rose-200">
-                        ⚡ RAG Bypassed (Respon Cepat)
-                      </span>
-                    ) : msg.referencedDocuments && msg.referencedDocuments.length > 0 ? (
+                    {msg.referencedDocuments && msg.referencedDocuments.length > 0 ? (
                       <span
                         className="rounded bg-teal/10 px-1.5 py-0.5 font-medium text-teal border border-teal/20"
                         title={msg.referencedDocuments.join(", ")}

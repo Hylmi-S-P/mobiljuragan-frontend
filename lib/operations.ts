@@ -183,6 +183,24 @@ const BOOKING_STATUS_MAP: Record<CanonicalBookingStatus, BookingStatus> = {
   CANCELLED: "ditolak",
 };
 
+/* Pesanan yang sudah dikonfirmasi tetapi belum punya supir harus muncul sebagai
+   "perlu alokasi supir", bukan "tarif terkonfirmasi". Sebelumnya status ini tidak
+   pernah dihasilkan sama sekali, sehingga pill "Perlu Alokasi Sopir" di halaman
+   Pemesanan Masuk selalu menampilkan angka nol dan terlihat seperti filter rusak. */
+function resolveBookingStatus(b: ApiBooking): BookingStatus {
+  const dasar = BOOKING_STATUS_MAP[b.status] ?? "perlu_konfirmasi_tarif";
+
+  const butuhSupir = b.rentalType === "WITH_DRIVER";
+  const sudahDikonfirmasi = dasar === "tarif_terkonfirmasi";
+  const supirBelumAda = b.driverId === null || b.driverId === undefined;
+
+  if (butuhSupir && sudahDikonfirmasi && supirBelumAda) {
+    return "perlu_alokasi_sopir";
+  }
+
+  return dasar;
+}
+
 type ApiBooking = {
   id: string;
   bookingCode: string;
@@ -199,6 +217,13 @@ type ApiBooking = {
   customer?: { fullName: string; phoneNumber: string } | null;
   vehicle?: { externalId: string | null; id: string; name: string; licensePlate: string } | null;
   driver?: { fullName: string; readiness?: string } | null;
+  payment?: {
+    id: string;
+    status: any;
+    proofImageUrl?: string | null;
+    method?: string | null;
+    totalAmount?: string | number | null;
+  } | null;
 };
 
 function countDays(start: string, end: string): number {
@@ -231,8 +256,9 @@ function mapBooking(b: ApiBooking): Booking {
     startDate: b.startDateTime,
     endDate: b.endDateTime,
     dayCount: countDays(b.startDateTime, b.endDateTime),
-    status: BOOKING_STATUS_MAP[b.status] ?? "perlu_konfirmasi_tarif",
+    status: resolveBookingStatus(b),
     rawStatus: b.status,
+    tariffStatus: b.tariffStatus,
     quotedAmount: b.quotedAmount !== null && b.quotedAmount !== undefined ? Number(b.quotedAmount) : null,
     driverId: b.driverId,
     serviceType: isDriverService ? "Dengan Supir" : "Lepas Kunci",
@@ -241,6 +267,18 @@ function mapBooking(b: ApiBooking): Booking {
     driverStatus: b.driver?.readiness ? (DRIVER_READINESS[b.driver.readiness] ?? null) : null,
     whatsappIntent: (b as { whatsappIntent?: { message: string; url: string } }).whatsappIntent ?? null,
     lineItems,
+    payment: b.payment
+      ? {
+          id: b.payment.id,
+          status: b.payment.status,
+          proofImageUrl: b.payment.proofImageUrl ?? null,
+          method: b.payment.method ?? null,
+          totalAmount:
+            b.payment.totalAmount !== null && b.payment.totalAmount !== undefined
+              ? Number(b.payment.totalAmount)
+              : null,
+        }
+      : null,
   };
 }
 
@@ -334,6 +372,8 @@ export type SupportTicketView = {
   title: string;
   category: string;
   status: string;
+  handledBy?: "AI" | "HUMAN" | string;
+  handoverAt?: string | null;
   messageCount: number;
   updatedAt: string;
 };
@@ -361,6 +401,8 @@ type ApiTicket = {
   title: string;
   category: string;
   status: string;
+  handledBy?: string;
+  handoverAt?: string | null;
   updatedAt: string;
   customer?: { fullName: string } | null;
   _count?: { messages: number };
@@ -375,6 +417,8 @@ export async function getSupportTickets(): Promise<SupportTicketView[]> {
     title: t.title,
     category: t.category,
     status: TICKET_STATUS_MAP[t.status] ?? "baru",
+    handledBy: t.handledBy,
+    handoverAt: t.handoverAt,
     messageCount: t._count?.messages ?? 0,
     updatedAt: t.updatedAt,
   }));
@@ -391,15 +435,24 @@ type ApiTicketDetail = ApiTicket & {
 };
 
 export async function getTicketMessages(ticketId: string): Promise<TicketMessageView[]> {
+  const detail = await getTicketDetail(ticketId);
+  return detail.messages;
+}
+
+export async function getTicketDetail(
+  ticketId: string,
+): Promise<{ messages: TicketMessageView[]; handledBy?: string }> {
   const data = await apiGet<ApiTicketDetail>(`/admin/tickets/${encodeURIComponent(ticketId)}`);
-  return (data?.messages ?? []).map((m) => ({
+  const messages = (data?.messages ?? []).map((m) => ({
     id: m.id,
-    from: m.isCustomer ? "pelanggan" : "tim",
+    from: m.isCustomer ? ("pelanggan" as const) : ("tim" as const),
     text: m.body,
     sentAt: m.sentAt,
     senderName: m.sender?.fullName ?? "Tim",
   }));
+  return { messages, handledBy: data?.handledBy };
 }
+
 
 /* Laporan Keuangan */
 

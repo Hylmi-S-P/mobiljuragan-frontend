@@ -49,6 +49,11 @@ export type Booking = {
   dayCount: number;
   status: BookingStatus;
   rawStatus?: CanonicalBookingStatus;
+  /* Status penetapan tarif dari backend: PENDING, QUOTED, atau CONFIRMED.
+     Sebelumnya nilai ini sudah dikirim backend tetapi dibuang saat pemetaan,
+     sehingga antarmuka tidak punya cara membedakan pesanan yang tarifnya belum
+     ditetapkan dari yang sudah dikonfirmasi. */
+  tariffStatus: string;
   serviceType: string;
   pickupRoute: string | null;
   quotedAmount?: number | null;
@@ -57,6 +62,13 @@ export type Booking = {
   driverStatus: DriverStatus | null;
   whatsappIntent?: { message: string; url: string } | null;
   lineItems: LineItem[];
+  payment?: {
+    id: string;
+    status: PaymentStatus;
+    proofImageUrl?: string | null;
+    method?: PaymentMethod | string | null;
+    totalAmount?: number | null;
+  } | null;
 };
 
 export type DriverStatus = "siaga" | "libur" | "sedang_tugas";
@@ -161,6 +173,8 @@ export type AdminPaymentItem = {
   senderAccount?: string | null;
   verifiedAt?: string | null;
   verifiedBy?: string | null;
+  acknowledgedAt?: string | null;
+  acknowledgedBy?: string | null;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;

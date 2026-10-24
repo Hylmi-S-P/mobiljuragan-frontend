@@ -10,7 +10,7 @@ export const WORKSPACE_ROLE = "Portal admin";
 export const NAV_ENTRIES: NavEntry[] = [
   { label: "Dashboard", href: "/" },
   { label: "Pemesanan Masuk", href: "/bookings" },
-  { label: "Verifikasi Pembayaran", href: "/payments" },
+  { label: "Verifikasi Pembayaran", href: "/bookings?tab=pembayaran" },
   {
     label: "Manajemen Armada",
     items: [
@@ -21,7 +21,7 @@ export const NAV_ENTRIES: NavEntry[] = [
   },
   { label: "Customer Care", href: "/customer-care" },
   { label: "Laporan Keuangan", href: "/finance" },
-  { label: "AI & RAG Hub", href: "/admin/ai-hub" },
+  { label: "AI HUB", href: "/admin/ai-hub" },
   { label: "Manajemen FAQ", href: "/faqs" },
   { label: "Manajemen Admin", href: "/admin" },
 ];
@@ -46,5 +46,8 @@ export function pageTitleFor(pathname: string): string {
   if (/^\/bookings\/.+/.test(pathname)) return "Detail Pemesanan";
   if (/^\/payments(\/.*)?$/.test(pathname)) return "Verifikasi Pembayaran";
   if (EXTRA_PAGE_TITLES[pathname]) return EXTRA_PAGE_TITLES[pathname];
-  return navLinks().find((link) => link.href === pathname)?.label ?? "MobilJuragan";
+  return (
+    navLinks().find((link) => link.href === pathname || link.href.split("?")[0] === pathname)?.label ??
+    "MobilJuragan"
+  );
 }

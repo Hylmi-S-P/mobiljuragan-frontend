@@ -7,6 +7,7 @@ import {
   deleteKnowledgeDocumentAction,
   parseKnowledgeFileAction,
 } from "@/app/actions";
+import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import {
   Table,
   TableBody,
@@ -202,17 +203,12 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
   return (
     <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-3 border-b border-rule pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-body font-semibold text-ink">
-              Basis Pengetahuan Rental (RAG Knowledge Hub)
-            </h2>
-            <span className="rounded-badge bg-emerald-50 px-2 py-0.5 text-micro font-semibold text-emerald-700 border border-emerald-200">
-              {activeCount} Dokumen Aktif
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-badge bg-emerald-50 px-2 py-0.5 text-micro font-semibold text-emerald-700 border border-emerald-200">
+            {activeCount} Dokumen Aktif
+          </span>
           <p className="text-meta text-ink-soft">
-            Dokumen SOP, regulasi lepas kunci, panduan rute Merauke, dan kontak darurat yang diinjeksikan ke AI.
+            SOP, regulasi lepas kunci, rute Merauke, dan kontak darurat yang diinjeksikan ke AI.
           </p>
         </div>
 
@@ -402,8 +398,9 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-meta font-semibold text-ink">Isi Dokumen Pengetahuan</label>
-                <textarea
+                <AutoGrowTextarea
                   rows={6}
+                  maxHeight={420}
                   value={formContent}
                   onChange={(e) => setFormContent(e.target.value)}
                   placeholder="Tuliskan poin-poin persyaratan, aturan jalan, atau ketentuan operasional di sini..."

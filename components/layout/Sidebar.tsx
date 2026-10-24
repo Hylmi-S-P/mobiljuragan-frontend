@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { NAV_ENTRIES, WORKSPACE_NAME, WORKSPACE_ROLE, isNavGroup } from "@/lib/navigation";
@@ -25,12 +25,15 @@ import {
 type SidebarProps = {
   open: boolean;
   onClose: () => void;
+  /* Angka pekerjaan yang menunggu, dipetakan per tujuan navigasi. */
+  navCounts?: Record<string, number>;
 };
 
 /* Satu ikon per tujuan navigasi, semuanya dari keluarga ikon yang sama. */
 const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactElement> = {
   "/": IconDashboard,
   "/bookings": IconInbox,
+  "/bookings?tab=pembayaran": IconCreditCard,
   "/payments": IconCreditCard,
   "/fleet/catalog": IconCar,
   "/fleet/calendar": IconCalendar,
@@ -42,8 +45,10 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
   "/admin": IconShield,
 };
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const fleetActive = NAV_ENTRIES.some(
     (entry) => isNavGroup(entry) && entry.items.some((item) => pathname.startsWith(item.href)),
@@ -52,6 +57,19 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   /* Akordeon mengikuti rute armada; pilihan manual pengguna menang sampai ia mengubahnya lagi. */
   const [fleetOverride, setFleetOverride] = useState<boolean | null>(null);
   const fleetOpen = fleetOverride ?? fleetActive;
+
+  function isNavActive(entryHref: string): boolean {
+    if (entryHref === "/bookings?tab=pembayaran") {
+      return (pathname === "/bookings" && currentTab === "pembayaran") || pathname === "/payments";
+    }
+    if (entryHref === "/bookings") {
+      return pathname === "/bookings" && currentTab !== "pembayaran";
+    }
+    if (entryHref === "/payments") {
+      return pathname === "/payments" || (pathname === "/bookings" && currentTab === "pembayaran");
+    }
+    return pathname === entryHref;
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -151,15 +169,16 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               );
             }
 
-            const active = pathname === entry.href;
+            const active = isNavActive(entry.href);
             const Ikon = IKON_NAV[entry.href] ?? IconDashboard;
+            const jumlah = navCounts?.[entry.href] ?? 0;
             return (
               <Link
                 key={entry.href}
                 href={entry.href}
                 aria-current={active ? "page" : undefined}
                 onClick={onClose}
-                className={`flex h-11 items-center gap-2.5 rounded-nav px-3 text-body font-medium transition-colors ${
+                className={`flex h-11 items-center gap-2 rounded-nav px-2.5 text-body font-medium transition-colors ${
                   active
                     ? "bg-teal text-white"
                     : "text-white/85 hover:bg-navy-hover hover:text-white"
@@ -168,7 +187,20 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <Ikon
                   className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/70"}`}
                 />
-                {entry.label}
+                <span className="flex-1 whitespace-nowrap">{entry.label}</span>
+                {/* Angka hanya muncul kalau memang ada yang menunggu, supaya tidak
+                    ada lingkaran nol yang menambah keramaian tanpa arti. Ukurannya
+                    dijaga kecil agar label menu tetap utuh. */}
+                {jumlah > 0 ? (
+                  <span
+                    aria-label={`${jumlah} menunggu tindakan`}
+                    className={`inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none ${
+                      active ? "bg-white text-teal" : "bg-gold text-ink"
+                    }`}
+                  >
+                    {jumlah > 99 ? "99+" : jumlah}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

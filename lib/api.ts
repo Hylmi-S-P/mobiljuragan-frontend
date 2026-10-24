@@ -256,8 +256,34 @@ export async function apiReplyToTicket(ticketId: string, body: string) {
   return json.data;
 }
 
+// Mengambil alih tiket bantuan dari asisten AI agar dapat ditangani langsung oleh staf/admin manusia.
+export async function apiTakeOverTicket(ticketId: string) {
+  const token = await getSessionToken();
 
+  const res = await fetch(
+    `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/handover`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  );
 
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "TICKET_TAKEOVER_FAILED",
+      json?.error?.message || "Gagal mengambil alih tiket dari AI.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
 // Memperbarui status pemesanan sewa (konfirmasi tarif, penolakan, pelunasan, serah terima, selesai).
 export async function apiUpdateBookingStatus(
   id: string,
@@ -770,12 +796,6 @@ export async function apiTestAiChat(
     isFallbackTriggered?: boolean;
     fallbackReason?: string;
     gatewayNotice?: string;
-    // Tier 2 Semantic Guardrail Metadata
-    intent?: 'RENTAL_FAQ' | 'ORDER_TRACKING' | 'EMERGENCY_INCIDENT' | 'HARMFUL_OUT_OF_SCOPE';
-    confidence?: number;
-    reasoning?: string;
-    guardrailSource?: 'ai_classifier' | 'rule_fallback';
-    bypassedRag?: boolean;
   };
 }
 

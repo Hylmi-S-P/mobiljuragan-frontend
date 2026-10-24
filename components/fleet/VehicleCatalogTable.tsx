@@ -6,16 +6,9 @@ import { saveVehicleAction, deleteVehicleAction } from "@/app/actions";
 import { DeleteVehicleModal } from "@/components/modals/DeleteVehicleModal";
 import { VehicleFormModal } from "@/components/modals/VehicleFormModal";
 import { Button } from "@/components/ui/Button";
+import { PlateBadge } from "@/components/ui/PlateBadge";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/Table";
 import { IconCar, IconPencil, IconPlus } from "@/components/ui/icons";
 import { formatRupiah } from "@/lib/format";
 import type { Vehicle } from "@/lib/types";
@@ -49,62 +42,76 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
 
       <div className="mt-3">
         <Panel
-          title="Daftar unit & spesifikasi"
+          title="Katalog &amp; Spesifikasi Armada"
           icon={<IconCar />}
           action={
-            <Button variant="confirm" size="md" onClick={() => setFormTarget({ vehicleId: null })}>
+            <Button
+              variant="confirm"
+              size="md"
+              onClick={() => setFormTarget({ vehicleId: null })}
+            >
               <IconPlus className="h-4 w-4" />
-              Tambah Armada Baru
+              Tambah Armada
             </Button>
           }
         >
-          <Table caption="Katalog armada resmi MobilJuragan">
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell className="w-[320px]">Kendaraan &amp; Kategori</TableHeaderCell>
-                <TableHeaderCell className="w-[180px]">Tarif Sewa / Hari</TableHeaderCell>
-                <TableHeaderCell className="w-[160px]">Transmisi</TableHeaderCell>
-                <TableHeaderCell className="w-[140px]">Ketersediaan</TableHeaderCell>
-                <TableHeaderCell className="w-[140px]">Status &amp; Aksi</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+          {/* Tampilan kartu saja. Pilihan tabel dilepas karena isi yang sama sudah
+              terbaca di kartu, dan dua mode tampilan hanya menambah tombol tanpa
+              menambah informasi. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {vehicles.map((vehicle) => (
-                <TableRow key={vehicle.id}>
-                  <TableCell className="text-left">
-                    <span className="block whitespace-nowrap text-body font-semibold text-ink">
-                      {vehicle.name}
-                    </span>
-                    <span className="mt-1 block truncate text-meta text-ink-soft">
-                      {vehicle.category ?? "[kategori belum diisi]"}
-                      {vehicle.usage ? ` • ${vehicle.usage}` : ""}
-                    </span>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-body tabular-nums font-semibold text-ink">
-                    {formatRupiah(vehicle.pricePerDay ?? 400000)}
-                    <span className="block text-micro font-normal text-ink-soft">/ hari (dasar)</span>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-body">
-                    {vehicle.transmission ?? "Manual"}
-                  </TableCell>
-                  <TableCell>
-                    <StatusChip tone={VEHICLE_STATUS[vehicle.status].tone}>
-                      {VEHICLE_STATUS[vehicle.status].label}
-                    </StatusChip>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
+                <div
+                  key={vehicle.id}
+                  className="flex flex-col justify-between rounded-lg border border-rule bg-surface p-4 shadow-card hover:border-navy/40 transition-all"
+                >
+                  <div>
+                    {/* Header Kartu: Nama & Status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-body font-bold text-ink">{vehicle.name}</h3>
+                        <PlateBadge plate={vehicle.plate} className="mt-1" />
+                      </div>
+                      <StatusChip tone={VEHICLE_STATUS[vehicle.status].tone}>
+                        {VEHICLE_STATUS[vehicle.status].label}
+                      </StatusChip>
+                    </div>
+
+                    {/* Spesifikasi Ringkas */}
+                    <div className="mt-3.5 space-y-1.5 border-t border-rule/60 pt-3 text-meta text-ink-soft">
+                      <div className="flex justify-between">
+                        <span>Kategori &amp; Rute</span>
+                        <span className="font-medium text-ink">
+                          {vehicle.category ?? "Standar"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Transmisi</span>
+                        <span className="font-medium text-ink">{vehicle.transmission ?? "Manual"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Kartu: Tarif & Tombol Kelola */}
+                  <div className="mt-4 flex items-center justify-between border-t border-rule/60 pt-3">
+                    <div>
+                      <span className="block text-micro text-ink-soft">Tarif Dasar / Hari</span>
+                      <span className="text-body font-bold tabular-nums text-ink">
+                        {formatRupiah(vehicle.pricePerDay ?? 400000)}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
                       onClick={() => setFormTarget({ vehicleId: vehicle.id })}
+                      className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
                     >
-                      <IconPencil className="h-4 w-4" />
+                      <IconPencil className="h-3.5 w-3.5" />
                       Kelola
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                    </button>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
         </Panel>
       </div>
 

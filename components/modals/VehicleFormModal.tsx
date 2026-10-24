@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { IconTrash } from "@/components/ui/icons";
@@ -28,6 +28,7 @@ const STATUS_OPTIONS: { value: VehicleStatus; label: string }[] = [
 ];
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const JENIS_FOTO = ["image/png", "image/jpeg"];
 
 export function VehicleFormModal({
   vehicle,
@@ -44,7 +45,6 @@ export function VehicleFormModal({
   const [transmission, setTransmission] = useState(
     vehicle?.transmission ?? VEHICLE_TRANSMISSION_OPTIONS[0],
   );
-  const [usage, setUsage] = useState(vehicle?.usage ?? "");
   const [priceInput, setPriceInput] = useState<string>(() => {
     const p = vehicle?.pricePerDay ?? 400000;
     return p > 0 ? p.toLocaleString("id-ID") : "400.000";
@@ -54,6 +54,15 @@ export function VehicleFormModal({
     vehicle?.allowedModes ?? ["lepas_kunci", "dengan_supir"],
   );
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  /* Object URL pratinjau harus dibebaskan saat modal ditutup. Tanpa ini, setiap
+     berkas yang pernah dipilih tetap tertahan di memori sampai halaman dimuat ulang. */
+  useEffect(() => {
+    return () => {
+      if (photoUrl) URL.revokeObjectURL(photoUrl);
+    };
+  }, [photoUrl]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function toggleMode(mode: BookingMode) {
@@ -65,13 +74,27 @@ export function VehicleFormModal({
   function handlePhoto(file: File | undefined) {
     if (!file) {
       setPhotoName(null);
+      bebaskanPratinjau();
       return;
     }
+
+    /* Jenis berkas diperiksa di sini, bukan hanya lewat atribut accept. Atribut itu
+       hanya menyaring dialog pemilih berkas; berkas lain tetap bisa masuk lewat
+       seret-lepas atau dengan mengganti pilihan ke semua berkas. */
+    if (!JENIS_FOTO.includes(file.type)) {
+      setErrors((current) => ({ ...current, photo: "Berkas harus PNG atau JPG." }));
+      setPhotoName(null);
+      bebaskanPratinjau();
+      return;
+    }
+
     if (file.size > MAX_PHOTO_BYTES) {
       setErrors((current) => ({ ...current, photo: "Ukuran berkas melebihi 5 MB." }));
       setPhotoName(null);
+      bebaskanPratinjau();
       return;
     }
+
     setErrors((current) => {
       if (!current.photo) return current;
       const next = { ...current };
@@ -79,6 +102,22 @@ export function VehicleFormModal({
       return next;
     });
     setPhotoName(file.name);
+    tampilkanPratinjau(file);
+  }
+
+  /* Pratinjau memakai object URL, bukan pembacaan base64. Berkas 5 MB menjadi sekitar
+     6,7 MB teks kalau diubah ke base64, dan itu menahan seluruh isi berkas di memori
+     hanya untuk menampilkan gambar. URL dibebaskan lagi supaya tidak bocor. */
+  function tampilkanPratinjau(file: File) {
+    bebaskanPratinjau();
+    setPhotoUrl(URL.createObjectURL(file));
+  }
+
+  function bebaskanPratinjau() {
+    setPhotoUrl((url) => {
+      if (url) URL.revokeObjectURL(url);
+      return null;
+    });
   }
 
   function handleSave() {
@@ -106,7 +145,11 @@ export function VehicleFormModal({
       transmission,
       seats: vehicle?.seats ?? 7,
       pricePerDay: numericPrice,
-      usage: usage.trim().length > 0 ? usage.trim() : null,
+      /* Karakteristik penggunaan sengaja tidak lagi diisi dari form. Field-nya
+         dihapus karena tidak pernah tampil di antarmuka dan tidak pernah diteruskan
+         backend, jadi nilai lama dipertahankan agar data yang sudah ada tidak hilang
+         saat unit disunting. */
+      usage: vehicle?.usage ?? null,
       allowedModes: modes,
     });
   }
@@ -265,19 +308,6 @@ export function VehicleFormModal({
           ) : null}
         </div>
 
-        <div>
-          <label htmlFor={`${fieldId}-usage`} className="block text-meta font-medium text-ink">
-            Karakteristik penggunaan
-          </label>
-          <input
-            id={`${fieldId}-usage`}
-            value={usage}
-            onChange={(event) => setUsage(event.target.value)}
-            className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-            placeholder="Contoh: keluarga, efisien BBM, mobilitas dalam kota"
-          />
-        </div>
-
         <fieldset>
           <legend className="text-meta font-medium text-ink">Status operasional armada</legend>
           <div className="mt-1.5 flex flex-wrap gap-2">
@@ -334,6 +364,20 @@ export function VehicleFormModal({
           <p className="mt-1 text-micro text-ink-soft">
             {photoName ? `Berkas dipilih: ${photoName}.` : "PNG atau JPG, maksimal 5 MB."}
           </p>
+
+          {photoUrl ? (
+            <div className="mt-2 flex items-start gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoUrl}
+                alt={`Pratinjau foto ${name || "unit armada"}`}
+                className="h-20 w-28 rounded-sm border border-rule object-cover"
+              />
+              <p className="text-micro text-ink-soft">
+                Pratinjau berkas yang dipilih. Berkas belum diunggah ke server.
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
     </Modal>
