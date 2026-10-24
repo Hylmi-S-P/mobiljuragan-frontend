@@ -372,6 +372,8 @@ export type SupportTicketView = {
   title: string;
   category: string;
   status: string;
+  handledBy?: "AI" | "HUMAN" | string;
+  handoverAt?: string | null;
   messageCount: number;
   updatedAt: string;
 };
@@ -399,6 +401,8 @@ type ApiTicket = {
   title: string;
   category: string;
   status: string;
+  handledBy?: string;
+  handoverAt?: string | null;
   updatedAt: string;
   customer?: { fullName: string } | null;
   _count?: { messages: number };
@@ -413,6 +417,8 @@ export async function getSupportTickets(): Promise<SupportTicketView[]> {
     title: t.title,
     category: t.category,
     status: TICKET_STATUS_MAP[t.status] ?? "baru",
+    handledBy: t.handledBy,
+    handoverAt: t.handoverAt,
     messageCount: t._count?.messages ?? 0,
     updatedAt: t.updatedAt,
   }));
@@ -429,15 +435,24 @@ type ApiTicketDetail = ApiTicket & {
 };
 
 export async function getTicketMessages(ticketId: string): Promise<TicketMessageView[]> {
+  const detail = await getTicketDetail(ticketId);
+  return detail.messages;
+}
+
+export async function getTicketDetail(
+  ticketId: string,
+): Promise<{ messages: TicketMessageView[]; handledBy?: string }> {
   const data = await apiGet<ApiTicketDetail>(`/admin/tickets/${encodeURIComponent(ticketId)}`);
-  return (data?.messages ?? []).map((m) => ({
+  const messages = (data?.messages ?? []).map((m) => ({
     id: m.id,
-    from: m.isCustomer ? "pelanggan" : "tim",
+    from: m.isCustomer ? ("pelanggan" as const) : ("tim" as const),
     text: m.body,
     sentAt: m.sentAt,
     senderName: m.sender?.fullName ?? "Tim",
   }));
+  return { messages, handledBy: data?.handledBy };
 }
+
 
 /* Laporan Keuangan */
 

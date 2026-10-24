@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import {
   loadTicketMessagesAction,
   replyToTicketAction,
+  takeOverTicketAction,
   updateTicketStatusAction,
 } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
@@ -41,6 +42,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSending, startTransition] = useTransition();
   const [isLoadingMessages, startLoadMessages] = useTransition();
+  const [isTakingOver, startTakeOver] = useTransition();
 
   /* Berpindah tiket harus memuat percakapan tiket itu, bukan mempertahankan
      percakapan tiket sebelumnya. Tanpa ini, pesan pelanggan tertukar antar tiket
@@ -60,12 +62,37 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
       setActiveId((idSekarang) => {
         if (idSekarang === ticketId) {
           setMessages(hasil.messages);
+          if (hasil.handledBy) {
+            setTickets((current) =>
+              current.map((t) => (t.id === ticketId ? { ...t, handledBy: hasil.handledBy } : t)),
+            );
+          }
           if (!hasil.success) {
             setNotice({ text: hasil.message ?? "Percakapan gagal dimuat.", isError: true });
           }
         }
         return idSekarang;
       });
+    });
+  }
+
+  function handleTakeOver() {
+    if (!activeTicket) return;
+    startTakeOver(async () => {
+      const result = await takeOverTicketAction(activeTicket.id);
+      if (result.success) {
+        setTickets((current) =>
+          current.map((t) => (t.id === activeTicket.id ? { ...t, handledBy: "HUMAN" } : t)),
+        );
+        setNotice({
+          text: result.message ?? "Tiket berhasil diambil alih dari AI. Sekarang Anda dapat membalas pesan pelanggan.",
+        });
+      } else {
+        setNotice({
+          text: result.message ?? "Gagal mengambil alih tiket.",
+          isError: true,
+        });
+      }
     });
   }
 
@@ -81,6 +108,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
   const activeTicket = tickets.find((ticket) => ticket.id === activeId) ?? null;
   const isResolvedOrClosed = activeTicket?.status === "selesai";
+  const isHandledByAi = activeTicket?.handledBy === "AI";
   const tahapAktif = TICKET_STAGE[ticketStageOf(activeTicket?.status ?? "baru")];
 
   function handleStatusChange(
@@ -108,7 +136,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   }
 
   function sendReply() {
-    if (!activeTicket) return;
+    if (!activeTicket || isHandledByAi) return;
     const text = draft.trim();
     if (text.length === 0) {
       setDraftError("Balasan tidak boleh kosong.");
@@ -203,6 +231,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                             {ticket.customerLabel}
                           </span>
                           <StatusChip tone={tahap.tone}>{tahap.label}</StatusChip>
+                          {ticket.handledBy === "AI" ? (
+                            <span className="rounded-xs border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-micro font-medium text-amber-800">
+                              Bot AI
+                            </span>
+                          ) : null}
                         </span>
                         <span className="mt-1 block truncate text-meta text-ink-soft">
                           {ticket.title}
@@ -251,6 +284,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                       {activeTicket.customerLabel}
                     </span>
                     <StatusChip tone={tahapAktif.tone}>{tahapAktif.label}</StatusChip>
+                    {activeTicket.handledBy === "AI" ? (
+                      <span className="rounded-xs border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-micro font-medium text-amber-800">
+                        Ditangani Bot AI
+                      </span>
+                    ) : null}
                     <span className="text-micro text-ink-soft">{activeTicket.ticketNumber}</span>
                     <span className="text-micro text-ink-soft">
                       {formatTicketCategory(activeTicket.category)}
@@ -326,6 +364,29 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                     </div>
                   ) : (
                     <>
+                      {/* Banner Peringatan & Pengambilalihan Tiket yang Ditangani Bot AI */}
+                      {isHandledByAi ? (
+                        <div className="mb-3 rounded-sm border border-amber-300 bg-amber-50 p-3 text-amber-950">
+                          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                              <span className="text-body font-medium leading-snug">
+                                Tiket ini sedang ditangani oleh <strong>Bot AI</strong>. Input balasan dikunci agar tidak terjadi konflik percakapan.
+                              </span>
+                            </div>
+                            <Button
+                              variant="confirm"
+                              size="sm"
+                              disabled={isTakingOver}
+                              onClick={handleTakeOver}
+                              className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white border-transparent"
+                            >
+                              {isTakingOver ? "Mengambil Alih..." : "Ambil Alih Tiket"}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
+
                       {/* Template Balasan Cepat (Canned Responses) */}
                       <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
                         <span className="text-micro font-semibold uppercase text-ink-soft mr-1">
@@ -333,34 +394,37 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                         </span>
                         <button
                           type="button"
+                          disabled={isHandledByAi}
                           onClick={() =>
                             setDraft(
                               "Halo, armada yang Anda tanyakan tersedia dan siap digunakan sesuai jadwal.",
                             )
                           }
-                          className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy"
+                          className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           + Unit Tersedia
                         </button>
                         <button
                           type="button"
+                          disabled={isHandledByAi}
                           onClick={() =>
                             setDraft(
-                              "Silakan lakukan transfer pelunasan ke rekening resmi BCA 1234567890 a/n CV Mobil Juragan Express Transport.",
+                              "Silakan lakukan transfer pelunasan ke rekening resmi Bank BRI 0321-01-002847-53-1 an MobilJuragan Merauke.",
                             )
                           }
-                          className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy"
+                          className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           + Rekening Resmi
                         </button>
                         <button
                           type="button"
+                          disabled={isHandledByAi}
                           onClick={() =>
                             setDraft(
                               "Supir resmi kami telah ditugaskan dan akan segera menghubungi nomor Anda sebelum jadwal penjemputan.",
                             )
                           }
-                          className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy"
+                          className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           + Konfirmasi Supir
                         </button>
@@ -374,12 +438,22 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           id="ticket-reply"
                           value={draft}
                           onChange={(event) => setDraft(event.target.value)}
-                          placeholder="Tulis balasan solusi resmi ke pelanggan..."
+                          disabled={isHandledByAi}
+                          placeholder={
+                            isHandledByAi
+                              ? "Tiket ditangani Bot AI. Klik 'Ambil Alih Tiket' untuk membalas..."
+                              : "Tulis balasan solusi resmi ke pelanggan..."
+                          }
                           aria-invalid={Boolean(draftError)}
                           aria-describedby={draftError ? "ticket-reply-error" : undefined}
-                          className="h-10 min-w-0 flex-1 rounded-sm border border-rule bg-canvas px-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
+                          className="h-10 min-w-0 flex-1 rounded-sm border border-rule bg-canvas px-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-ink-soft"
                         />
-                        <Button variant="confirm" size="md" onClick={sendReply} disabled={isSending}>
+                        <Button
+                          variant="confirm"
+                          size="md"
+                          onClick={sendReply}
+                          disabled={isSending || isHandledByAi}
+                        >
                           {isSending ? "Mengirim..." : "Kirim Balasan"}
                         </Button>
                       </div>

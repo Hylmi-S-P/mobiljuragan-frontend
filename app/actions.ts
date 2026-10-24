@@ -9,6 +9,7 @@ import {
   apiUpdateAdminAccount,
   apiDeleteAdminAccount,
   apiReplyToTicket,
+  apiTakeOverTicket,
   apiUpdateBookingStatus,
   apiAssignDriverToBooking,
   apiCreateDriver,
@@ -35,7 +36,7 @@ import {
   apiDeleteVehicle,
   ApiError,
 } from "@/lib/api";
-import { getTicketMessages, type TicketMessageView } from "@/lib/operations";
+import { getTicketDetail, getTicketMessages, type TicketMessageView } from "@/lib/operations";
 import type { AdminRole, CanonicalBookingStatus, FaqItem, Vehicle } from "@/lib/types";
 
 export type ActionState = {
@@ -253,14 +254,14 @@ export async function replyToTicketAction(ticketId: string, body: string): Promi
  */
 export async function loadTicketMessagesAction(
   ticketId: string,
-): Promise<{ success: boolean; messages: TicketMessageView[]; message?: string }> {
+): Promise<{ success: boolean; messages: TicketMessageView[]; handledBy?: string; message?: string }> {
   if (!ticketId) {
     return { success: false, messages: [], message: "Tiket tidak valid." };
   }
 
   try {
-    const messages = await getTicketMessages(ticketId);
-    return { success: true, messages };
+    const detail = await getTicketDetail(ticketId);
+    return { success: true, messages: detail.messages, handledBy: detail.handledBy };
   } catch (err) {
     if (err instanceof ApiError) {
       return { success: false, messages: [], message: err.message };
@@ -294,6 +295,27 @@ export async function updateTicketStatusAction(
     success: true,
     message: `Status tiket berhasil diubah menjadi ${status === "RESOLVED" ? "Selesai" : status === "CLOSED" ? "Ditutup" : status}.`,
   };
+}
+
+/**
+ * Server Action untuk mengambil alih tiket bantuan dari asisten AI.
+ */
+export async function takeOverTicketAction(ticketId: string): Promise<ActionState> {
+  if (!ticketId) {
+    return { success: false, message: "Tiket tidak valid." };
+  }
+
+  try {
+    await apiTakeOverTicket(ticketId);
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal mengambil alih tiket dari AI." };
+  }
+
+  revalidatePath("/customer-care");
+  return { success: true, message: "Tiket berhasil diambil alih dari AI." };
 }
 
 /**
