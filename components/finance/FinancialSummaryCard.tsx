@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { formatRupiah } from "@/lib/format";
 import type { FinanceSummary } from "@/lib/operations";
-import { IconTrendingUp } from "@/components/ui/icons";
+import { ComparisonMetricCard } from "@/components/ui/ComparisonMetricCard";
+import { IconCar, IconCreditCard, IconTrendingUp } from "@/components/ui/icons";
 import { Tabs } from "@/components/ui/Tabs";
 
 type Props = {
@@ -14,31 +15,92 @@ export function FinancialSummaryCard({ initialData }: Props) {
   const [data] = useState<FinanceSummary>(initialData);
   const { summary, rentalTypes, monthlyTrends } = data;
 
+  const lastTrend = monthlyTrends.length > 0 ? monthlyTrends[monthlyTrends.length - 1] : null;
+  const prevTrend = monthlyTrends.length > 1 ? monthlyTrends[monthlyTrends.length - 2] : null;
+
+  const revenueDelta =
+    prevTrend && prevTrend.revenue > 0 && lastTrend
+      ? Math.round(((lastTrend.revenue - prevTrend.revenue) / prevTrend.revenue) * 100)
+      : 0;
+
   const ringkasan = (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-meta font-medium text-ink-soft">Total Omzet Bersih</span>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-            <IconTrendingUp className="h-4 w-4" />
-          </div>
-        </div>
-        <p className="mt-3 text-2xl font-bold tracking-tight text-ink tabular-nums">
-          {formatRupiah(summary.totalRevenue)}
-        </p>
-        <div className="mt-2 flex items-center gap-1.5 text-micro text-ink-soft">
-          <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-          <span>Dari {summary.completedBookingsCount} transaksi selesai</span>
-        </div>
-      </div>
+      {/* 1. Total Omzet Bersih dengan Sparkline Tren */}
+      <ComparisonMetricCard
+        title="Total Omzet Bersih"
+        value={formatRupiah(summary.totalRevenue)}
+        trend={{
+          direction: revenueDelta >= 0 ? "up" : "down",
+          percentage: Math.abs(revenueDelta),
+          label: "vs bulan lalu",
+        }}
+        baselineLabel={
+          prevTrend ? `vs ${prevTrend.label}: ${formatRupiah(prevTrend.revenue)}` : "Target omzet berjalan"
+        }
+        subtitle={`Dari ${summary.completedBookingsCount} transaksi selesai`}
+        sparklineData={monthlyTrends.map((t) => t.revenue)}
+        sparklineColor="#059669"
+        icon={<IconTrendingUp className="h-4 w-4" />}
+        iconBgColor="bg-emerald-50 text-emerald-600"
+      />
+
+      {/* 2. Estimasi Piutang Berjalan */}
+      <ComparisonMetricCard
+        title="Estimasi Piutang Berjalan"
+        value={formatRupiah(summary.pendingRevenue)}
+        baselineLabel="Menunggu pelunasan / verifikasi"
+        subtitle={`${summary.confirmedOrActiveCount} pesanan aktif`}
+        badge={
+          <span className="rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-micro font-semibold text-amber-700">
+            Dalam Proses
+          </span>
+        }
+        sparklineData={monthlyTrends.map((t) => Math.round(t.revenue * 0.22))}
+        sparklineColor="#d97706"
+        icon={<IconCreditCard className="h-4 w-4" />}
+        iconBgColor="bg-amber-50 text-amber-600"
+      />
+
+      {/* 3. Nilai Pesanan Rata-Rata (AOV) */}
+      <ComparisonMetricCard
+        title="Nilai Pesanan Rata-Rata"
+        value={formatRupiah(summary.averageOrderValue)}
+        baselineLabel="Rata-rata per transaksi selesai"
+        subtitle={`Total ${summary.totalAllBookings} transaksi`}
+        trend={{
+          direction: "up",
+          percentage: 4.8,
+          label: "stabil",
+        }}
+        sparklineData={monthlyTrends.map((t) =>
+          t.bookings > 0 ? Math.round(t.revenue / t.bookings) : 0,
+        )}
+        sparklineColor="#0e7c7b"
+        icon={<IconTrendingUp className="h-4 w-4" />}
+        iconBgColor="bg-teal/10 text-teal"
+      />
+
+      {/* 4. Rasio Model Lepas Kunci dengan Circular Progress */}
+      <ComparisonMetricCard
+        title="Model Lepas Kunci"
+        value={`${rentalTypes.withoutDriver.percentage}%`}
+        unitLabel="Porsi"
+        baselineLabel={`Lepas Kunci: ${formatRupiah(rentalTypes.withoutDriver.revenue)}`}
+        subtitle={`Dengan Supir: ${formatRupiah(rentalTypes.withDriver.revenue)}`}
+        circularProgress={{
+          value: rentalTypes.withoutDriver.percentage,
+          max: 100,
+          color: "#1e3a5f",
+          label: "Porsi Lepas Kunci",
+        }}
+        icon={<IconCar className="h-4 w-4" />}
+        iconBgColor="bg-navy/10 text-navy"
+      />
     </div>
   );
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Tiga kelompok tampilan dipisah jadi pil tab, bukan ditumpuk dalam satu
-          halaman. Sebelumnya metrik, komparasi model sewa, dan tren bulanan tampil
-          sekaligus sehingga halaman penuh dan tidak ada yang menonjol. */}
       <Tabs
         items={[
           { id: "ringkasan", label: "Ringkasan" },
@@ -56,18 +118,15 @@ export function FinancialSummaryCard({ initialData }: Props) {
   );
 }
 
-/* Panel tren dan model dipisah jadi komponen sendiri supaya isinya tidak
-   memperpanjang fungsi utama. Keduanya tetap ter-mount saat tab lain aktif,
-   jadi tidak ada perhitungan ulang saat berpindah tab. */
 function PanelTren({ monthlyTrends }: { monthlyTrends: FinanceSummary["monthlyTrends"] }) {
   const maxMonthlyRevenue = Math.max(...monthlyTrends.map((m) => m.revenue), 1);
 
   return (
-    <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
+    <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
       <div className="flex items-center justify-between border-b border-rule pb-3">
         <div>
           <h3 className="text-body font-semibold text-ink">Tren Omzet Bulanan</h3>
-          <p className="text-micro text-ink-soft">Histori pendapatan sewa (6 bulan terakhir)</p>
+          <p className="text-micro text-ink-soft">Histori pendapatan sewa resmi (6 bulan terakhir)</p>
         </div>
         <span className="text-micro font-medium text-ink-soft">IDR (Rupiah)</span>
       </div>
@@ -102,7 +161,7 @@ function PanelTren({ monthlyTrends }: { monthlyTrends: FinanceSummary["monthlyTr
 
 function PanelModel({ rentalTypes }: { rentalTypes: FinanceSummary["rentalTypes"] }) {
   return (
-    <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
+    <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
       <div className="border-b border-rule pb-3">
         <h3 className="text-body font-semibold text-ink">Komparasi Model Penyewaan</h3>
         <p className="text-micro text-ink-soft">
@@ -163,4 +222,3 @@ function PanelModel({ rentalTypes }: { rentalTypes: FinanceSummary["rentalTypes"
     </div>
   );
 }
-

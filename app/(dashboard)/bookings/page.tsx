@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BookingsTable } from "@/components/bookings/BookingsTable";
+import { BookingCardGrid } from "@/components/bookings/BookingCardGrid";
 import { getAllVehicles, getBookings } from "@/lib/operations";
 
 export const metadata: Metadata = {
@@ -14,5 +14,5 @@ export const dynamic = "force-dynamic";
 export default async function BookingsPage() {
   const [bookings, vehicles] = await Promise.all([getBookings(), getAllVehicles()]);
 
-  return <BookingsTable initialBookings={bookings} vehicles={vehicles} />;
+  return <BookingCardGrid initialBookings={bookings} vehicles={vehicles} />;
 }
