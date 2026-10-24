@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -66,6 +66,18 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
   const [danaDicocokkan, setDanaDicocokkan] = useState(false);
   const [setujuKedua, setSetujuKedua] = useState(false);
 
+  /* Reset form state saat modal tertutup */
+  useEffect(() => {
+    if (!open) {
+      setDanaDicocokkan(false);
+      setSetujuKedua(false);
+      setNotes("");
+      setError(null);
+      setImageError(false);
+    }
+  }, [open]);
+
+
   if (!payment) return null;
 
   const resolvedImageUrl = resolveImageUrl(payment.proofImageUrl);
@@ -122,19 +134,19 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
         <div className="flex flex-col items-end gap-2">
           {/* Peringatan muncul sebelum tombol setujui bisa ditekan. */}
           {!setujuKedua ? (
-            <label className="flex max-w-md items-start gap-2 text-meta text-ink">
+            <label className="flex max-w-md items-start gap-2 text-meta text-ink cursor-pointer">
               <input
                 type="checkbox"
                 checked={danaDicocokkan}
                 onChange={(event) => setDanaDicocokkan(event.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded-xs border border-rule-strong"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded-xs border border-rule-strong cursor-pointer"
               />
-              <span>
+              <span className="leading-snug break-words">
                 Saya, <strong className="font-semibold text-navy">{adminName}</strong> ({adminRole}), menyatakan telah memeriksa dan mencocokkan dana mutasi rekening bank dengan nominal tagihan. Status lunas tidak bisa dibatalkan setelah disimpan.
               </span>
             </label>
           ) : (
-            <p className="max-w-md rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-meta text-danger">
+            <p className="max-w-md rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-meta text-danger leading-snug break-words">
               Saya, <strong className="font-semibold">{adminName}</strong> ({adminRole}), menyatakan yakin menandai pembayaran ini lunas. Tindakan ini tidak bisa dibatalkan.
             </p>
           )}

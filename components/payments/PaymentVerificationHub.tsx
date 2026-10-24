@@ -20,7 +20,7 @@ import {
   IconSearch,
 } from "@/components/ui/icons";
 import { PaymentProofModal } from "@/components/payments/PaymentProofModal";
-import { formatRupiah } from "@/lib/format";
+import { formatRupiah, formatDateTimeWit } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
 import { useDebounce } from "@/lib/useDebounce";
@@ -36,27 +36,22 @@ type Props = {
 
 type TabFilter = "semua" | "menunggu" | "terbayar" | "ditolak";
 
-function formatDateTimeWit(iso: string | null | undefined): string {
-  if (!iso) return "-";
-  try {
-    const date = new Date(iso);
-    return (
-      new Intl.DateTimeFormat("id-ID", {
-        timeZone: "Asia/Jayapura",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date) + " WIT"
-    );
-  } catch {
-    return iso;
-  }
-}
-
 export function PaymentVerificationHub({ initialResponse }: Props) {
   const queryClient = useQueryClient();
+
+  // Ambil identitas staf/admin yang aktif login untuk modal verifikasi dan audit trail
+  const { data: currentAdmin } = useQuery<{ id: string; fullName: string; role: string }>({
+    queryKey: ["currentAdminMe"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/admin/auth/me");
+        return res.data?.data?.user;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Search & Tab Filter States
   const [activeTab, setActiveTab] = useState<TabFilter>("menunggu");
@@ -380,6 +375,14 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                     {/* Status Badge */}
                     <TableCell>
                       <StatusChip tone={statusCfg.tone}>{statusCfg.label}</StatusChip>
+                      {payment.acknowledgedBy ? (
+                        <p
+                          className="mt-1 max-w-[18ch] truncate text-micro text-ink-soft"
+                          title={`Diverifikasi oleh: ${payment.acknowledgedBy}${payment.acknowledgedAt ? ` (${formatDateTimeWit(payment.acknowledgedAt)})` : ""}`}
+                        >
+                          Oleh: {payment.acknowledgedBy.split(" (")[0]}
+                        </p>
+                      ) : null}
                     </TableCell>
 
                     {/* Bukti Transfer */}
@@ -437,6 +440,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
           setSelectedPayment(null);
         }}
         onSuccess={handleVerifySuccess}
+        currentAdmin={currentAdmin}
       />
     </div>
   );
