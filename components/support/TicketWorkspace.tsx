@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 
 import {
   loadTicketMessagesAction,
@@ -36,6 +36,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
   const [activeId, setActiveId] = useState(firstTicketId);
+  const activeIdRef = useRef(firstTicketId);
   const [messages, setMessages] = useState<TicketMessageView[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
     if (ticketId === activeId) return;
 
     setActiveId(ticketId);
+    activeIdRef.current = ticketId;
     setMessages([]);
     setDraftError(null);
 
@@ -59,30 +61,28 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
       // Tiket bisa berpindah lagi selagi permintaan berjalan; hasil yang datang
       // terlambat untuk tiket lama tidak boleh menimpa percakapan tiket aktif.
-      setActiveId((idSekarang) => {
-        if (idSekarang === ticketId) {
-          setMessages(hasil.messages);
-          if (hasil.handledBy) {
-            setTickets((current) =>
-              current.map((t) => (t.id === ticketId ? { ...t, handledBy: hasil.handledBy } : t)),
-            );
-          }
-          if (!hasil.success) {
-            setNotice({ text: hasil.message ?? "Percakapan gagal dimuat.", isError: true });
-          }
+      if (activeIdRef.current === ticketId) {
+        setMessages(hasil.messages);
+        if (hasil.handledBy) {
+          setTickets((current) =>
+            current.map((t) => (t.id === ticketId ? { ...t, handledBy: hasil.handledBy } : t)),
+          );
         }
-        return idSekarang;
-      });
+        if (!hasil.success) {
+          setNotice({ text: hasil.message ?? "Percakapan gagal dimuat.", isError: true });
+        }
+      }
     });
   }
 
   function handleTakeOver() {
     if (!activeTicket) return;
+    const targetTicketId = activeTicket.id;
     startTakeOver(async () => {
-      const result = await takeOverTicketAction(activeTicket.id);
+      const result = await takeOverTicketAction(targetTicketId);
       if (result.success) {
         setTickets((current) =>
-          current.map((t) => (t.id === activeTicket.id ? { ...t, handledBy: "HUMAN" } : t)),
+          current.map((t) => (t.id === targetTicketId ? { ...t, handledBy: "HUMAN" } : t)),
         );
         setNotice({
           text: result.message ?? "Tiket berhasil diambil alih dari AI. Sekarang Anda dapat membalas pesan pelanggan.",
