@@ -173,6 +173,8 @@ export type AdminPaymentItem = {
   senderAccount?: string | null;
   verifiedAt?: string | null;
   verifiedBy?: string | null;
+  acknowledgedAt?: string | null;
+  acknowledgedBy?: string | null;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;

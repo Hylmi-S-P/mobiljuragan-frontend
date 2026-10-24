@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { IconAlert, IconCreditCard } from "@/components/ui/icons";
-import { formatRupiah } from "@/lib/format";
+import { formatRupiah, formatDateTimeWit } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
 import type { AdminPaymentItem } from "@/lib/types";
@@ -15,6 +16,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSuccess?: (updated: AdminPaymentItem, action: "APPROVE" | "REJECT") => void;
+  currentAdmin?: { fullName?: string; role?: string } | null;
 };
 
 function resolveImageUrl(url: string | null | undefined): string | null {
@@ -27,11 +29,35 @@ function resolveImageUrl(url: string | null | undefined): string | null {
   return `${cleanBase}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
-export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) {
+export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAdmin }: Props) {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+
+  // Ambil identitas staf/admin yang aktif login untuk audit trail verifikasi
+  const { data: meUser } = useQuery<{ id: string; fullName: string; role: string }>({
+    queryKey: ["currentAdminMe"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/admin/auth/me");
+        return res.data?.data?.user;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const activeUser = currentAdmin || meUser;
+  const adminName = activeUser?.fullName || "Admin MobilJuragan";
+  const rawRole = activeUser?.role || "ADMIN";
+  const adminRole =
+    rawRole === "ADMIN" || rawRole === "super_admin"
+      ? "Super Admin"
+      : rawRole === "STAFF" || rawRole === "staf_operasional"
+        ? "Staf Operasional"
+        : rawRole;
 
   /* Menandai lunas tidak bisa dibatalkan dari layar ini: setelah PAID, tombol
      setujui dan tolak hilang, dan backend menolak perubahan status apa pun. Karena
@@ -104,14 +130,12 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
                 className="mt-0.5 h-4 w-4 shrink-0 rounded-xs border border-rule-strong"
               />
               <span>
-                Saya sudah mencocokkan dana masuk dengan nominal tagihan. Status lunas
-                tidak bisa dibatalkan setelah disimpan.
+                Saya, <strong className="font-semibold text-navy">{adminName}</strong> ({adminRole}), menyatakan telah memeriksa dan mencocokkan dana mutasi rekening bank dengan nominal tagihan. Status lunas tidak bisa dibatalkan setelah disimpan.
               </span>
             </label>
           ) : (
             <p className="max-w-md rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-meta text-danger">
-              Tekan sekali lagi untuk menandai pembayaran ini lunas. Tindakan ini tidak
-              bisa dibatalkan.
+              Saya, <strong className="font-semibold">{adminName}</strong> ({adminRole}), menyatakan yakin menandai pembayaran ini lunas. Tindakan ini tidak bisa dibatalkan.
             </p>
           )}
 
@@ -137,10 +161,18 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
           </div>
         </div>
       ) : (
-        <div className="text-meta text-ink-soft">
-          {payment.status === "PAID"
-            ? "Pembayaran ini sudah lunas terverifikasi."
-            : "Status pembayaran: " + statusConfig.label}
+        <div className="flex flex-col items-end gap-0.5 text-meta text-ink-soft">
+          <div>
+            {payment.status === "PAID"
+              ? "Pembayaran ini sudah lunas terverifikasi."
+              : "Status pembayaran: " + statusConfig.label}
+          </div>
+          {payment.acknowledgedBy ? (
+            <div className="text-micro text-teal">
+              Diverifikasi oleh: <span className="font-medium text-ink">{payment.acknowledgedBy}</span>
+              {payment.acknowledgedAt ? ` pada ${formatDateTimeWit(payment.acknowledgedAt)}` : ""}
+            </div>
+          ) : null}
         </div>
       )}
     </div>
@@ -284,6 +316,16 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
                   {payment.senderAccount || "-"}
                 </p>
               </div>
+
+              {payment.acknowledgedBy ? (
+                <div className="col-span-2 rounded-xs border border-rule bg-canvas p-2.5 text-meta">
+                  <p className="text-micro font-semibold uppercase text-ink-soft">Pemeriksa Mutasi Bank (Audit Trail)</p>
+                  <p className="mt-0.5 font-medium text-ink">{payment.acknowledgedBy}</p>
+                  {payment.acknowledgedAt ? (
+                    <p className="text-micro text-ink-soft">{formatDateTimeWit(payment.acknowledgedAt)}</p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             {/* Input Catatan Staf / Alasan Penolakan */}

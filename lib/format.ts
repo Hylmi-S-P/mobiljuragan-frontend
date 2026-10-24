@@ -85,3 +85,23 @@ export function parseRupiahDots(value: string): number {
   const digits = value.replace(/\D/g, "");
   return digits ? Number(digits) : 0;
 }
+
+export function formatDateTimeWit(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  try {
+    const date = new Date(iso);
+    return (
+      new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jayapura",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date) + " WIT"
+    );
+  } catch {
+    return String(iso);
+  }
+}
+
