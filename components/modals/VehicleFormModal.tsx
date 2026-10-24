@@ -44,7 +44,6 @@ export function VehicleFormModal({
   const [transmission, setTransmission] = useState(
     vehicle?.transmission ?? VEHICLE_TRANSMISSION_OPTIONS[0],
   );
-  const [usage, setUsage] = useState(vehicle?.usage ?? "");
   const [priceInput, setPriceInput] = useState<string>(() => {
     const p = vehicle?.pricePerDay ?? 400000;
     return p > 0 ? p.toLocaleString("id-ID") : "400.000";
@@ -106,7 +105,11 @@ export function VehicleFormModal({
       transmission,
       seats: vehicle?.seats ?? 7,
       pricePerDay: numericPrice,
-      usage: usage.trim().length > 0 ? usage.trim() : null,
+      /* Karakteristik penggunaan sengaja tidak lagi diisi dari form. Field-nya
+         dihapus karena tidak pernah tampil di antarmuka dan tidak pernah diteruskan
+         backend, jadi nilai lama dipertahankan agar data yang sudah ada tidak hilang
+         saat unit disunting. */
+      usage: vehicle?.usage ?? null,
       allowedModes: modes,
     });
   }
@@ -263,19 +266,6 @@ export function VehicleFormModal({
               {errors.pricePerDay}
             </p>
           ) : null}
-        </div>
-
-        <div>
-          <label htmlFor={`${fieldId}-usage`} className="block text-meta font-medium text-ink">
-            Karakteristik penggunaan
-          </label>
-          <input
-            id={`${fieldId}-usage`}
-            value={usage}
-            onChange={(event) => setUsage(event.target.value)}
-            className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-            placeholder="Contoh: keluarga, efisien BBM, mobilitas dalam kota"
-          />
         </div>
 
         <fieldset>

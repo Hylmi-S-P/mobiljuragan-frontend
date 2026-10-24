@@ -12,10 +12,9 @@ import type { FinanceSummary } from "@/lib/operations";
 
 type Props = {
   fleetBreakdown: FinanceSummary["fleetBreakdown"];
-  totalRevenue: number;
 };
 
-export function FleetRevenueTable({ fleetBreakdown, totalRevenue }: Props) {
+export function FleetRevenueTable({ fleetBreakdown }: Props) {
   return (
     <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-rule pb-4">
@@ -39,14 +38,10 @@ export function FleetRevenueTable({ fleetBreakdown, totalRevenue }: Props) {
               <TableHeaderCell className="w-[140px] text-center">Sewa Selesai</TableHeaderCell>
               <TableHeaderCell className="w-[140px] text-center">Sedang Aktif</TableHeaderCell>
               <TableHeaderCell className="w-[180px] text-right">Total Omzet</TableHeaderCell>
-              <TableHeaderCell className="w-[120px] text-right">Kontribusi</TableHeaderCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {fleetBreakdown.map((unit) => {
-              const contributionPct =
-                totalRevenue > 0 ? Math.round((unit.totalRevenue / totalRevenue) * 100) : 0;
-
               return (
                 <TableRow key={unit.vehicleId}>
                   <TableCell>
@@ -73,17 +68,6 @@ export function FleetRevenueTable({ fleetBreakdown, totalRevenue }: Props) {
                   </TableCell>
                   <TableCell className="text-right text-body font-bold text-ink tabular-nums">
                     {formatRupiah(unit.totalRevenue)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-canvas border border-rule">
-                        <div
-                          className="h-full bg-teal rounded-full transition-all"
-                          style={{ width: `${Math.min(contributionPct, 100)}%` }}
-                        />
-                      </div>
-                      <span className="font-semibold text-ink text-meta">{contributionPct}%</span>
-                    </div>
                   </TableCell>
                 </TableRow>
               );

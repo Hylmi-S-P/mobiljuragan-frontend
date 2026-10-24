@@ -20,10 +20,7 @@ export default async function FinancePage() {
       <FinancialSummaryCard initialData={financeData} />
 
       {/* Rincian Omzet per Armada */}
-      <FleetRevenueTable
-        fleetBreakdown={financeData.fleetBreakdown}
-        totalRevenue={financeData.summary.totalRevenue}
-      />
+      <FleetRevenueTable fleetBreakdown={financeData.fleetBreakdown} />
     </div>
   );
 }

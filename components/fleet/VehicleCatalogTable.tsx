@@ -118,7 +118,6 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
                         <span>Kategori &amp; Rute</span>
                         <span className="font-medium text-ink">
                           {vehicle.category ?? "Standar"}
-                          {vehicle.usage ? ` (${vehicle.usage})` : ""}
                         </span>
                       </div>
                       <div className="flex justify-between">

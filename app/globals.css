@@ -19,6 +19,11 @@
   --color-ink: #0f172a;
   --color-ink-soft: #475569;
   --color-danger: #b42318;
+  /* Merah lembut untuk status armada yang tidak tersedia. Dipisahkan dari --color-danger
+     karena maknanya berbeda: ini penanda ketersediaan, bukan galat atau kegagalan.
+     Nadanya sengaja diturunkan supaya tetap terbaca sebagai peringatan tanpa menyala
+     seperti tombol hapus. */
+  --color-danger-soft: #a8433b;
 
   /* Tingkatan nada permukaan: kanvas, panel, pita tersisip, dan garis pemisah baris. */
   --color-inset: #f1f5f9;

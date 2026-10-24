@@ -15,8 +15,8 @@ import type {
 export const VEHICLE_STATUS: Record<VehicleStatus, { label: string; tone: ChipTone }> = {
   tersedia: { label: "Tersedia", tone: "available" },
   disewa: { label: "Disewa", tone: "busy" },
-  servis: { label: "Servis", tone: "service" },
-  tidak_tersedia: { label: "Tidak Tersedia", tone: "neutral" },
+  servis: { label: "Servis", tone: "vehicleService" },
+  tidak_tersedia: { label: "Tidak Tersedia", tone: "vehicleUnavailable" },
 };
 
 /* Legenda Ringkasan dan Kalender hanya memuat status sewa, bukan status arsip. */

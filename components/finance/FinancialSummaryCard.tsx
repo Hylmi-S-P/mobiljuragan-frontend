@@ -17,7 +17,13 @@ export function FinancialSummaryCard({ initialData }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 4 Kartu Metrik Utama */}
+      {/* Kartu Metrik Utama.
+
+          Tiga kartu lain sengaja dihapus: Estimasi Piutang Berjalan, Transaksi Sewa
+          Selesai, dan Rata-rata Transaksi (AOV). Angka AOV dihitung dengan membagi
+          omzet lunas dengan seluruh pesanan selesai tanpa melihat status bayarnya,
+          sehingga selalu tampak lebih kecil dari seharusnya. Piutang juga bukan
+          angka yang dipakai mengambil keputusan di skala operasional ini. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Total Omzet */}
         <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
@@ -33,51 +39,6 @@ export function FinancialSummaryCard({ initialData }: Props) {
           <div className="mt-2 flex items-center gap-1.5 text-micro text-ink-soft">
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
             <span>Dari {summary.completedBookingsCount} transaksi selesai</span>
-          </div>
-        </div>
-
-        {/* Estimasi Piutang / Pending Pemasukan */}
-        <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-meta font-medium text-ink-soft">Estimasi Piutang Berjalan</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-              <span className="text-xs font-bold">Rp</span>
-            </div>
-          </div>
-          <p className="mt-3 text-2xl font-bold tracking-tight text-ink tabular-nums">
-            {formatRupiah(summary.pendingRevenue)}
-          </p>
-          <div className="mt-2 flex items-center gap-1.5 text-micro text-ink-soft">
-            <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-            <span>{summary.confirmedOrActiveCount} pesanan aktif / terkonfirmasi</span>
-          </div>
-        </div>
-
-        {/* Transaksi Selesai */}
-        <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-meta font-medium text-ink-soft">Transaksi Sewa Selesai</span>
-          </div>
-          <p className="mt-3 text-2xl font-bold tracking-tight text-ink tabular-nums">
-            {summary.completedBookingsCount}{" "}
-            <span className="text-base font-normal text-ink-soft">Unit Sewa</span>
-          </p>
-          <div className="mt-2 text-micro text-ink-soft">
-            Total tercatat: {summary.totalAllBookings} permohonan masuk
-          </div>
-        </div>
-
-        {/* Rata-rata Nilai Transaksi (AOV) */}
-        <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-meta font-medium text-ink-soft">Rata-rata Transaksi (AOV)</span>
-            <span className="text-micro font-medium text-ink-soft">Per Pemesanan</span>
-          </div>
-          <p className="mt-3 text-2xl font-bold tracking-tight text-ink tabular-nums">
-            {formatRupiah(summary.averageOrderValue)}
-          </p>
-          <div className="mt-2 text-micro text-ink-soft">
-            Nilai rata-rata realisasi sewa armada
           </div>
         </div>
       </div>

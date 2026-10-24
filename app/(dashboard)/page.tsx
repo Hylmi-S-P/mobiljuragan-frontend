@@ -43,9 +43,38 @@ export default async function OverviewPage() {
   const unitDisewa = vehicles.filter((vehicle) => vehicle.status === "disewa");
   const vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
 
-  const readinessPercent = Math.round(
-    (unitTersedia.length / Math.max(vehicles.length, 1)) * 100,
-  );
+  /* Jadwal terdekat disusun per jadwal, bukan per kendaraan, lalu diurutkan menurut
+     tanggal mulai. Sebelumnya daftar mengikuti urutan armada dan hanya mengambil
+     jadwal pertama tiap unit, sehingga jadwal paling dekat bisa tidak muncul sama
+     sekali hanya karena unitnya kebetulan berada di urutan belakang. */
+  const jadwalTerdekat = calendar.fleet
+    .flatMap((entry) =>
+      entry.schedules.map((schedule) => {
+        const mulai = new Date(schedule.startDateTime).getTime();
+        const selesai = new Date(schedule.endDateTime).getTime();
+        const jumlahHari = Math.max(
+          1,
+          Math.ceil((selesai - mulai) / (1000 * 60 * 60 * 24)),
+        );
+
+        return {
+          vehicleId: entry.id,
+          vehicleName: entry.name,
+          plate: entry.plate,
+          bookingCode: schedule.bookingCode,
+          customerName: schedule.customerName,
+          mulai,
+          tanggalMulai: formatDateRange(
+            schedule.startDateTime,
+            schedule.startDateTime,
+            1,
+          ),
+          durasi: `${jumlahHari} hari`,
+        };
+      }),
+    )
+    .sort((a, b) => a.mulai - b.mulai)
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -53,8 +82,8 @@ export default async function OverviewPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Unit Tersedia */}
         <div className="rounded-card border border-rule bg-surface p-4 shadow-sm">
-          <div className="flex items-center justify-between text-meta text-ink-soft">
-            <span className="font-medium">Armada Siap Jalan</span>
+          <div className="flex items-center justify-between">
+            <span className="text-subtitle font-semibold text-ink">Armada Siap Jalan</span>
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
               <IconCar className="h-4 w-4" />
             </div>
@@ -63,16 +92,12 @@ export default async function OverviewPage() {
             {unitTersedia.length}{" "}
             <span className="text-base font-normal text-ink-soft">/ {vehicles.length} Unit</span>
           </p>
-          <div className="mt-1 flex items-center gap-1.5 text-micro text-emerald-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span>Kesiapan armada {readinessPercent}%</span>
-          </div>
         </div>
 
         {/* Antrean Pesanan */}
         <div className="rounded-card border border-rule bg-surface p-4 shadow-sm">
-          <div className="flex items-center justify-between text-meta text-ink-soft">
-            <span className="font-medium">Pesanan Masuk</span>
+          <div className="flex items-center justify-between">
+            <span className="text-subtitle font-semibold text-ink">Pesanan Masuk</span>
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-50 text-amber-600">
               <IconInbox className="h-4 w-4" />
             </div>
@@ -81,15 +106,12 @@ export default async function OverviewPage() {
             {queue.length}{" "}
             <span className="text-base font-normal text-ink-soft">Menunggu</span>
           </p>
-          <div className="mt-1 flex items-center gap-1.5 text-micro text-ink-soft">
-            <span>Perlu konfirmasi tarif resmi</span>
-          </div>
         </div>
 
         {/* Armada Sedang Beroperasi */}
         <div className="rounded-card border border-rule bg-surface p-4 shadow-sm">
-          <div className="flex items-center justify-between text-meta text-ink-soft">
-            <span className="font-medium">Sedang Beroperasi</span>
+          <div className="flex items-center justify-between">
+            <span className="text-subtitle font-semibold text-ink">Sedang Beroperasi</span>
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-navy/10 text-navy">
               <IconCalendar className="h-4 w-4" />
             </div>
@@ -98,15 +120,12 @@ export default async function OverviewPage() {
             {unitDisewa.length}{" "}
             <span className="text-base font-normal text-ink-soft">Unit Sewa</span>
           </p>
-          <div className="mt-1 flex items-center gap-1.5 text-micro text-ink-soft">
-            <span>Jadwal aktif di lapangan</span>
-          </div>
         </div>
 
         {/* Total Pesanan Tercatat */}
         <div className="rounded-card border border-rule bg-surface p-4 shadow-sm">
-          <div className="flex items-center justify-between text-meta text-ink-soft">
-            <span className="font-medium">Total Antrean</span>
+          <div className="flex items-center justify-between">
+            <span className="text-subtitle font-semibold text-ink">Total Antrean</span>
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-600">
               <IconTrendingUp className="h-4 w-4" />
             </div>
@@ -115,9 +134,6 @@ export default async function OverviewPage() {
             {bookings.length}{" "}
             <span className="text-base font-normal text-ink-soft">Pesanan</span>
           </p>
-          <div className="mt-1 flex items-center gap-1.5 text-micro text-ink-soft">
-            <span>Riwayat booking pelanggan</span>
-          </div>
         </div>
       </div>
 
@@ -231,32 +247,29 @@ export default async function OverviewPage() {
             </Link>
           }
         >
-          {calendar.fleet.filter((v) => v.schedules.length > 0).length === 0 ? (
+          {jadwalTerdekat.length === 0 ? (
             <p className="rounded-sm border border-rule bg-canvas p-4 text-meta text-ink-soft">
               Tidak ada jadwal sewa aktif dalam waktu dekat.
             </p>
           ) : (
             <div className="divide-y divide-rule">
-              {calendar.fleet
-                .filter((v) => v.schedules.length > 0)
-                .slice(0, 5)
-                .map((vehicle) => {
-                  const schedule = vehicle.schedules[0];
-                  return (
-                    <div key={vehicle.id} className="flex items-center justify-between py-2.5">
-                      <div>
-                        <span className="font-semibold text-ink">{vehicle.name}</span>
-                        <span className="ml-2 text-micro text-ink-soft">({vehicle.plate})</span>
-                        <span className="block text-micro text-ink-soft">
-                          Pemesan: {schedule?.customerName || "Pelanggan"}
-                        </span>
-                      </div>
-                      <span className="text-meta font-medium text-navy">
-                        {schedule?.bookingCode || "Booking"}
-                      </span>
-                    </div>
-                  );
-                })}
+              {jadwalTerdekat.map((item) => (
+                <div key={`${item.vehicleId}-${item.bookingCode}`} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <span className="font-semibold text-ink">{item.vehicleName}</span>
+                    <span className="ml-2 text-micro text-ink-soft">({item.plate})</span>
+                    <span className="block text-micro text-ink-soft">
+                      Pemesan: {item.customerName || "Pelanggan"}
+                    </span>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="block text-meta font-medium text-navy">
+                      {item.tanggalMulai}
+                    </span>
+                    <span className="block text-micro text-ink-soft">{item.durasi}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </Panel>
