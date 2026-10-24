@@ -49,6 +49,11 @@ export type Booking = {
   dayCount: number;
   status: BookingStatus;
   rawStatus?: CanonicalBookingStatus;
+  /* Status penetapan tarif dari backend: PENDING, QUOTED, atau CONFIRMED.
+     Sebelumnya nilai ini sudah dikirim backend tetapi dibuang saat pemetaan,
+     sehingga antarmuka tidak punya cara membedakan pesanan yang tarifnya belum
+     ditetapkan dari yang sudah dikonfirmasi. */
+  tariffStatus: string;
   serviceType: string;
   pickupRoute: string | null;
   quotedAmount?: number | null;

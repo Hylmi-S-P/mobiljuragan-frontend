@@ -183,6 +183,24 @@ const BOOKING_STATUS_MAP: Record<CanonicalBookingStatus, BookingStatus> = {
   CANCELLED: "ditolak",
 };
 
+/* Pesanan yang sudah dikonfirmasi tetapi belum punya supir harus muncul sebagai
+   "perlu alokasi supir", bukan "tarif terkonfirmasi". Sebelumnya status ini tidak
+   pernah dihasilkan sama sekali, sehingga pill "Perlu Alokasi Sopir" di halaman
+   Pemesanan Masuk selalu menampilkan angka nol dan terlihat seperti filter rusak. */
+function resolveBookingStatus(b: ApiBooking): BookingStatus {
+  const dasar = BOOKING_STATUS_MAP[b.status] ?? "perlu_konfirmasi_tarif";
+
+  const butuhSupir = b.rentalType === "WITH_DRIVER";
+  const sudahDikonfirmasi = dasar === "tarif_terkonfirmasi";
+  const supirBelumAda = b.driverId === null || b.driverId === undefined;
+
+  if (butuhSupir && sudahDikonfirmasi && supirBelumAda) {
+    return "perlu_alokasi_sopir";
+  }
+
+  return dasar;
+}
+
 type ApiBooking = {
   id: string;
   bookingCode: string;
@@ -231,8 +249,9 @@ function mapBooking(b: ApiBooking): Booking {
     startDate: b.startDateTime,
     endDate: b.endDateTime,
     dayCount: countDays(b.startDateTime, b.endDateTime),
-    status: BOOKING_STATUS_MAP[b.status] ?? "perlu_konfirmasi_tarif",
+    status: resolveBookingStatus(b),
     rawStatus: b.status,
+    tariffStatus: b.tariffStatus,
     quotedAmount: b.quotedAmount !== null && b.quotedAmount !== undefined ? Number(b.quotedAmount) : null,
     driverId: b.driverId,
     serviceType: isDriverService ? "Dengan Supir" : "Lepas Kunci",

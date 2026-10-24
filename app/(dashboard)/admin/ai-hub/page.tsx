@@ -10,7 +10,7 @@ import {
 } from "@/lib/operations";
 
 export const metadata: Metadata = {
-  title: "AI & RAG Hub | MobilJuragan",
+  title: "AI HUB | MobilJuragan",
   description:
     "Pusat telemetri AI Gateway, konsol aktivitas live 9Router, manajemen basis pengetahuan RAG, dan sandbox pengujian asisten virtual rental Merauke.",
 };

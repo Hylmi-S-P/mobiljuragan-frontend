@@ -138,8 +138,11 @@ export function FleetTimelineCalendar({ calendar }: Props) {
         /* Matriks Gantt Visual */
         <div className="overflow-x-auto rounded-lg border border-rule bg-surface shadow-card">
           <div className="min-w-[860px]">
-            {/* Header Kalender */}
-            <div className="grid grid-cols-8 border-b border-rule bg-canvas text-center">
+            {/* Header Kalender.
+                Kolom armada memakan dua track, lalu tujuh kolom hari: 2 + 7 = 9.
+                Sebelumnya ditulis grid-cols-8, sehingga hari terakhir terlempar ke
+                baris baru dan garis vertikal antar-kolom tidak lagi sejajar. */}
+            <div className="grid grid-cols-9 border-b border-rule bg-canvas text-center">
               <div className="col-span-2 border-r border-rule p-3 text-left text-meta font-semibold text-ink">
                 Armada ({activeVehicles.length} Unit)
               </div>
@@ -170,7 +173,7 @@ export function FleetTimelineCalendar({ calendar }: Props) {
             <div className="divide-y divide-rule">
               {activeVehicles.map((vehicle) => {
                 return (
-                  <div key={vehicle.id} className="grid grid-cols-8 hover:bg-canvas/40 transition-colors">
+                  <div key={vehicle.id} className="grid grid-cols-9 hover:bg-canvas/40 transition-colors">
                     {/* Info Kendaraan */}
                     <div className="col-span-2 border-r border-rule p-3">
                       <div className="flex items-center justify-between">

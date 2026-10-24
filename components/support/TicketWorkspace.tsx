@@ -2,7 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 
-import { replyToTicketAction, updateTicketStatusAction } from "@/app/actions";
+import {
+  loadTicketMessagesAction,
+  replyToTicketAction,
+  updateTicketStatusAction,
+} from "@/app/actions";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -31,6 +35,34 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   const [draftError, setDraftError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSending, startTransition] = useTransition();
+  const [isLoadingMessages, startLoadMessages] = useTransition();
+
+  /* Berpindah tiket harus memuat percakapan tiket itu, bukan mempertahankan
+     percakapan tiket sebelumnya. Tanpa ini, pesan pelanggan tertukar antar tiket
+     dan balasan bisa terkirim ke tiket yang salah. */
+  function pilihTiket(ticketId: string) {
+    if (ticketId === activeId) return;
+
+    setActiveId(ticketId);
+    setMessages([]);
+    setDraftError(null);
+
+    startLoadMessages(async () => {
+      const hasil = await loadTicketMessagesAction(ticketId);
+
+      // Tiket bisa berpindah lagi selagi permintaan berjalan; hasil yang datang
+      // terlambat untuk tiket lama tidak boleh menimpa percakapan tiket aktif.
+      setActiveId((idSekarang) => {
+        if (idSekarang === ticketId) {
+          setMessages(hasil.messages);
+          if (!hasil.success) {
+            setNotice({ text: hasil.message ?? "Percakapan gagal dimuat.", isError: true });
+          }
+        }
+        return idSekarang;
+      });
+    });
+  }
 
   const filteredTickets = useMemo(() => {
     const keyword = debouncedQuery.trim().toLowerCase();
@@ -150,7 +182,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                   <li key={ticket.id}>
                     <button
                       type="button"
-                      onClick={() => setActiveId(ticket.id)}
+                      onClick={() => pilihTiket(ticket.id)}
                       aria-current={active ? "true" : undefined}
                       className={`flex w-full items-start gap-2.5 rounded-sm border px-2.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
                         active ? "border-teal bg-canvas" : "border-rule hover:bg-canvas"
@@ -269,7 +301,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-                  {messages.length === 0 ? (
+                  {isLoadingMessages ? (
+                    <div className="rounded-sm border border-rule bg-canvas px-4 py-6 text-center">
+                      <p className="text-body text-ink-soft">Memuat percakapan tiket…</p>
+                    </div>
+                  ) : messages.length === 0 ? (
                     <div className="rounded-sm border border-rule bg-canvas px-4 py-6 text-center">
                       <p className="text-body font-semibold text-ink">Belum ada pesan</p>
                       <p className="mt-2 text-body text-ink-soft">
@@ -281,7 +317,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                       {messages.map((message) => (
                         <li
                           key={message.id}
-                          className={`max-w-[80%] rounded-md border px-4 py-3 text-body ${
+                          className={`w-fit max-w-[80%] rounded-md border px-4 py-3 text-body ${
                             message.from === "tim"
                               ? "ml-auto border-teal/40 bg-canvas text-ink"
                               : "border-rule bg-surface text-ink"

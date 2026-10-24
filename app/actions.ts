@@ -35,6 +35,7 @@ import {
   apiDeleteVehicle,
   ApiError,
 } from "@/lib/api";
+import { getTicketMessages, type TicketMessageView } from "@/lib/operations";
 import type { AdminRole, CanonicalBookingStatus, FaqItem, Vehicle } from "@/lib/types";
 
 export type ActionState = {
@@ -229,6 +230,31 @@ export async function replyToTicketAction(ticketId: string, body: string): Promi
 
   revalidatePath("/customer-care");
   return { success: true, message: "Balasan terkirim dan tersimpan pada tiket." };
+}
+
+/**
+ * Memuat percakapan satu tiket saat admin berpindah tiket di Customer Care.
+ *
+ * Sebelumnya percakapan hanya diambil sekali untuk tiket pertama, lalu tidak pernah
+ * dimuat ulang. Akibatnya mengklik tiket lain tetap menampilkan pesan tiket pertama —
+ * pesan pelanggan tertukar antar tiket, dan balasan bisa dikirim ke tiket yang salah.
+ */
+export async function loadTicketMessagesAction(
+  ticketId: string,
+): Promise<{ success: boolean; messages: TicketMessageView[]; message?: string }> {
+  if (!ticketId) {
+    return { success: false, messages: [], message: "Tiket tidak valid." };
+  }
+
+  try {
+    const messages = await getTicketMessages(ticketId);
+    return { success: true, messages };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, messages: [], message: err.message };
+    }
+    return { success: false, messages: [], message: "Percakapan tiket gagal dimuat." };
+  }
 }
 
 /**
