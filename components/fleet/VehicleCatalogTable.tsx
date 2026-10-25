@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { PlateBadge } from "@/components/ui/PlateBadge";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { Toast } from "@/components/ui/Toast";
 import { IconCar, IconPencil, IconPlus } from "@/components/ui/icons";
 import { formatRupiah } from "@/lib/format";
 import type { Vehicle } from "@/lib/types";
@@ -22,8 +23,15 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [formTarget, setFormTarget] = useState<{ vehicleId: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+    /* Notifikasi memakai toast, bukan paragraf di atas panel. Paragraf itu mudah
+     terlewat karena berada jauh dari tombol yang baru ditekan, dan tidak hilang
+     sendiri sehingga menumpuk dengan pesan berikutnya. */
+  const [notice, setNotice] = useState<{
+    text: string;
+    tone: "success" | "error" | "info";
+  } | null>(null);
+  /* Nilai pending tidak ditampilkan; yang dipakai hanya startTransition. */
+  const [, startTransition] = useTransition();
 
   const editing = formTarget?.vehicleId
     ? vehicles.find((vehicle) => vehicle.id === formTarget.vehicleId)
@@ -35,9 +43,12 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
   return (
     <>
       {notice ? (
-        <p className="mt-3 rounded-sm border border-rule bg-surface px-3 py-2 text-meta text-ink">
-          {notice}
-        </p>
+        <Toast
+          message={notice.text}
+          tone={notice.tone}
+          durationMs={3500}
+          onClose={() => setNotice(null)}
+        />
       ) : null}
 
       <div className="mt-3">
@@ -134,19 +145,20 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
                 ? current.map((vehicle) => (vehicle.id === saved.id ? saved : vehicle))
                 : [...current, saved];
             });
-            setNotice(
-              editing
+            setNotice({
+              text: editing
                 ? `Menyimpan perubahan unit ${saved.name}...`
                 : `Menambahkan unit ${saved.name}...`,
-            );
+              tone: "info",
+            });
             setFormTarget(null);
 
             startTransition(async () => {
               const res = await saveVehicleAction(saved);
               if (res.success) {
-                setNotice(res.message ?? "Data armada berhasil disimpan ke database.");
+                setNotice({ text: res.message ?? "Data armada berhasil disimpan ke database.", tone: "success" });
               } else {
-                setNotice(`Perhatian: ${res.message ?? "Gagal menyimpan ke server backend."}`);
+                setNotice({ text: res.message ?? "Gagal menyimpan ke server backend.", tone: "error" });
               }
             });
           }}
@@ -161,15 +173,15 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
             const targetId = deleting.id;
             const targetName = deleting.name;
             setVehicles((current) => current.filter((vehicle) => vehicle.id !== targetId));
-            setNotice(`Menghapus unit ${targetName}...`);
+            setNotice({ text: `Menghapus unit ${targetName}...`, tone: "info" });
             setDeleteTarget(null);
 
             startTransition(async () => {
               const res = await deleteVehicleAction(targetId);
               if (res.success) {
-                setNotice(res.message ?? `Unit ${targetName} dihapus.`);
+                setNotice({ text: res.message ?? `Unit ${targetName} dihapus.`, tone: "success" });
               } else {
-                setNotice(`Perhatian: ${res.message ?? "Gagal menghapus armada."}`);
+                setNotice({ text: res.message ?? "Gagal menghapus armada.", tone: "error" });
               }
             });
           }}

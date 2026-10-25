@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { IconClose } from "./icons";
 
 export type ToastTone = "success" | "error" | "info";
@@ -15,6 +15,10 @@ export type ToastProps = {
 /**
  * Toast feedback notifikasi mengambang dengan durasi auto-dismiss 2.5 - 4 detik,
  * garis progres waktu, dan tombol tutup instan.
+ *
+ * Posisinya di kanan atas, bukan kanan bawah: pada layar ponsel bagian bawah
+ * sering tertutup tombol aksi atau keyboard, sehingga notifikasi di sana mudah
+ * terlewat.
  */
 export function Toast({
   message,
@@ -23,8 +27,6 @@ export function Toast({
   onClose,
 }: ToastProps) {
   const [progress, setProgress] = useState(100);
-  const onCloseRef = React.useRef(onClose);
-  onCloseRef.current = onClose;
 
   useEffect(() => {
     const startTime = Date.now();
@@ -34,11 +36,15 @@ export function Toast({
       setProgress(remaining);
       if (remaining <= 0) {
         clearInterval(interval);
-        onCloseRef.current();
+        onClose();
       }
     }, 50);
 
     return () => clearInterval(interval);
+    /* `onClose` sengaja tidak masuk daftar ketergantungan. Kalau dimasukkan,
+       setiap render induk membuat fungsi baru dan pengatur waktu ikut diulang,
+       sehingga notifikasi tidak pernah selesai menutup sendiri. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durationMs]);
 
   const toneConfig = {
@@ -63,7 +69,7 @@ export function Toast({
     <div
       role="alert"
       aria-live="polite"
-      className={`fixed bottom-5 right-5 z-50 flex max-w-sm flex-col overflow-hidden rounded-md border shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2 ${toneConfig.bg}`}
+      className={`fixed right-5 top-5 z-50 flex max-w-sm flex-col overflow-hidden rounded-md border shadow-lg transition-all animate-in fade-in slide-in-from-top-2 ${toneConfig.bg}`}
     >
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         <span className="text-body font-medium text-ink">{message}</span>
