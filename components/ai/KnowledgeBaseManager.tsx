@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import {
   createKnowledgeDocumentAction,
   updateKnowledgeDocumentAction,
@@ -65,6 +67,8 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
   /* Kategori yang sedang diubah namanya. Kosong berarti form dalam mode tambah. */
   const [kategoriDiedit, setKategoriDiedit] = useState<KnowledgeCategory | null>(null);
   const [kategoriSibuk, setKategoriSibuk] = useState(false);
+  /* Kategori yang menunggu konfirmasi hapus. Kosong berarti tidak ada dialog. */
+  const [kategoriAkanDihapus, setKategoriAkanDihapus] = useState<KnowledgeCategory | null>(null);
   const [kategoriError, setKategoriError] = useState<string | null>(null);
 
   // State Modal Tambah / Edit
@@ -269,6 +273,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
     setKategoriSibuk(true);
     setKategoriError(null);
     const res = await deleteKnowledgeCategoryAction(kategori.id);
+    setKategoriAkanDihapus(null);
     if (res.success) {
       await muatKategori();
     } else {
@@ -692,7 +697,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
                       <button
                         type="button"
                         disabled={kategoriSibuk}
-                        onClick={() => void hapusKategori(c)}
+                        onClick={() => setKategoriAkanDihapus(c)}
                         className="rounded-xs border border-danger/40 px-1.5 py-0.5 text-micro text-danger hover:bg-danger/10 disabled:opacity-30"
                         aria-label={`Hapus ${c.label}`}
                       >
@@ -711,6 +716,50 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
           </div>
         </div>
       ) : null}
+
+      {/* Konfirmasi hapus kategori.
+          Ami poin 95 meminta setiap fitur hapus punya pop up konfirmasi.
+          Sebelumnya kategori terhapus seketika begitu tombol ditekan, dan itu
+          tidak bisa dibatalkan. */}
+      <Modal
+        open={kategoriAkanDihapus !== null}
+        onClose={kategoriSibuk ? () => {} : () => setKategoriAkanDihapus(null)}
+        title="Hapus kategori ini?"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setKategoriAkanDihapus(null)}
+              disabled={kategoriSibuk}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (kategoriAkanDihapus) void hapusKategori(kategoriAkanDihapus);
+              }}
+              disabled={kategoriSibuk}
+            >
+              {kategoriSibuk ? "Menghapus..." : "Ya, hapus kategori"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Kategori <strong>{kategoriAkanDihapus?.label}</strong> akan dihapus dari
+            daftar pilihan.
+          </p>
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+            <p>
+              Dokumen yang sudah ada tidak ikut terhapus, tetapi tidak lagi punya
+              kategori yang bisa dipilih. Kategori yang masih dipakai dokumen akan
+              ditolak oleh server.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

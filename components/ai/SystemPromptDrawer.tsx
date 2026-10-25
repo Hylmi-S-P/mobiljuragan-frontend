@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { updateAiConfigAction } from "@/app/actions";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { IconSparkles } from "@/components/ui/icons";
 import type { AiConfigData } from "@/lib/operations";
 
@@ -15,6 +17,14 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
   const [systemPrompt, setSystemPrompt] = useState(initialConfig.systemPrompt);
   const [enableRag, setEnableRag] = useState(initialConfig.enableRag);
   const [feedback, setFeedback] = useState<string | null>(null);
+  /* Konfirmasi sebelum menyimpan. Ami meminta perubahan tidak langsung tersimpan
+     begitu tombol ditekan. */
+  const [konfirmasiSimpan, setKonfirmasiSimpan] = useState(false);
+
+  /* Hanya tanya kalau isinya benar-benar berubah. Membuka lalu menyimpan tanpa
+     mengubah apa pun tidak perlu dikonfirmasi. */
+  const adaPerubahan =
+    systemPrompt !== initialConfig.systemPrompt || enableRag !== initialConfig.enableRag;
 
   const handleSave = () => {
     setFeedback(null);
@@ -38,6 +48,7 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
   };
 
   return (
+    <>
     <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-2 border-b border-rule pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -56,7 +67,10 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
 
         <button
           type="button"
-          onClick={handleSave}
+          onClick={() => {
+            if (adaPerubahan) setKonfirmasiSimpan(true);
+            else handleSave();
+          }}
           disabled={isPending}
           className="self-start rounded-button bg-navy px-4 py-1.5 text-meta font-semibold text-white hover:bg-navy-hover transition-colors disabled:opacity-50 sm:self-auto"
         >
@@ -102,5 +116,43 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
         </div>
       </div>
     </div>
+      {/* Konfirmasi sebelum menyimpan persona. */}
+      <Modal
+        open={konfirmasiSimpan}
+        onClose={() => setKonfirmasiSimpan(false)}
+        title="Ingin melakukan perubahan?"
+        description="Instruksi ini dipakai AI saat menjawab pelanggan."
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setKonfirmasiSimpan(false)}>
+              Tidak, batalkan
+            </Button>
+            <Button
+              variant="confirm"
+              onClick={() => {
+                setKonfirmasiSimpan(false);
+                handleSave();
+              }}
+            >
+              Iya, lanjutkan
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Perubahan pada instruksi sistem dan persona akan langsung dipakai AI
+            untuk menjawab pertanyaan pelanggan.
+          </p>
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+            <p>
+              Pastikan nadanya sudah sesuai. Perubahan yang salah bisa membuat AI
+              menjawab di luar ketentuan rental.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+    </>
   );
 }
