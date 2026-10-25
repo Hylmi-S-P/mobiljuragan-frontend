@@ -4,7 +4,7 @@ import { useState } from "react";
 import { formatRupiah } from "@/lib/format";
 import type { FinanceSummary } from "@/lib/operations";
 import { ComparisonMetricCard } from "@/components/ui/ComparisonMetricCard";
-import { IconCar, IconCreditCard, IconTrendingUp } from "@/components/ui/icons";
+import { IconCar, IconTrendingUp } from "@/components/ui/icons";
 import { Tabs } from "@/components/ui/Tabs";
 
 type Props = {
@@ -28,19 +28,8 @@ export function FinancialSummaryCard({ initialData }: Props) {
   const revenueDirection =
     revenueDelta > 0 ? "up" : revenueDelta < 0 ? "down" : "neutral";
 
-  const lastAov = lastTrend && lastTrend.bookings > 0 ? lastTrend.revenue / lastTrend.bookings : 0;
-  const prevAov = prevTrend && prevTrend.bookings > 0 ? prevTrend.revenue / prevTrend.bookings : 0;
-  const aovDelta =
-    prevAov > 0
-      ? Math.round(((lastAov - prevAov) / prevAov) * 100)
-      : prevAov === 0 && lastAov > 0
-        ? 100
-        : 0;
-  const aovDirection =
-    aovDelta > 0 ? "up" : aovDelta < 0 ? "down" : "neutral";
-
   const ringkasan = (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {/* 1. Total Omzet Bersih dengan Sparkline Tren */}
       <ComparisonMetricCard
         title="Total Omzet Bersih"
@@ -60,43 +49,7 @@ export function FinancialSummaryCard({ initialData }: Props) {
         iconBgColor="bg-emerald-50 text-emerald-600"
       />
 
-      {/* 2. Estimasi Piutang Berjalan */}
-      <ComparisonMetricCard
-        title="Estimasi Piutang Berjalan"
-        value={formatRupiah(summary.pendingRevenue)}
-        baselineLabel="Menunggu pelunasan / verifikasi"
-        subtitle={`${summary.confirmedOrActiveCount} pesanan aktif`}
-        badge={
-          <span className="rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-micro font-semibold text-amber-700">
-            Dalam Proses
-          </span>
-        }
-        sparklineData={monthlyTrends.map((t) => Math.round(t.revenue * 0.22))}
-        sparklineColor="#d97706"
-        icon={<IconCreditCard className="h-4 w-4" />}
-        iconBgColor="bg-amber-50 text-amber-600"
-      />
-
-      {/* 3. Nilai Pesanan Rata-Rata (AOV) */}
-      <ComparisonMetricCard
-        title="Nilai Pesanan Rata-Rata"
-        value={formatRupiah(summary.averageOrderValue)}
-        baselineLabel="Rata-rata per transaksi selesai"
-        subtitle={`Total ${summary.totalAllBookings} transaksi`}
-        trend={{
-          direction: aovDirection,
-          percentage: Math.abs(aovDelta),
-          label: prevTrend ? `vs ${prevTrend.label}` : "stabil",
-        }}
-        sparklineData={monthlyTrends.map((t) =>
-          t.bookings > 0 ? Math.round(t.revenue / t.bookings) : 0,
-        )}
-        sparklineColor="#0e7c7b"
-        icon={<IconTrendingUp className="h-4 w-4" />}
-        iconBgColor="bg-teal/10 text-teal"
-      />
-
-      {/* 4. Rasio Model Lepas Kunci dengan Circular Progress */}
+      {/* 2. Rasio Model Lepas Kunci dengan Circular Progress */}
       <ComparisonMetricCard
         title="Model Lepas Kunci"
         value={`${rentalTypes.withoutDriver.percentage}%`}

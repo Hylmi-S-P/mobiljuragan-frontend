@@ -459,10 +459,8 @@ export async function getTicketDetail(
 export type FinanceSummary = {
   summary: {
     totalRevenue: number;
-    pendingRevenue: number;
     completedBookingsCount: number;
     confirmedOrActiveCount: number;
-    averageOrderValue: number;
     totalAllBookings: number;
   };
   rentalTypes: {
