@@ -212,7 +212,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
       <div className="mt-3 grid gap-3 lg:h-[calc(100vh-13rem)] lg:grid-cols-[300px_minmax(0,1fr)]">
         <div className="flex min-h-0 min-w-0 flex-col">
-          <Panel title="Tiket masuk">
+          {/* isiTinggi: daftar tiket menggulir sendiri di dalam panel, bukan
+              memanjangkan halaman. */}
+          <Panel title="Tiket masuk" isiTinggi>
             <div
               role="tablist"
               aria-label="Kelompok tiket"
