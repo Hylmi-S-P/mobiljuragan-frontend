@@ -13,14 +13,6 @@ import { DriverFormModal } from "@/components/modals/DriverFormModal";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/Table";
 import { Toggle } from "@/components/ui/Toggle";
 import { IconPencil, IconPlus } from "@/components/ui/icons";
 import { DRIVER_ROUTE, DRIVER_STATUS } from "@/lib/labels";
@@ -181,67 +173,85 @@ export function DriverRosterTable({ initialDrivers }: Props) {
             />
           </div>
 
-          <Table caption="Roster supir resmi MobilJuragan Merauke">
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell className="w-[320px]">Supir &amp; Kontak</TableHeaderCell>
-                <TableHeaderCell className="w-[180px]">Rute Penguasaan</TableHeaderCell>
-                <TableHeaderCell className="w-[240px]">Kesiapan Bertugas</TableHeaderCell>
-                <TableHeaderCell className="w-[100px] text-right">Aksi</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredDrivers.map((driver) => {
-                const onDuty = driver.status === "sedang_tugas";
-                const initial = driver.label.trim().charAt(0).toUpperCase() || "S";
-                return (
-                  <TableRow key={driver.id} className="hover:bg-canvas/50">
-                    <TableCell className="text-left">
+          {/* Tampilan kartu modular supir sesuai titik kritis Ami Poin 13 */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredDrivers.map((driver) => {
+              const onDuty = driver.status === "sedang_tugas";
+              const initial = driver.label.trim().charAt(0).toUpperCase() || "S";
+              return (
+                <div
+                  key={driver.id}
+                  className="flex flex-col justify-between rounded-lg border border-rule bg-surface p-4 shadow-card hover:border-navy/40 transition-all"
+                >
+                  <div>
+                    {/* Header Kartu: Avatar, Nama, Kontak & Status */}
+                    <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy/10 text-meta font-bold text-navy">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy/10 text-body font-bold text-navy">
                           {initial}
                         </div>
                         <div className="min-w-0">
-                          <span className="block font-semibold text-ink">{driver.label}</span>
+                          <h3 className="text-body font-bold text-ink truncate">{driver.label}</h3>
                           <span className="block text-micro text-ink-soft">
                             {driver.contact ?? "Tanpa kontak"}
                           </span>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-body font-medium text-ink">
-                      {DRIVER_ROUTE[driver.route]}
-                    </TableCell>
-                    <TableCell>
                       {onDuty ? (
                         <StatusChip tone={DRIVER_STATUS.sedang_tugas.tone}>
                           {DRIVER_STATUS.sedang_tugas.label}
                         </StatusChip>
-                      ) : (
-                        <Toggle
-                          checked={driver.status === "siaga"}
-                          disabled={isPending}
-                          onChange={(next) => setReadiness(driver.id, next)}
-                          labelOn={DRIVER_STATUS.siaga.label}
-                          labelOff={DRIVER_STATUS.libur.label}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <button
-                        type="button"
-                        onClick={() => setFormTarget({ driverId: driver.id })}
-                        className="inline-flex items-center gap-1 rounded-sm border border-rule bg-canvas px-2.5 py-1 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
-                      >
-                        <IconPencil className="h-3 w-3" />
-                        <span>Kelola</span>
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      ) : null}
+                    </div>
+
+                    {/* Informasi Rute & Kesiapan */}
+                    <div className="mt-3.5 space-y-2 border-t border-rule/60 pt-3 text-meta text-ink-soft">
+                      <div className="flex items-center justify-between">
+                        <span>Rute Penugasan</span>
+                        <span className="font-medium text-ink">
+                          {DRIVER_ROUTE[driver.route] ?? driver.route}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Kesiapan Bertugas</span>
+                        <div>
+                          {onDuty ? (
+                            <span className="text-micro font-medium text-amber-700">Dalam Perjalanan</span>
+                          ) : (
+                            <Toggle
+                              checked={driver.status === "siaga"}
+                              disabled={isPending}
+                              onChange={(next) => setReadiness(driver.id, next)}
+                              labelOn={DRIVER_STATUS.siaga.label}
+                              labelOff={DRIVER_STATUS.libur.label}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Kartu: Tombol Aksi Kelola */}
+                  <div className="mt-4 flex items-center justify-end border-t border-rule/60 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormTarget({ driverId: driver.id })}
+                      className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
+                    >
+                      <IconPencil className="h-3.5 w-3.5" />
+                      <span>Kelola</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredDrivers.length === 0 ? (
+            <div className="py-12 text-center text-meta text-ink-soft">
+              Tidak ada supir yang cocok dengan pencarian &quot;{searchQuery}&quot;.
+            </div>
+          ) : null}
         </Panel>
       </div>
 

@@ -71,6 +71,12 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+    if (ext !== ".md" && ext !== ".txt") {
+      setExtractError("Hanya berkas berformat .md dan .txt yang diperbolehkan.");
+      return;
+    }
+
     setIsExtracting(true);
     setExtractError(null);
     setUploadSuccessNote(null);
@@ -335,16 +341,16 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
                 <div className="rounded-lg border border-dashed border-rule bg-canvas/40 p-4 text-center">
                   <div className="flex flex-col items-center justify-center gap-1.5">
                     <span className="text-meta font-semibold text-ink">
-                      Unggah Berkas SOP / Regulasi (.pdf, .docx, .md, .txt)
+                      Unggah Berkas SOP / Regulasi (.md, .txt)
                     </span>
                     <p className="max-w-md text-micro text-ink-soft">
-                      Ekstraksi teks instan via parser workstation. Judul dan konten akan terisi otomatis.
+                      Ekstraksi teks instan dari berkas Markdown atau TXT. Judul dan konten akan terisi otomatis.
                     </p>
 
                     <label className="mt-2 inline-flex items-center gap-2 rounded-button bg-canvas-subtle px-3.5 py-1.5 text-meta font-medium text-ink border border-rule cursor-pointer hover:bg-canvas transition-colors">
                       <input
                         type="file"
-                        accept=".pdf,.docx,.doc,.md,.txt"
+                        accept=".md,.txt"
                         onChange={handleFileUpload}
                         disabled={isExtracting}
                         className="sr-only"
