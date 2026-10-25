@@ -22,6 +22,10 @@ import {
   apiCreateKnowledgeDocument,
   apiUpdateKnowledgeDocument,
   apiDeleteKnowledgeDocument,
+  apiGetKnowledgeCategories,
+  apiCreateKnowledgeCategory,
+  apiUpdateKnowledgeCategory,
+  apiDeleteKnowledgeCategory,
   apiFetchGatewayModels,
   apiTestAiChat,
   apiGetAiGatewayLogs,
@@ -249,7 +253,7 @@ export async function replyToTicketAction(ticketId: string, body: string): Promi
  * Memuat percakapan satu tiket saat admin berpindah tiket di Customer Care.
  *
  * Sebelumnya percakapan hanya diambil sekali untuk tiket pertama, lalu tidak pernah
- * dimuat ulang. Akibatnya mengklik tiket lain tetap menampilkan pesan tiket pertama —
+ * dimuat ulang. Akibatnya mengklik tiket lain tetap menampilkan pesan tiket pertama Ã¢â‚¬â€
  * pesan pelanggan tertukar antar tiket, dan balasan bisa dikirim ke tiket yang salah.
  */
 export async function loadTicketMessagesAction(
@@ -952,4 +956,80 @@ export async function logoutAction(): Promise<void> {
   cookieStore.delete("admin_token");
   cookieStore.delete("client_token");
   redirect("/login");
+}
+
+/**
+ * Kategori dokumen pengetahuan RAG.
+ *
+ * Dipisah dari aksi dokumen karena urusannya berbeda: dokumen mengubah isi
+ * pengetahuan, kategori mengubah cara pengetahuan dikelompokkan.
+ */
+export async function createKnowledgeCategoryAction(
+  label: string,
+): Promise<ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number } }> {
+  if (!label.trim()) {
+    return { success: false, message: "Nama kategori wajib diisi." };
+  }
+
+  try {
+    const data = await apiCreateKnowledgeCategory(label.trim());
+    revalidatePath("/admin/ai-hub");
+    return { success: true, message: "Kategori berhasil ditambahkan.", data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menambah kategori." };
+  }
+}
+
+export async function updateKnowledgeCategoryAction(
+  id: string,
+  payload: { label?: string; orderIndex?: number },
+): Promise<ActionState> {
+  if (!id) {
+    return { success: false, message: "ID kategori tidak valid." };
+  }
+
+  try {
+    await apiUpdateKnowledgeCategory(id, payload);
+    revalidatePath("/admin/ai-hub");
+    return { success: true, message: "Kategori berhasil diperbarui." };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal memperbarui kategori." };
+  }
+}
+
+export async function deleteKnowledgeCategoryAction(id: string): Promise<ActionState> {
+  if (!id) {
+    return { success: false, message: "ID kategori tidak valid." };
+  }
+
+  try {
+    await apiDeleteKnowledgeCategory(id);
+    revalidatePath("/admin/ai-hub");
+    return { success: true, message: "Kategori berhasil dihapus." };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menghapus kategori." };
+  }
+}
+/** Memuat ulang daftar kategori setelah ada perubahan. */
+export async function getKnowledgeCategoriesAction(): Promise<
+  ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number; jumlahDokumen?: number }[] }
+> {
+  try {
+    const data = await apiGetKnowledgeCategories();
+    return { success: true, message: "Daftar kategori dimuat.", data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal memuat kategori." };
+  }
 }

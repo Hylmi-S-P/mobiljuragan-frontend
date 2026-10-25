@@ -587,6 +587,26 @@ export async function getKnowledgeDocuments(): Promise<KnowledgeDocument[]> {
   return await apiGet<KnowledgeDocument[]>("/admin/ai/documents");
 }
 
+/** Kategori dokumen pengetahuan RAG. Dikelola admin dari portal. */
+export type KnowledgeCategoryView = {
+  id: string;
+  slug: string;
+  label: string;
+  orderIndex: number;
+  jumlahDokumen?: number;
+};
+
+export async function getKnowledgeCategories(): Promise<KnowledgeCategoryView[]> {
+  /* Kegagalan memuat kategori tidak boleh menjatuhkan seluruh halaman AI Hub.
+     Daftar kosong membuat layar menampilkan pesan "belum ada kategori", yang
+     masih bisa ditindaklanjuti admin. */
+  try {
+    return await apiGet<KnowledgeCategoryView[]>("/admin/ai/categories");
+  } catch {
+    return [];
+  }
+}
+
 export type AiGatewayLog = {
   id: string;
   timestamp: string;
