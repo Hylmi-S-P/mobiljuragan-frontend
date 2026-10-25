@@ -118,7 +118,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
 
         <div>
           <label htmlFor={`${fieldId}-role`} className="block text-meta font-medium text-ink">
-            Peran dan hak akses
+            Hak akses
           </label>
           <select
             id={`${fieldId}-role`}
@@ -138,20 +138,20 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
         <div className="grid gap-3.5 sm:grid-cols-2">
           <div>
             <label htmlFor={`${fieldId}-username`} className="block text-meta font-medium text-ink">
-              Nomor Telepon / Akun
+              Username
             </label>
             <input
               id={`${fieldId}-username`}
               name="phoneNumber"
               maxLength={20}
               value={username}
-              onChange={(event) => setUsername(event.target.value.replace(/[^\d+]/g, ""))}
+              onChange={(event) => setUsername(event.target.value.replace(/[^\w.@+-]/g, ""))}
               aria-invalid={Boolean(state?.errors?.phoneNumber)}
               aria-describedby={
                 state?.errors?.phoneNumber ? `${fieldId}-username-error` : undefined
               }
               className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-              placeholder="081234567890"
+              placeholder="admin atau 081234567890"
               required
             />
             {state?.errors?.phoneNumber ? (

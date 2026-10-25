@@ -21,6 +21,11 @@ import { useDebounce } from "@/lib/useDebounce";
 import type { SupportTicketView, TicketMessageView } from "@/lib/operations";
 import type { SupportTicketStatus } from "@/lib/types";
 
+/* Batas panjang balasan. Nilainya harus sama dengan MAKS_PANJANG_PESAN
+   di backend; kalau berbeda, pengguna bisa lolos di kotak isian tetapi
+   ditolak server, atau sebaliknya. */
+const MAKS_PANJANG_PESAN = 2000;
+
 type Props = {
   initialTickets: SupportTicketView[];
   initialMessages: TicketMessageView[];
@@ -241,7 +246,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           {ticket.title}
                         </span>
                         <span className="mt-1 block text-meta text-ink-soft">
-                          {formatTicketCategory(ticket.category)} · {ticket.messageCount} pesan
+                          {formatTicketCategory(ticket.category)} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {ticket.messageCount} pesan
                         </span>
                       </span>
                     </button>
@@ -322,7 +327,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
                   {isLoadingMessages ? (
                     <div className="rounded-sm border border-rule bg-canvas px-4 py-6 text-center">
-                      <p className="text-body text-ink-soft">Memuat percakapan tiket…</p>
+                      <p className="text-body text-ink-soft">Memuat percakapan tiketÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</p>
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="rounded-sm border border-rule bg-canvas px-4 py-6 text-center">
@@ -438,6 +443,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           id="ticket-reply"
                           value={draft}
                           onChange={(event) => setDraft(event.target.value)}
+                          maxLength={MAKS_PANJANG_PESAN}
                           disabled={isHandledByAi}
                           placeholder={
                             isHandledByAi
@@ -457,6 +463,17 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           {isSending ? "Mengirim..." : "Kirim Balasan"}
                         </Button>
                       </div>
+                      {/* Penghitung memberi tahu sisa ruang sebelum batas
+                          tercapai, supaya teks tidak terpotong tiba-tiba. */}
+                      <p
+                        className={`mt-1 text-right text-micro tabular-nums ${
+                          draft.length > MAKS_PANJANG_PESAN * 0.9
+                            ? "text-amber-600"
+                            : "text-ink-soft"
+                        }`}
+                      >
+                        {draft.length}/{MAKS_PANJANG_PESAN}
+                      </p>
                       {draftError ? (
                         <p id="ticket-reply-error" className="mt-2 text-meta text-danger">
                           {draftError}
