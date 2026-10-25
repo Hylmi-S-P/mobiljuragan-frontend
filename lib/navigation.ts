@@ -10,7 +10,7 @@ export const WORKSPACE_ROLE = "Portal admin";
 export const NAV_ENTRIES: NavEntry[] = [
   { label: "Dashboard", href: "/" },
   { label: "Pemesanan Masuk", href: "/bookings" },
-  { label: "Verifikasi Pembayaran", href: "/bookings?tab=pembayaran" },
+  { label: "Verifikasi Pembayaran", href: "/payments" },
   {
     label: "Manajemen Armada",
     items: [
