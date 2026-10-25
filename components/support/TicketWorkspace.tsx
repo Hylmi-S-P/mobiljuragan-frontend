@@ -9,6 +9,7 @@ import {
   updateTicketStatusAction,
 } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import {
@@ -321,65 +322,46 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
             {activeTicket ? (
               <>
                 <div className="border-b border-rule px-4 py-3">
-                  {/* Urutan header: judul tiket paling atas dan paling menonjol, baru
-                      identitas pelanggan, status, nomor, dan jenis bantuan. Sebelumnya
-                      yang paling menonjol justru nama pelanggan, sementara judul tiket
-                      terpisah di blok lain di bawahnya sehingga sulit dipindai. */}
-                  <h3 className="text-subtitle font-semibold leading-snug text-ink">
-                    {activeTicket.title}
-                  </h3>
+                  {/* Judul dan tombol berbagi satu baris: judul di kiri, aksi di
+                      kanan. Sebelumnya tombol diletakkan di baris sendiri sehingga
+                      menggantung di kiri dan menyisakan ruang kosong lebar. */}
+                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                    <div className="min-w-0 flex-1">
+                      {/* Urutan header: judul tiket paling menonjol, baru identitas
+                          pelanggan, status, nomor, dan jenis bantuan. */}
+                      <h3 className="text-subtitle font-semibold leading-snug text-ink">
+                        {activeTicket.title}
+                      </h3>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-                    <span
-                      aria-hidden="true"
-                      className="flex h-7 w-7 items-center justify-center rounded-full bg-navy text-meta font-semibold text-white"
-                    >
-                      {initialOf(activeTicket.customerLabel)}
+                      <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                        <span
+                          aria-hidden="true"
+                          className="flex h-7 w-7 items-center justify-center rounded-full bg-navy text-meta font-semibold text-white"
+                        >
+                          {initialOf(activeTicket.customerLabel)}
                         </span>
-                    <span className="text-meta font-medium text-ink">
-                      {activeTicket.customerLabel}
-                    </span>
-                    <StatusChip tone={tahapAktif.tone}>{tahapAktif.label}</StatusChip>
-                    {activeTicket.handledBy === "AI" ? (
-                      <span className="rounded-xs border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-micro font-medium text-amber-800">
-                        Ditangani Bot AI
-                      </span>
-                    ) : null}
-                    <span className="text-micro text-ink-soft">{activeTicket.ticketNumber}</span>
-                    <span className="text-micro text-ink-soft">
-                      {formatTicketCategory(activeTicket.category)}
-                    </span>
-                  </div>
-
-                  {/* Tombol Aksi Status Tiket Sederhana & Terpusat */}
-                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                    {!isResolvedOrClosed ? (
-                      konfirmasiTutup ? (
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="text-meta text-ink-soft">
-                            Tiket akan dipindah ke Arsip.
+                        <span className="text-meta font-medium text-ink">
+                          {activeTicket.customerLabel}
+                        </span>
+                        <StatusChip tone={tahapAktif.tone}>{tahapAktif.label}</StatusChip>
+                        {activeTicket.handledBy === "AI" ? (
+                          <span className="rounded-xs border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-micro font-medium text-amber-800">
+                            Ditangani Bot AI
                           </span>
-                          <Button
-                            variant="confirm"
-                            size="sm"
-                            disabled={isSending}
-                            onClick={() => {
-                              setKonfirmasiTutup(false);
-                              handleStatusChange("RESOLVED");
-                            }}
-                          >
-                            {isSending ? "Menyelesaikan..." : "Ya, tutup tiket"}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={isSending}
-                            onClick={() => setKonfirmasiTutup(false)}
-                          >
-                            Batal
-                          </Button>
+                        ) : null}
+                        <span className="text-micro text-ink-soft">
+                          {activeTicket.ticketNumber}
                         </span>
-                      ) : (
+                        <span className="text-micro text-ink-soft">
+                          {formatTicketCategory(activeTicket.category)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Aksi di kanan, sejajar judul. Saat judul panjang, tombol
+                        turun ke kanan bawah, bukan ke kiri. */}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {!isResolvedOrClosed ? (
                         <Button
                           variant="confirm"
                           size="sm"
@@ -388,17 +370,13 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                         >
                           Selesaikan &amp; Tutup Tiket
                         </Button>
-                      )
-                    ) : (
-                      <>
-                        {/* Tiket yang sudah ditutup tidak bisa dibuka lagi. Yang
-                            bisa dilakukan hanya membuat tiket baru; itu dijelaskan
-                            di keterangan bawah percakapan. */}
-                        <span className="text-micro text-ink-soft">
-                          Tiket sudah ditutup
-                        </span>
-                      </>
-                    )}
+                      ) : (
+                        /* Tiket yang sudah ditutup tidak bisa dibuka lagi. Yang bisa
+                           dilakukan hanya membuat tiket baru; itu dijelaskan di
+                           keterangan bawah percakapan. */
+                        <span className="text-micro text-ink-soft">Tiket sudah ditutup</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -572,6 +550,51 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           </section>
         </div>
       </div>
+
+      {/* Konfirmasi penutupan tiket.
+          Dulu konfirmasi ini menumpuk di dalam header: teks penjelas dan dua
+          tombol berdesakan dalam satu baris, dan tata letak bergeser saat ditekan.
+          Di modal, penjelasannya bisa dibaca utuh sebelum memutuskan. */}
+      <Modal
+        open={konfirmasiTutup}
+        onClose={isSending ? () => {} : () => setKonfirmasiTutup(false)}
+        title="Tutup tiket ini?"
+        description="Tiket yang sudah ditutup tidak bisa dibuka lagi."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setKonfirmasiTutup(false)}
+              disabled={isSending}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="confirm"
+              onClick={() => {
+                setKonfirmasiTutup(false);
+                handleStatusChange("RESOLVED");
+              }}
+              disabled={isSending}
+            >
+              {isSending ? "Menyelesaikan..." : "Ya, tutup tiket"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Tiket akan dipindah ke Arsip, dan pelanggan tidak bisa lagi mengirim
+            pesan ke tiket ini.
+          </p>
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+            <p>
+              Tutup tiket hanya kalau pertanyaannya sudah terjawab. Kalau pelanggan
+              masih perlu dibantu, balas dulu lewat kotak balasan di bawah.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }
