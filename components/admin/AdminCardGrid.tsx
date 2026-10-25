@@ -4,7 +4,6 @@ import React from "react";
 import { StatusChip } from "@/components/ui/StatusChip";
 import {
   IconArrowRight,
-  IconShield,
   IconUser,
 } from "@/components/ui/icons";
 import { ADMIN_ROLE } from "@/lib/labels";
@@ -99,20 +98,18 @@ export function AdminCardGrid({
                 </button>
               </div>
 
-              {/* Role & Status Keamanan Hash */}
-              <div className="mt-4 space-y-2 rounded-sm border border-rule/60 bg-canvas/60 p-3">
+              {/* Peran / Hak Akses.
+
+                  Baris "Status Kata Sandi: Bcrypt Hash" sengaja dihapus. Baris itu
+                  hanya peninggalan dari permintaan menampilkan kata sandi ter-masking
+                  di kartu. Kata sandi tersimpan sebagai hash satu arah, jadi tidak ada
+                  yang bisa ditampilkan, dan label itu tidak memberi informasi berguna
+                  bagi admin. */}
+              <div className="mt-4 rounded-sm border border-rule/60 bg-canvas/60 p-3">
                 <div className="flex items-center justify-between text-meta">
                   <span className="text-ink-soft font-medium">Peran / Hak Akses:</span>
                   <span className="rounded-badge bg-surface border border-rule px-2 py-0.5 text-micro font-semibold text-ink">
                     {ADMIN_ROLE[account.role]}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-meta">
-                  <span className="text-ink-soft font-medium">Status Kata Sandi:</span>
-                  <span className="inline-flex items-center gap-1 text-micro text-teal font-medium">
-                    <IconShield className="h-3.5 w-3.5" />
-                    Bcrypt Hash
                   </span>
                 </div>
               </div>
