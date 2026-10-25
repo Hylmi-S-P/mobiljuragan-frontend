@@ -136,40 +136,6 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
     });
   };
 
-  /* Menggeser satu FAQ satu langkah. Nilai orderIndex ditukar dengan tetangganya,
-     lalu keduanya dikirim ke server. Menukar (bukan menomori ulang seluruh daftar)
-     membuat permintaan tetap kecil dan tidak mengganggu FAQ yang sedang difilter. */
-  const moveMutation = useMutation({
-    mutationFn: async (pasangan: { a: FaqItem; b: FaqItem }) => {
-      await apiClient.patch(`/admin/faqs/${encodeURIComponent(pasangan.a.id)}`, {
-        orderIndex: pasangan.b.orderIndex ?? 0,
-      });
-      await apiClient.patch(`/admin/faqs/${encodeURIComponent(pasangan.b.id)}`, {
-        orderIndex: pasangan.a.orderIndex ?? 0,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminFaqs"] });
-      showToast("Urutan FAQ diperbarui.", "success");
-    },
-    onError: () => {
-      showToast("Gagal mengubah urutan FAQ.", "error");
-    },
-  });
-
-  const handleMove = (faq: FaqItem, arah: "naik" | "turun") => {
-    /* Daftar yang ditampilkan sudah terurut, jadi tetangga diambil dari daftar
-       yang sedang tampil, bukan dari data mentah. */
-    const indeks = optimisticFaqs.findIndex((item) => item.id === faq.id);
-    if (indeks < 0) return;
-
-    const targetIndeks = arah === "naik" ? indeks - 1 : indeks + 1;
-    if (targetIndeks < 0 || targetIndeks >= optimisticFaqs.length) return;
-
-    const tetangga = optimisticFaqs[targetIndeks];
-    moveMutation.mutate({ a: faq, b: tetangga });
-  };
-
   return (
     <>
       {toastMessage ? (
@@ -238,8 +204,6 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
             onSelectFaq={(faq) => setDetailFaq(faq)}
             onToggleActive={handleToggleVisibility}
             isPendingToggle={toggleVisibilityMutation.isPending}
-            onMove={handleMove}
-            isPendingMove={moveMutation.isPending}
           />
         </Panel>
       </div>

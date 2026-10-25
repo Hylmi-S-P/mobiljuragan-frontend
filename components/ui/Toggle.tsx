@@ -7,6 +7,9 @@ type ToggleProps = {
   labelOff: string;
   disabled?: boolean;
   disabledReason?: string;
+  /* Sembunyikan label teks di samping sakelar. Dipakai kalau status sudah
+     dijelaskan di tempat lain pada kartu yang sama, supaya tidak mengulang. */
+  hideLabel?: boolean;
 };
 
 /* Sakelar status. Bentuk pil dipakai khusus untuk kontrol sakelar, bukan untuk
@@ -18,6 +21,7 @@ export function Toggle({
   labelOff,
   disabled = false,
   disabledReason,
+  hideLabel = false,
 }: ToggleProps) {
   return (
     /* inline-flex supaya sakelar ikut terpusat saat sel tabel menengahkan isinya. */
@@ -44,7 +48,9 @@ export function Toggle({
           />
         </span>
       </button>
-      <span className="text-meta font-semibold text-ink">{checked ? labelOn : labelOff}</span>
+      {hideLabel ? null : (
+        <span className="text-meta font-semibold text-ink">{checked ? labelOn : labelOff}</span>
+      )}
       {disabled && disabledReason ? (
         <span className="text-micro text-ink-soft">{disabledReason}</span>
       ) : null}

@@ -119,3 +119,31 @@ html {
   outline: 2px solid var(--color-teal);
   outline-offset: 2px;
 }
+
+/* Garis waktu pada notifikasi.
+   Sebelumnya lebarnya diperbarui lewat state React setiap 50 ms, sehingga satu
+   notifikasi memicu puluhan render ulang selama 3 detik. Elemen lain di halaman
+   ikut dihitung ulang tata letaknya dan tampak berkedip. Dengan animasi CSS,
+   browser mengurusnya sendiri tanpa menyentuh React sama sekali. */
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-toast-progress {
+  animation-name: toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* Hormati permintaan pengguna yang tidak ingin animasi. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-toast-progress {
+    animation: none;
+    width: 100%;
+  }
+}
