@@ -72,6 +72,7 @@ type ApiVehicle = {
   transmission: string | null;
   seatingCapacity: number | null;
   pricePerDay?: number | null;
+  imageUrl?: string | null;
   operationalStatus: string;
   /* Booking yang sedang mengunci unit. Kosong berarti unit bebas. */
   bookings?: Array<{ id: string; bookingCode: string; status: string }>;
@@ -109,6 +110,7 @@ function mapVehicle(v: ApiVehicle): Vehicle {
     transmission: v.transmission,
     seats: v.seatingCapacity,
     pricePerDay: v.pricePerDay ?? 400000,
+    imageUrl: v.imageUrl ?? null,
     // `usage` dan `allowedModes` tidak dikirim backend. Dibiarkan null/kosong
     // daripada diisi teks karangan.
     usage: null,
