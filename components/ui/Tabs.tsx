@@ -67,11 +67,11 @@ export function Tabs({ items, panels, defaultTab, activeTab, onChange }: Props) 
               {item.label}
               {item.badge !== undefined && item.badge !== 0 ? (
                 <span
-                  className={`rounded-full px-1.5 py-0.2 text-micro ${
-                    terpilih ? "bg-navy/10 font-bold text-navy" : "bg-rule text-ink-soft"
+                  className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
+                    terpilih ? "bg-navy/10 text-navy" : "bg-rule text-ink-soft"
                   }`}
                 >
-                  {item.badge}
+                  {typeof item.badge === "number" && item.badge > 99 ? "99+" : item.badge}
                 </span>
               ) : null}
             </button>

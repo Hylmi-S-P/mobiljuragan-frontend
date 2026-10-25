@@ -58,10 +58,11 @@ export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
 
   function isNavActive(entryHref: string): boolean {
     if (entryHref === "/bookings") {
-      return pathname === "/bookings" || pathname.startsWith("/bookings/");
-    }
-    if (entryHref === "/payments") {
-      return pathname === "/payments" || pathname.startsWith("/payments/");
+      return (
+        pathname === "/bookings" ||
+        pathname.startsWith("/bookings/") ||
+        pathname.startsWith("/payments")
+      );
     }
     return pathname === entryHref;
   }
@@ -182,7 +183,7 @@ export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
                 <Ikon
                   className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/70"}`}
                 />
-                <span className="flex-1 truncate" title={entry.label}>{entry.label}</span>
+                <span className="flex-1 whitespace-nowrap">{entry.label}</span>
                 {/* Indikator notifikasi responsif & adaptif:
                     - Satuan (1–9): Berbentuk lingkaran sempurna 20x20 px (min-w-5 h-5).
                     - Puluhan (10–99): Mengembang mulus menjadi pil lonjong dengan padding aman px-1.5 tanpa teks terpotong (overflow).
