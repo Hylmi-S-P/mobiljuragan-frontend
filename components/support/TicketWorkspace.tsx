@@ -210,8 +210,8 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
         </p>
       ) : null}
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <div className="min-w-0">
+      <div className="mt-3 grid gap-3 lg:h-[calc(100vh-13rem)] lg:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="flex min-h-0 min-w-0 flex-col">
           <Panel title="Tiket masuk">
             <div
               role="tablist"
@@ -252,7 +252,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
               className="h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
             />
 
-            <ul className="mt-3 space-y-1.5">
+            <ul className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
               {filteredTickets.map((ticket) => {
                 const active = ticket.id === activeId;
                 const tahap = TICKET_STAGE[ticketStageOf(ticket.status)];
@@ -271,7 +271,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy text-body font-semibold text-white"
                       >
                         {initialOf(ticket.customerLabel)}
-                      </span>
+                        </span>
                       <span className="min-w-0">
                         <span className="flex flex-wrap items-center gap-2">
                           <span className="text-body font-semibold text-ink">
@@ -293,7 +293,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           {ticket.title}
                         </span>
                         <span className="mt-1 block text-meta text-ink-soft">
-                          {formatTicketCategory(ticket.category)} · {ticket.messageCount} pesan
+                        {formatTicketCategory(ticket.category)} · {ticket.messageCount} pesan
                         </span>
                       </span>
                     </button>
@@ -314,8 +314,8 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           </Panel>
         </div>
 
-        <div className="min-w-0">
-          <section className="flex min-h-[460px] flex-col rounded-md border border-rule bg-surface">
+        <div className="flex min-h-0 min-w-0 flex-col">
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-md border border-rule bg-surface lg:h-full">
             {activeTicket ? (
               <>
                 <div className="border-b border-rule px-4 py-3">
@@ -333,7 +333,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                       className="flex h-7 w-7 items-center justify-center rounded-full bg-navy text-meta font-semibold text-white"
                     >
                       {initialOf(activeTicket.customerLabel)}
-                    </span>
+                        </span>
                     <span className="text-meta font-medium text-ink">
                       {activeTicket.customerLabel}
                     </span>
@@ -388,14 +388,14 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                         </Button>
                       )
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={isSending}
-                        onClick={() => handleStatusChange("OPEN")}
-                      >
-                        {isSending ? "Membuka..." : "Buka Kembali Tiket"}
-                      </Button>
+                      <>
+                        {/* Tiket yang sudah ditutup tidak bisa dibuka lagi. Yang
+                            bisa dilakukan hanya membuat tiket baru; itu dijelaskan
+                            di keterangan bawah percakapan. */}
+                        <span className="text-micro text-ink-soft">
+                          Tiket sudah ditutup
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
@@ -441,7 +441,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                 <div className="border-t border-rule px-4 py-3">
                   {isResolvedOrClosed ? (
                     <div className="rounded-sm border border-rule bg-canvas p-2.5 text-center text-meta text-ink-soft">
-                      Tiket ini telah selesai/ditutup. Klik &quot;Buka Kembali Tiket&quot; untuk mengirim balasan lanjutan.
+                  Tiket ini sudah ditutup dan tidak menerima pesan baru. Kalau pelanggan masih perlu dibantu, minta mereka membuat tiket baru.
                     </div>
                   ) : (
                     <>
@@ -453,7 +453,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                               <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                               <span className="text-body font-medium leading-snug">
                                 Tiket ini sedang ditangani oleh <strong>Bot AI</strong>. Input balasan dikunci agar tidak terjadi konflik percakapan.
-                              </span>
+                        </span>
                             </div>
                             <Button
                               variant="confirm"

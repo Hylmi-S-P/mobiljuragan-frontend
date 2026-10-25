@@ -274,12 +274,10 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
         <Table caption="Daftar Antrean Pembayaran dan Verifikasi Bukti Transfer MobilJuragan">
           <TableHead>
             <TableRow>
-              <TableHeaderCell className="text-left">Kode & Jadwal</TableHeaderCell>
+              <TableHeaderCell className="text-left">Kode &amp; Jadwal</TableHeaderCell>
               <TableHeaderCell className="text-left">Pelanggan</TableHeaderCell>
-              <TableHeaderCell>Metode Bayar</TableHeaderCell>
-              <TableHeaderCell className="text-right">Nominal Pas</TableHeaderCell>
+              <TableHeaderCell className="text-right">Nominal</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Bukti Transfer</TableHeaderCell>
               <TableHeaderCell className="text-right">Aksi</TableHeaderCell>
             </TableRow>
           </TableHead>
@@ -311,7 +309,6 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                   label: payment.status,
                   tone: "neutral" as const,
                 };
-                const hasProof = Boolean(payment.proofImageUrl);
                 const isPending = payment.status === "PENDING_VERIFICATION";
 
                 return (
@@ -348,17 +345,6 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                       </div>
                     </TableCell>
 
-                    {/* Metode & Bank */}
-                    <TableCell>
-                      <div className="inline-flex flex-col items-center">
-                        <span className="text-meta font-medium text-ink">
-                          {PAYMENT_METHOD_LABEL[payment.method] || payment.method}
-                        </span>
-                        {payment.bankName ? (
-                          <span className="text-micro text-ink-soft">{payment.bankName}</span>
-                        ) : null}
-                      </div>
-                    </TableCell>
 
                     {/* Nominal Pas (Dengan Kode Unik) */}
                     <TableCell className="text-right">
@@ -367,7 +353,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                           {formatRupiah(payment.totalAmount)}
                         </span>
                         <span className="text-micro text-ink-soft tabular-nums">
-                          Tarif: {formatRupiah(payment.baseAmount)} (+{payment.uniqueCode})
+                          {PAYMENT_METHOD_LABEL[payment.method] || payment.method} · Tarif: {formatRupiah(payment.baseAmount)} (+{payment.uniqueCode})
                         </span>
                       </div>
                     </TableCell>
@@ -385,24 +371,6 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                       ) : null}
                     </TableCell>
 
-                    {/* Bukti Transfer */}
-                    <TableCell>
-                      {hasProof ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenModal(payment)}
-                          className="inline-flex items-center gap-1 text-meta font-medium text-teal hover:underline"
-                        >
-                          Lihat Struk
-                        </button>
-                      ) : payment.method === "QRIS" ? (
-                        <span className="text-micro text-ink-soft">Otomatis QRIS</span>
-                      ) : payment.method === "CASH" ? (
-                        <span className="text-micro text-ink-soft">Tunai di Tempat</span>
-                      ) : (
-                        <span className="text-micro text-ink-soft">Belum Ada</span>
-                      )}
-                    </TableCell>
 
                     {/* Aksi */}
                     <TableCell className="text-right">

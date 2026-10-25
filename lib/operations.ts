@@ -490,6 +490,13 @@ export type FinanceSummary = {
     totalAllBookings: number;
   };
 
+  /* Perbandingan model sewa. Angkanya dihitung dari pembayaran lunas, sama
+     seperti omzet total, sehingga persentasenya selalu berjumlah 100%. */
+  rentalTypes?: {
+    withoutDriver: { count: number; revenue: number; percentage: number };
+    withDriver: { count: number; revenue: number; percentage: number };
+  };
+
   fleetBreakdown: Array<{
     vehicleId: string;
     externalId: string;
