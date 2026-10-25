@@ -18,18 +18,7 @@ export function FinancialSummaryCard({ initialData }: Props) {
   const [data] = useState<FinanceSummary>(initialData);
   const { summary, rentalTypes, monthlyTrends, weeklyBreakdown, yearOverYear } = data;
 
-  const lastTrend = monthlyTrends.length > 0 ? monthlyTrends[monthlyTrends.length - 1] : null;
   const prevTrend = monthlyTrends.length > 1 ? monthlyTrends[monthlyTrends.length - 2] : null;
-
-  const revenueDelta =
-    prevTrend && prevTrend.revenue > 0 && lastTrend
-      ? Math.round(((lastTrend.revenue - prevTrend.revenue) / prevTrend.revenue) * 100)
-      : prevTrend && prevTrend.revenue === 0 && lastTrend && lastTrend.revenue > 0
-        ? 100
-        : 0;
-
-  const revenueDirection =
-    revenueDelta > 0 ? "up" : revenueDelta < 0 ? "down" : "neutral";
 
   const ringkasan = (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -37,11 +26,6 @@ export function FinancialSummaryCard({ initialData }: Props) {
       <ComparisonMetricCard
         title="Total Omzet Bersih"
         value={formatRupiah(summary.totalRevenue)}
-        trend={{
-          direction: revenueDirection,
-          percentage: Math.abs(revenueDelta),
-          label: "vs bulan lalu",
-        }}
         baselineLabel={
           prevTrend ? `vs ${prevTrend.label}: ${formatRupiah(prevTrend.revenue)}` : "Target omzet berjalan"
         }
