@@ -3,6 +3,7 @@ import { AiHubTabbedWorkspace } from "@/components/ai/AiHubTabbedWorkspace";
 import {
   getAiConfig,
   getKnowledgeDocuments,
+  getKnowledgeCategories,
   getAiGatewayHealth,
   getAiGatewayLogs,
   type AiGatewayHealth,
@@ -18,9 +19,10 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AiHubPage() {
-  const [aiData, documents, healthData, initialLogs] = await Promise.all([
+  const [aiData, documents, categories, healthData, initialLogs] = await Promise.all([
     getAiConfig(),
     getKnowledgeDocuments(),
+    getKnowledgeCategories(),
     getAiGatewayHealth().catch((): AiGatewayHealth => ({
       healthStatus: "OFFLINE",
       statusCode: 0,
@@ -44,6 +46,7 @@ export default async function AiHubPage() {
       initialLogs={initialLogs}
       config={aiData.config}
       documents={documents}
+      categories={categories}
       activeDocCount={activeDocCount}
     />
   );
