@@ -487,6 +487,21 @@ export type FinanceSummary = {
   }>;
   monthlyTrends: Array<{
     label: string;
+    shortLabel: string;
+    tahun: number;
+    bulan: number;
+    revenue: number;
+    bookings: number;
+    weekly: number[];
+  }>;
+  weeklyBreakdown: Array<{
+    label: string;
+    tahun: number;
+    bulan: number;
+    minggu: Array<{ label: string; revenue: number }>;
+  }>;
+  yearOverYear: Array<{
+    tahun: number;
     revenue: number;
     bookings: number;
   }>;

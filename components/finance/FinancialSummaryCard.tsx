@@ -6,6 +6,9 @@ import type { FinanceSummary } from "@/lib/operations";
 import { ComparisonMetricCard } from "@/components/ui/ComparisonMetricCard";
 import { IconCar, IconTrendingUp } from "@/components/ui/icons";
 import { Tabs } from "@/components/ui/Tabs";
+import { RevenueBarChart } from "@/components/finance/RevenueBarChart";
+import { YearOverYearChart } from "@/components/finance/YearOverYearChart";
+import { RentalModelDonutChart } from "@/components/finance/RentalModelDonutChart";
 
 type Props = {
   initialData: FinanceSummary;
@@ -13,7 +16,7 @@ type Props = {
 
 export function FinancialSummaryCard({ initialData }: Props) {
   const [data] = useState<FinanceSummary>(initialData);
-  const { summary, rentalTypes, monthlyTrends } = data;
+  const { summary, rentalTypes, monthlyTrends, weeklyBreakdown, yearOverYear } = data;
 
   const lastTrend = monthlyTrends.length > 0 ? monthlyTrends[monthlyTrends.length - 1] : null;
   const prevTrend = monthlyTrends.length > 1 ? monthlyTrends[monthlyTrends.length - 2] : null;
@@ -68,126 +71,35 @@ export function FinancialSummaryCard({ initialData }: Props) {
     </div>
   );
 
+  /* Tab dikendalikan dari sini, bukan dibiarkan mengurus state sendiri.
+     Alasannya: grafik memakai ResizeObserver untuk mengukur lebar wadahnya.
+     Kalau panel grafik ikut dirender saat tabnya tersembunyi (hidden), lebarnya
+     terbaca 0 dan grafik tidak pernah tergambar. Jadi grafik baru dipasang saat
+     tabnya benar-benar dibuka. */
+  const [tabAktif, setTabAktif] = useState("ringkasan");
+
   return (
     <div className="flex flex-col gap-6">
       <Tabs
         items={[
           { id: "ringkasan", label: "Ringkasan" },
-          { id: "tren", label: "Tren Bulanan" },
+          { id: "omzet", label: "Omzet Tahunan" },
+          { id: "yoy", label: "Tahun ke Tahun" },
           { id: "model", label: "Model Sewa" },
         ]}
+        activeTab={tabAktif}
+        onChange={setTabAktif}
         panels={{
           ringkasan,
-          tren: <PanelTren monthlyTrends={monthlyTrends} />,
-          model: <PanelModel rentalTypes={rentalTypes} />,
+          omzet:
+            tabAktif === "omzet" ? (
+              <RevenueBarChart monthlyTrends={monthlyTrends} weeklyBreakdown={weeklyBreakdown} />
+            ) : null,
+          yoy: tabAktif === "yoy" ? <YearOverYearChart yearOverYear={yearOverYear} /> : null,
+          model: tabAktif === "model" ? <RentalModelDonutChart rentalTypes={rentalTypes} /> : null,
         }}
-        defaultTab="ringkasan"
       />
     </div>
   );
 }
 
-function PanelTren({ monthlyTrends }: { monthlyTrends: FinanceSummary["monthlyTrends"] }) {
-  const maxMonthlyRevenue = Math.max(...monthlyTrends.map((m) => m.revenue), 1);
-
-  return (
-    <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
-      <div className="flex items-center justify-between border-b border-rule pb-3">
-        <div>
-          <h3 className="text-body font-semibold text-ink">Tren Omzet Bulanan</h3>
-          <p className="text-micro text-ink-soft">Histori pendapatan sewa resmi (6 bulan terakhir)</p>
-        </div>
-        <span className="text-micro font-medium text-ink-soft">IDR (Rupiah)</span>
-      </div>
-
-      <div className="mt-5 flex flex-col gap-3">
-        {monthlyTrends.map((trend) => {
-          const pct = maxMonthlyRevenue > 0 ? Math.round((trend.revenue / maxMonthlyRevenue) * 100) : 0;
-          return (
-            <div key={trend.label} className="flex items-center gap-3">
-              <span className="w-20 shrink-0 text-micro font-medium text-ink-soft">
-                {trend.label}
-              </span>
-              <div className="relative h-6 flex-1 overflow-hidden rounded bg-canvas">
-                <div
-                  className="h-full rounded bg-teal/20 transition-all duration-500"
-                  style={{ width: `${Math.max(pct, trend.revenue > 0 ? 5 : 0)}%` }}
-                />
-                <span className="absolute inset-y-0 left-2 flex items-center text-micro font-medium tabular-nums text-ink">
-                  {trend.revenue > 0 ? formatRupiah(trend.revenue) : "Rp 0"}
-                </span>
-              </div>
-              <span className="w-16 text-right text-micro tabular-nums text-ink-soft">
-                {trend.bookings} sewa
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function PanelModel({ rentalTypes }: { rentalTypes: FinanceSummary["rentalTypes"] }) {
-  return (
-    <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
-      <div className="border-b border-rule pb-3">
-        <h3 className="text-body font-semibold text-ink">Komparasi Model Penyewaan</h3>
-        <p className="text-micro text-ink-soft">
-          Proporsi pendapatan sewa lepas kunci vs dengan supir
-        </p>
-      </div>
-
-      <div className="mt-5 flex flex-col gap-4">
-        <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-canvas">
-          <div
-            className="bg-navy transition-all duration-500"
-            style={{ width: `${rentalTypes.withoutDriver.percentage}%` }}
-            title={`Lepas Kunci: ${rentalTypes.withoutDriver.percentage}%`}
-          />
-          <div
-            className="bg-teal transition-all duration-500"
-            style={{ width: `${rentalTypes.withDriver.percentage}%` }}
-            title={`Dengan Supir: ${rentalTypes.withDriver.percentage}%`}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 pt-2">
-          <div className="rounded-md border border-rule/60 bg-canvas/60 p-3.5">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-navy" />
-              <span className="text-micro font-semibold uppercase tracking-wider text-ink">
-                Lepas Kunci
-              </span>
-            </div>
-            <p className="mt-2 text-lg font-bold tabular-nums text-ink">
-              {formatRupiah(rentalTypes.withoutDriver.revenue)}
-            </p>
-            <div className="mt-1 flex items-center justify-between text-micro text-ink-soft">
-              <span>{rentalTypes.withoutDriver.count} transaksi</span>
-              <span className="font-semibold text-ink">
-                {rentalTypes.withoutDriver.percentage}%
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-md border border-rule/60 bg-canvas/60 p-3.5">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-teal" />
-              <span className="text-micro font-semibold uppercase tracking-wider text-ink">
-                Dengan Supir
-              </span>
-            </div>
-            <p className="mt-2 text-lg font-bold tabular-nums text-ink">
-              {formatRupiah(rentalTypes.withDriver.revenue)}
-            </p>
-            <div className="mt-1 flex items-center justify-between text-micro text-ink-soft">
-              <span>{rentalTypes.withDriver.count} transaksi</span>
-              <span className="font-semibold text-ink">{rentalTypes.withDriver.percentage}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}

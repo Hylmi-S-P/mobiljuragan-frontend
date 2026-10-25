@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { FinancialSummaryCard } from "@/components/finance/FinancialSummaryCard";
 import { FleetRevenueTable } from "@/components/finance/FleetRevenueTable";
 import { getFinanceSummary } from "@/lib/operations";
+import { terapkanDemoGrafik } from "@/lib/demoFinance";
 
 export const metadata: Metadata = {
   title: "Laporan Keuangan | MobilJuragan",
@@ -12,7 +13,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function FinancePage() {
-  const financeData = await getFinanceSummary("all");
+  const dataAsli = await getFinanceSummary("all");
+
+  /* Grafik memakai angka contoh hanya bila NEXT_PUBLIC_DEMO_CHART=1.
+     Tanpa variabel itu, fungsinya mengembalikan data asli apa adanya. */
+  const financeData = terapkanDemoGrafik(dataAsli);
 
   return (
     <div className="flex flex-col gap-6">
