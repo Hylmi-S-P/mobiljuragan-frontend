@@ -463,18 +463,7 @@ export type FinanceSummary = {
     confirmedOrActiveCount: number;
     totalAllBookings: number;
   };
-  rentalTypes: {
-    withoutDriver: {
-      count: number;
-      revenue: number;
-      percentage: number;
-    };
-    withDriver: {
-      count: number;
-      revenue: number;
-      percentage: number;
-    };
-  };
+
   fleetBreakdown: Array<{
     vehicleId: string;
     externalId: string;
