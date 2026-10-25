@@ -73,14 +73,38 @@ type ApiVehicle = {
   seatingCapacity: number | null;
   pricePerDay?: number | null;
   operationalStatus: string;
+  /* Booking yang sedang mengunci unit. Kosong berarti unit bebas. */
+  bookings?: Array<{ id: string; bookingCode: string; status: string }>;
 };
+
+/**
+ * Menentukan status tampil armada.
+ *
+ * operationalStatus hanya berubah lewat perubahan manual admin, jadi unit yang
+ * sedang disewa tetap tertulis AVAILABLE dan katalog menampilkan "Tersedia" untuk
+ * mobil yang sudah keluar. Status tampil karena itu diturunkan dari booking aktif,
+ * bukan dari kolom itu.
+ *
+ * Servis dan tidak tersedia tetap menang atas "disewa": unit yang sedang diperbaiki
+ * tidak boleh tampil seolah sedang disewa pelanggan.
+ */
+function statusTampil(v: ApiVehicle): VehicleStatus {
+  const dasar = VEHICLE_STATUS[v.operationalStatus] ?? "tidak_tersedia";
+
+  if (dasar === "servis" || dasar === "tidak_tersedia") {
+    return dasar;
+  }
+
+  const adaBookingAktif = (v.bookings ?? []).length > 0;
+  return adaBookingAktif ? "disewa" : dasar;
+}
 
 function mapVehicle(v: ApiVehicle): Vehicle {
   return {
     id: v.externalId || v.id,
     name: v.name,
     plate: v.licensePlate,
-    status: VEHICLE_STATUS[v.operationalStatus] ?? "tidak_tersedia",
+    status: statusTampil(v),
     category: v.category,
     transmission: v.transmission,
     seats: v.seatingCapacity,
