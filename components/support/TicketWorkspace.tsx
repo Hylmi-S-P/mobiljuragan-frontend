@@ -295,16 +295,16 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                     </span>
                   </div>
 
-                  {/* Tombol Aksi Status Tiket Sederhana & Terpusat */}
+                  {/* Tombol Aksi Status Tiket */}
                   <div className="mt-2.5 flex flex-wrap items-center gap-2">
                     {!isResolvedOrClosed ? (
                       <Button
-                        variant="confirm"
+                        variant="outline"
                         size="sm"
                         disabled={isSending}
-                        onClick={() => handleStatusChange("RESOLVED")}
+                        onClick={() => handleStatusChange("CLOSED")}
                       >
-                        {isSending ? "Menyelesaikan..." : "Selesaikan & Tutup Tiket"}
+                        {isSending ? "Menutup..." : "Tutup Tiket"}
                       </Button>
                     ) : (
                       <Button
