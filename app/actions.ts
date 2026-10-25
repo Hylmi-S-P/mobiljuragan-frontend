@@ -253,7 +253,7 @@ export async function replyToTicketAction(ticketId: string, body: string): Promi
  * Memuat percakapan satu tiket saat admin berpindah tiket di Customer Care.
  *
  * Sebelumnya percakapan hanya diambil sekali untuk tiket pertama, lalu tidak pernah
- * dimuat ulang. Akibatnya mengklik tiket lain tetap menampilkan pesan tiket pertama Ã¢â‚¬â€
+ * dimuat ulang. Akibatnya mengklik tiket lain tetap menampilkan pesan tiket pertama ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
  * pesan pelanggan tertukar antar tiket, dan balasan bisa dikirim ke tiket yang salah.
  */
 export async function loadTicketMessagesAction(
@@ -896,6 +896,9 @@ export async function saveVehicleAction(
           : vehicle.transmission?.toUpperCase() || "MANUAL",
       seatingCapacity: vehicle.seats ?? 7,
       pricePerDay: Number(vehicle.pricePerDay) || 400000,
+        /* Foto ikut dikirim. Sebelumnya hanya menjadi pratinjau di layar lalu
+           hilang saat modal ditutup, sehingga unit tidak pernah punya foto. */
+        imageUrl: vehicle.imageUrl ?? undefined,
       operationalStatus: (vehicle.status === "tersedia"
         ? "AVAILABLE"
         : vehicle.status === "servis"

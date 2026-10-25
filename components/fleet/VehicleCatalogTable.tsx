@@ -87,6 +87,19 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
                       </StatusChip>
                     </div>
 
+                    {/* Foto unit kalau ada. Kalau belum diunggah, bagian ini tidak
+                        dirender sama sekali supaya kartu tidak menyisakan ruang kosong. */}
+                    {vehicle.imageUrl ? (
+                      <div className="mt-3 overflow-hidden rounded-sm border border-rule">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={vehicle.imageUrl}
+                          alt={`Foto ${vehicle.name}`}
+                          className="h-32 w-full object-cover"
+                        />
+                      </div>
+                    ) : null}
+
                     {/* Spesifikasi Ringkas */}
                     <div className="mt-3.5 space-y-1.5 border-t border-rule/60 pt-3 text-meta text-ink-soft">
                       <div className="flex justify-between">
