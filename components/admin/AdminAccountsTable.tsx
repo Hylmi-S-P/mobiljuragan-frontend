@@ -186,7 +186,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
                 onClick={() => setIsCreateOpen(true)}
               >
                 <IconPlus className="h-4 w-4" />
-                Buat Akun Staf Baru
+                + Admin Baru
               </Button>
             </div>
           }
