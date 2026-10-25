@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { formatRupiah, formatRupiahDots, parseRupiahDots } from "@/lib/format";
 import { BOOKING_STATUS } from "@/lib/labels";
-import { AMOUNT_PLACEHOLDER, TARIFF_PENDING_NOTE } from "@/lib/uiText";
+import { TARIFF_PENDING_NOTE } from "@/lib/uiText";
 import type { Booking, BookingStatus, CanonicalBookingStatus } from "@/lib/types";
 
 type Props = {
@@ -124,7 +124,7 @@ export function BookingActionSidebar({
           </span>
           <span className="text-subtitle font-bold text-ink tabular-nums">
             {canDecide && totalCleanBill === 0
-              ? AMOUNT_PLACEHOLDER
+              ? "Belum ditetapkan"
               : formatRupiah(totalCleanBill)}
           </span>
         </div>

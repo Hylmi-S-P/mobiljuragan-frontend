@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { FinancialSummaryCard } from "@/components/finance/FinancialSummaryCard";
 import { FleetRevenueTable } from "@/components/finance/FleetRevenueTable";
 import { getFinanceSummary } from "@/lib/operations";
-import { terapkanDemoGrafik } from "@/lib/demoFinance";
 
 export const metadata: Metadata = {
   title: "Laporan Keuangan | MobilJuragan",
@@ -13,11 +12,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function FinancePage() {
-  const dataAsli = await getFinanceSummary("all");
-
-  /* Grafik memakai angka contoh hanya bila NEXT_PUBLIC_DEMO_CHART=1.
-     Tanpa variabel itu, fungsinya mengembalikan data asli apa adanya. */
-  const financeData = terapkanDemoGrafik(dataAsli);
+  /* Seluruh angka di halaman ini datang dari database. Tidak ada lagi jalur
+     data contoh: laporan keuangan harus selalu bisa dipertanggungjawabkan. */
+  const financeData = await getFinanceSummary("all");
 
   return (
     <div className="flex flex-col gap-6">

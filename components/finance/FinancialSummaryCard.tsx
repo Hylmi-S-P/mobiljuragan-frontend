@@ -8,6 +8,7 @@ import { IconClipboard, IconTrendingUp } from "@/components/ui/icons";
 import { Tabs } from "@/components/ui/Tabs";
 import { RevenueBarChart } from "@/components/finance/RevenueBarChart";
 import { YearOverYearChart } from "@/components/finance/YearOverYearChart";
+import { RentalModelChart } from "@/components/finance/RentalModelChart";
 
 type Props = {
   initialData: FinanceSummary;
@@ -15,7 +16,7 @@ type Props = {
 
 export function FinancialSummaryCard({ initialData }: Props) {
   const [data] = useState<FinanceSummary>(initialData);
-  const { summary, monthlyTrends, weeklyBreakdown, yearOverYear } = data;
+  const { summary, monthlyTrends, weeklyBreakdown, yearOverYear, rentalTypes } = data;
 
   /* Tab dikendalikan dari sini, bukan dibiarkan mengurus state sendiri.
      Alasannya: grafik memakai ResizeObserver untuk mengukur lebar wadahnya.
@@ -44,8 +45,6 @@ export function FinancialSummaryCard({ initialData }: Props) {
         title="Pesanan Masuk"
         value={summary.totalAllBookings}
         unitLabel="pesanan"
-        baselineLabel={`${summary.completedBookingsCount} selesai`}
-        subtitle={`${summary.confirmedOrActiveCount} berjalan`}
         icon={<IconClipboard className="h-4 w-4" />}
         iconBgColor="bg-navy/10 text-navy"
       />
@@ -59,6 +58,7 @@ export function FinancialSummaryCard({ initialData }: Props) {
           { id: "ringkasan", label: "Ringkasan" },
           { id: "omzet", label: "Omzet Tahunan" },
           { id: "yoy", label: "Tahun ke Tahun" },
+          { id: "model", label: "Model Sewa" },
         ]}
         activeTab={tabAktif}
         onChange={setTabAktif}
@@ -69,6 +69,10 @@ export function FinancialSummaryCard({ initialData }: Props) {
               <RevenueBarChart monthlyTrends={monthlyTrends} weeklyBreakdown={weeklyBreakdown} />
             ) : null,
           yoy: tabAktif === "yoy" ? <YearOverYearChart yearOverYear={yearOverYear} /> : null,
+          model:
+            tabAktif === "model" && rentalTypes ? (
+              <RentalModelChart rentalTypes={rentalTypes} />
+            ) : null,
         }}
       />
     </div>

@@ -3,7 +3,7 @@
 import React from "react";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Toggle } from "@/components/ui/Toggle";
-import { IconArrowRight, IconChevronDown, IconChevronUp, IconHelpCircle } from "@/components/ui/icons";
+import { IconArrowRight, IconHelpCircle } from "@/components/ui/icons";
 import type { FaqItem } from "@/lib/types";
 
 type Props = {
@@ -11,11 +11,6 @@ type Props = {
   onSelectFaq: (faq: FaqItem) => void;
   onToggleActive: (faq: FaqItem) => void;
   isPendingToggle?: boolean;
-  /* Menggeser urutan tampil FAQ. Tanpa ini, urutan di aplikasi pelanggan tidak
-     bisa diatur admin sama sekali, karena orderIndex hanya tersimpan sebagai
-     input tersembunyi yang nilainya selalu nol untuk FAQ baru. */
-  onMove?: (faq: FaqItem, arah: "naik" | "turun") => void;
-  isPendingMove?: boolean;
 };
 
 /**
@@ -28,8 +23,6 @@ export function FaqCardGrid({
   onSelectFaq,
   onToggleActive,
   isPendingToggle,
-  onMove,
-  isPendingMove,
 }: Props) {
   if (faqs.length === 0) {
     return (
@@ -52,45 +45,22 @@ export function FaqCardGrid({
             className="group relative flex flex-col justify-between rounded-card border border-rule bg-surface p-4 sm:p-5 shadow-xs transition-all duration-200 hover:border-navy/40 hover:shadow-sm"
           >
             <div>
-              {/* Header Kartu: Kategori & Toggle Visibilitas Mobile */}
+              {/* Header kartu: kategori dan sakelar visibilitas.
+
+                  Label teks di samping sakelar sengaja tidak ditampilkan.
+                  Badge di bagian bawah kartu sudah menyebut "Tayang di Mobile"
+                  atau "Disembunyikan", jadi menulis "Mobile: Aktif" di sini
+                  hanya mengulang hal yang sama tiga kali dalam satu kartu. */}
               <div className="flex items-center justify-between gap-2 border-b border-rule/50 pb-3">
-                <div className="flex items-center gap-1.5">
-                  <StatusChip tone="neutral">{faq.category}</StatusChip>
-                  {onMove ? (
-                    <span className="inline-flex overflow-hidden rounded-xs border border-rule">
-                      <button
-                        type="button"
-                        disabled={isPendingMove || faqs.indexOf(faq) === 0}
-                        onClick={() => onMove(faq, "naik")}
-                        aria-label={`Naikkan urutan: ${faq.question}`}
-                        title="Naikkan urutan"
-                        className="px-1.5 py-1 text-ink-soft hover:bg-canvas hover:text-navy disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <IconChevronUp className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isPendingMove || faqs.indexOf(faq) === faqs.length - 1}
-                        onClick={() => onMove(faq, "turun")}
-                        aria-label={`Turunkan urutan: ${faq.question}`}
-                        title="Turunkan urutan"
-                        className="px-1.5 py-1 text-ink-soft hover:bg-canvas hover:text-navy disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <IconChevronDown className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-1.5" title="Visibilitas di aplikasi pelanggan">
-                  <span className="text-micro font-medium text-ink-soft">Mobile:</span>
-                  <Toggle
-                    checked={faq.isActive}
-                    disabled={isPendingToggle}
-                    onChange={() => onToggleActive(faq)}
-                    labelOn="Aktif"
-                    labelOff="Sembunyi"
-                  />
-                </div>
+                <StatusChip tone="neutral">{faq.category}</StatusChip>
+                <Toggle
+                  checked={faq.isActive}
+                  disabled={isPendingToggle}
+                  onChange={() => onToggleActive(faq)}
+                  labelOn="Aktif"
+                  labelOff="Sembunyi"
+                  hideLabel
+                />
               </div>
 
               {/* Pertanyaan FAQ */}

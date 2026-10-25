@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import {
   createKnowledgeDocumentAction,
   updateKnowledgeDocumentAction,
@@ -62,7 +64,11 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
   /* Pengelola kategori, dibuka dari tombol di bawah pilihan kategori. */
   const [kategoriTerbuka, setKategoriTerbuka] = useState(false);
   const [kategoriBaru, setKategoriBaru] = useState("");
+  /* Kategori yang sedang diubah namanya. Kosong berarti form dalam mode tambah. */
+  const [kategoriDiedit, setKategoriDiedit] = useState<KnowledgeCategory | null>(null);
   const [kategoriSibuk, setKategoriSibuk] = useState(false);
+  /* Kategori yang menunggu konfirmasi hapus. Kosong berarti tidak ada dialog. */
+  const [kategoriAkanDihapus, setKategoriAkanDihapus] = useState<KnowledgeCategory | null>(null);
   const [kategoriError, setKategoriError] = useState<string | null>(null);
 
   // State Modal Tambah / Edit
@@ -267,6 +273,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
     setKategoriSibuk(true);
     setKategoriError(null);
     const res = await deleteKnowledgeCategoryAction(kategori.id);
+    setKategoriAkanDihapus(null);
     if (res.success) {
       await muatKategori();
     } else {
@@ -277,19 +284,35 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
     setKategoriSibuk(false);
   };
 
-  const geserKategori = async (kategori: KnowledgeCategory, arah: -1 | 1) => {
-    const urut = [...categories].sort((a, b) => a.orderIndex - b.orderIndex);
-    const posisi = urut.findIndex((c) => c.id === kategori.id);
-    const target = posisi + arah;
-    if (target < 0 || target >= urut.length) return;
+  /* Mengubah nama kategori. `slug` sengaja tidak ikut berubah karena dokumen
+     menyimpan slug itu; menggantinya akan memutus hubungan dengan dokumen lama. */
+  const mulaiEditKategori = (kategori: KnowledgeCategory) => {
+    setKategoriDiedit(kategori);
+    setKategoriBaru(kategori.label);
+    setKategoriError(null);
+  };
 
-    /* Tukar nilai orderIndex dengan tetangganya. Kalau hanya satu baris diubah,
-       dua kategori bisa mendapat angka yang sama dan urutannya jadi tidak pasti. */
+  const simpanEditKategori = async () => {
+    if (!kategoriDiedit || !kategoriBaru.trim()) return;
     setKategoriSibuk(true);
-    await updateKnowledgeCategoryAction(kategori.id, { orderIndex: urut[target].orderIndex });
-    await updateKnowledgeCategoryAction(urut[target].id, { orderIndex: kategori.orderIndex });
-    await muatKategori();
+    setKategoriError(null);
+    const res = await updateKnowledgeCategoryAction(kategoriDiedit.id, {
+      label: kategoriBaru.trim(),
+    });
+    if (res.success) {
+      setKategoriDiedit(null);
+      setKategoriBaru("");
+      await muatKategori();
+    } else {
+      setKategoriError(res.message ?? "Gagal mengubah kategori.");
+    }
     setKategoriSibuk(false);
+  };
+
+  const batalEditKategori = () => {
+    setKategoriDiedit(null);
+    setKategoriBaru("");
+    setKategoriError(null);
   };
 
   return (
@@ -615,21 +638,30 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    void tambahKategori();
+                    void (kategoriDiedit ? simpanEditKategori() : tambahKategori());
                   }
                 }}
-                placeholder="Nama kategori baru"
+                placeholder="Nama kategori"
                 maxLength={60}
                 className="h-10 min-w-0 flex-1 rounded-sm border border-rule bg-canvas px-3 text-meta text-ink focus:border-navy focus:outline-none"
               />
               <button
                 type="button"
                 disabled={kategoriSibuk || !kategoriBaru.trim()}
-                onClick={() => void tambahKategori()}
+                onClick={() => void (kategoriDiedit ? simpanEditKategori() : tambahKategori())}
                 className="rounded-sm bg-teal px-3 py-2 text-meta font-semibold text-white hover:opacity-90 disabled:opacity-50"
               >
-                Tambah
+                {kategoriDiedit ? "Simpan" : "Tambah"}
               </button>
+              {kategoriDiedit ? (
+                <button
+                  type="button"
+                  onClick={batalEditKategori}
+                  className="rounded-sm border border-rule px-3 py-2 text-meta font-semibold text-ink hover:bg-canvas"
+                >
+                  Batal
+                </button>
+              ) : null}
             </div>
 
             {kategoriError ? (
@@ -639,7 +671,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
             <ul className="mt-4 max-h-72 space-y-1.5 overflow-y-auto">
               {[...categories]
                 .sort((a, b) => a.orderIndex - b.orderIndex)
-                .map((c, idx, arr) => (
+                .map((c) => (
                   <li
                     key={c.id}
                     className="flex items-center justify-between gap-2 rounded-sm border border-rule px-2.5 py-2"
@@ -655,26 +687,17 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
                     <span className="flex shrink-0 items-center gap-1">
                       <button
                         type="button"
-                        disabled={kategoriSibuk || idx === 0}
-                        onClick={() => void geserKategori(c, -1)}
+                        disabled={kategoriSibuk}
+                        onClick={() => mulaiEditKategori(c)}
                         className="rounded-xs border border-rule px-1.5 py-0.5 text-micro hover:border-navy disabled:opacity-30"
-                        aria-label={`Naikkan ${c.label}`}
+                        aria-label={`Ubah nama ${c.label}`}
                       >
-                        Naik
-                      </button>
-                      <button
-                        type="button"
-                        disabled={kategoriSibuk || idx === arr.length - 1}
-                        onClick={() => void geserKategori(c, 1)}
-                        className="rounded-xs border border-rule px-1.5 py-0.5 text-micro hover:border-navy disabled:opacity-30"
-                        aria-label={`Turunkan ${c.label}`}
-                      >
-                        Turun
+                        Ubah
                       </button>
                       <button
                         type="button"
                         disabled={kategoriSibuk}
-                        onClick={() => void hapusKategori(c)}
+                        onClick={() => setKategoriAkanDihapus(c)}
                         className="rounded-xs border border-danger/40 px-1.5 py-0.5 text-micro text-danger hover:bg-danger/10 disabled:opacity-30"
                         aria-label={`Hapus ${c.label}`}
                       >
@@ -693,6 +716,50 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
           </div>
         </div>
       ) : null}
+
+      {/* Konfirmasi hapus kategori.
+          Ami poin 95 meminta setiap fitur hapus punya pop up konfirmasi.
+          Sebelumnya kategori terhapus seketika begitu tombol ditekan, dan itu
+          tidak bisa dibatalkan. */}
+      <Modal
+        open={kategoriAkanDihapus !== null}
+        onClose={kategoriSibuk ? () => {} : () => setKategoriAkanDihapus(null)}
+        title="Hapus kategori ini?"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setKategoriAkanDihapus(null)}
+              disabled={kategoriSibuk}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (kategoriAkanDihapus) void hapusKategori(kategoriAkanDihapus);
+              }}
+              disabled={kategoriSibuk}
+            >
+              {kategoriSibuk ? "Menghapus..." : "Ya, hapus kategori"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Kategori <strong>{kategoriAkanDihapus?.label}</strong> akan dihapus dari
+            daftar pilihan.
+          </p>
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+            <p>
+              Dokumen yang sudah ada tidak ikut terhapus, tetapi tidak lagi punya
+              kategori yang bisa dipilih. Kategori yang masih dipakai dokumen akan
+              ditolak oleh server.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

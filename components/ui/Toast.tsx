@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { IconClose } from "./icons";
 
 export type ToastTone = "success" | "error" | "info";
@@ -26,21 +26,14 @@ export function Toast({
   durationMs = 3000,
   onClose,
 }: ToastProps) {
-  const [progress, setProgress] = useState(100);
-
+  /* Hanya satu pengatur waktu, tanpa state yang diperbarui terus-menerus.
+     Sebelumnya garis progres memakai `setProgress` tiap 50 ms, yang memicu
+     render ulang puluhan kali selama 3 detik dan membuat elemen lain di halaman
+     tampak berkedip. Sekarang garis progres dianimasikan CSS, dan React hanya
+     dipakai untuk menutup notifikasi sekali di akhir. */
   useEffect(() => {
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, 100 - (elapsed / durationMs) * 100);
-      setProgress(remaining);
-      if (remaining <= 0) {
-        clearInterval(interval);
-        onClose();
-      }
-    }, 50);
-
-    return () => clearInterval(interval);
+    const timer = setTimeout(onClose, durationMs);
+    return () => clearTimeout(timer);
     /* `onClose` sengaja tidak masuk daftar ketergantungan. Kalau dimasukkan,
        setiap render induk membuat fungsi baru dan pengatur waktu ikut diulang,
        sehingga notifikasi tidak pernah selesai menutup sendiri. */
@@ -83,11 +76,12 @@ export function Toast({
         </button>
       </div>
 
-      {/* Progress bar timer auto dismiss */}
+      {/* Garis waktu. Dianimasikan CSS dari lebar penuh ke nol, jadi tidak ada
+          render ulang React selama notifikasi tampil. */}
       <div className="h-0.5 w-full bg-canvas">
         <div
-          className={`h-full transition-all duration-75 ${toneConfig.barBg}`}
-          style={{ width: `${progress}%` }}
+          className={`h-full ${toneConfig.barBg} animate-toast-progress`}
+          style={{ animationDuration: `${durationMs}ms` }}
         />
       </div>
     </div>
