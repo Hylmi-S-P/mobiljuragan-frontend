@@ -13,6 +13,7 @@ import { DriverFormModal } from "@/components/modals/DriverFormModal";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { Toast } from "@/components/ui/Toast";
 import { Toggle } from "@/components/ui/Toggle";
 import { IconPencil, IconPlus } from "@/components/ui/icons";
 import { DRIVER_ROUTE, DRIVER_STATUS } from "@/lib/labels";
@@ -139,17 +140,13 @@ export function DriverRosterTable({ initialDrivers }: Props) {
   return (
     <>
       {notice ? (
-        <p
-          className={`mt-3 rounded-sm border px-3 py-2 text-meta ${
-            notice.isError
-              ? "border-danger bg-danger/10 text-danger"
-              : "border-teal/40 bg-surface text-ink"
-          }`}
-        >
-          {notice.text}
-        </p>
+        <Toast
+          message={notice.text}
+          tone={notice.isError ? "error" : "success"}
+          durationMs={3500}
+          onClose={() => setNotice(null)}
+        />
       ) : null}
-
       <div className="mt-3">
         <Panel
           action={

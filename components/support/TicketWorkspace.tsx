@@ -101,15 +101,29 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
     });
   }
 
+  /* Tiket selesai dipindahkan ke tab Arsip supaya daftar utama hanya berisi
+     pekerjaan yang masih perlu ditangani. Sebelumnya tiket selesai menumpuk di
+     daftar yang sama dan mendorong tiket baru ke bawah. */
+    const [tabDaftar, setTabDaftar] = useState<"aktif" | "arsip">("aktif");
+
+  /* Menutup tiket tidak bisa dibatalkan dari layar admin, jadi tombolnya meminta
+     penegasan sekali lagi. Tanpa ini, satu klik tak sengaja langsung memindahkan
+     tiket ke arsip dan pelanggan berhenti mendapat balasan. */
+  const [konfirmasiTutup, setKonfirmasiTutup] = useState(false);
+
+  const tiketAktif = useMemo(() => tickets.filter((t) => t.status !== "selesai"), [tickets]);
+  const tiketArsip = useMemo(() => tickets.filter((t) => t.status === "selesai"), [tickets]);
+
   const filteredTickets = useMemo(() => {
+    const sumber = tabDaftar === "aktif" ? tiketAktif : tiketArsip;
     const keyword = debouncedQuery.trim().toLowerCase();
-    if (keyword.length === 0) return tickets;
-    return tickets.filter((ticket) =>
+    if (keyword.length === 0) return sumber;
+    return sumber.filter((ticket) =>
       [ticket.customerLabel, ticket.title, ticket.category, formatTicketCategory(ticket.category)].some((field) =>
         field.toLowerCase().includes(keyword),
       ),
     );
-  }, [debouncedQuery, tickets]);
+  }, [debouncedQuery, tabDaftar, tiketAktif, tiketArsip]);
 
   const activeTicket = tickets.find((ticket) => ticket.id === activeId) ?? null;
   const isResolvedOrClosed = activeTicket?.status === "selesai";
@@ -199,6 +213,34 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
       <div className="mt-3 grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
         <div className="min-w-0">
           <Panel title="Tiket masuk">
+            <div
+              role="tablist"
+              aria-label="Kelompok tiket"
+              className="mb-2 flex gap-1 border-b border-rule pb-2"
+            >
+              {(
+                [
+                  { id: "aktif" as const, label: "Aktif", jumlah: tiketAktif.length },
+                  { id: "arsip" as const, label: "Arsip", jumlah: tiketArsip.length },
+                ]
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tabDaftar === tab.id}
+                  onClick={() => setTabDaftar(tab.id)}
+                  className={`rounded-sm px-2.5 py-1 text-meta font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
+                    tabDaftar === tab.id
+                      ? "bg-navy text-white"
+                      : "border border-rule bg-surface text-ink hover:bg-canvas"
+                  }`}
+                >
+                  {tab.label} ({tab.jumlah})
+                </button>
+              ))}
+            </div>
+
             <label htmlFor="ticket-search" className="sr-only">
               Cari tiket
             </label>
@@ -218,7 +260,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                   <li key={ticket.id}>
                     <button
                       type="button"
-                      onClick={() => pilihTiket(ticket.id)}
+                      onClick={() => { setKonfirmasiTutup(false); pilihTiket(ticket.id); }}
                       aria-current={active ? "true" : undefined}
                       className={`flex w-full items-start gap-2.5 rounded-sm border px-2.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
                         active ? "border-teal bg-canvas" : "border-rule hover:bg-canvas"
@@ -246,7 +288,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           {ticket.title}
                         </span>
                         <span className="mt-1 block text-meta text-ink-soft">
-                          {formatTicketCategory(ticket.category)} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {ticket.messageCount} pesan
+                          {formatTicketCategory(ticket.category)} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {ticket.messageCount} pesan
                         </span>
                       </span>
                     </button>
@@ -259,7 +301,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
               <p className="mt-3 text-meta text-ink-soft">
                 {tickets.length === 0
                   ? "Belum ada tiket yang masuk dari pelanggan."
-                  : "Tidak ada tiket yang cocok dengan kata kunci itu."}
+                  : tabDaftar === "arsip"
+                    ? "Belum ada tiket yang selesai."
+                    : "Tidak ada tiket aktif yang cocok dengan kata kunci itu."}
               </p>
             ) : null}
           </Panel>
@@ -303,14 +347,41 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                   {/* Tombol Aksi Status Tiket Sederhana & Terpusat */}
                   <div className="mt-2.5 flex flex-wrap items-center gap-2">
                     {!isResolvedOrClosed ? (
-                      <Button
-                        variant="confirm"
-                        size="sm"
-                        disabled={isSending}
-                        onClick={() => handleStatusChange("RESOLVED")}
-                      >
-                        {isSending ? "Menyelesaikan..." : "Selesaikan & Tutup Tiket"}
-                      </Button>
+                      konfirmasiTutup ? (
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-meta text-ink-soft">
+                            Tiket akan dipindah ke Arsip.
+                          </span>
+                          <Button
+                            variant="confirm"
+                            size="sm"
+                            disabled={isSending}
+                            onClick={() => {
+                              setKonfirmasiTutup(false);
+                              handleStatusChange("RESOLVED");
+                            }}
+                          >
+                            {isSending ? "Menyelesaikan..." : "Ya, tutup tiket"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isSending}
+                            onClick={() => setKonfirmasiTutup(false)}
+                          >
+                            Batal
+                          </Button>
+                        </span>
+                      ) : (
+                        <Button
+                          variant="confirm"
+                          size="sm"
+                          disabled={isSending}
+                          onClick={() => setKonfirmasiTutup(true)}
+                        >
+                          Selesaikan &amp; Tutup Tiket
+                        </Button>
+                      )
                     ) : (
                       <Button
                         variant="outline"
@@ -327,7 +398,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
                   {isLoadingMessages ? (
                     <div className="rounded-sm border border-rule bg-canvas px-4 py-6 text-center">
-                      <p className="text-body text-ink-soft">Memuat percakapan tiketÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</p>
+                      <p className="text-body text-ink-soft">Memuat percakapan tiketÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦</p>
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="rounded-sm border border-rule bg-canvas px-4 py-6 text-center">
