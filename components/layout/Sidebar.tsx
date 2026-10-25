@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { NAV_ENTRIES, WORKSPACE_NAME, WORKSPACE_ROLE, isNavGroup } from "@/lib/navigation";
@@ -47,8 +47,6 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
 
 export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const currentTab = searchParams.get("tab");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const fleetActive = NAV_ENTRIES.some(
     (entry) => isNavGroup(entry) && entry.items.some((item) => pathname.startsWith(item.href)),
@@ -59,14 +57,11 @@ export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
   const fleetOpen = fleetOverride ?? fleetActive;
 
   function isNavActive(entryHref: string): boolean {
-    if (entryHref === "/bookings?tab=pembayaran") {
-      return (pathname === "/bookings" && currentTab === "pembayaran") || pathname === "/payments";
-    }
     if (entryHref === "/bookings") {
-      return pathname === "/bookings" && currentTab !== "pembayaran";
+      return pathname === "/bookings" || pathname.startsWith("/bookings/");
     }
     if (entryHref === "/payments") {
-      return pathname === "/payments" || (pathname === "/bookings" && currentTab === "pembayaran");
+      return pathname === "/payments" || pathname.startsWith("/payments/");
     }
     return pathname === entryHref;
   }
@@ -187,14 +182,15 @@ export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
                 <Ikon
                   className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/70"}`}
                 />
-                <span className="flex-1 whitespace-nowrap">{entry.label}</span>
-                {/* Angka hanya muncul kalau memang ada yang menunggu, supaya tidak
-                    ada lingkaran nol yang menambah keramaian tanpa arti. Ukurannya
-                    dijaga kecil agar label menu tetap utuh. */}
+                <span className="flex-1 truncate" title={entry.label}>{entry.label}</span>
+                {/* Indikator notifikasi responsif & adaptif:
+                    - Satuan (1–9): Berbentuk lingkaran sempurna 20x20 px (min-w-5 h-5).
+                    - Puluhan (10–99): Mengembang mulus menjadi pil lonjong dengan padding aman px-1.5 tanpa teks terpotong (overflow).
+                    - Ratusan (100+): Dibatasi 99+ (atau pil adaptif) agar tata letak sidebar tetap presisi. */}
                 {jumlah > 0 ? (
                   <span
                     aria-label={`${jumlah} menunggu tindakan`}
-                    className={`inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none ${
+                    className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
                       active ? "bg-white text-teal" : "bg-gold text-ink"
                     }`}
                   >

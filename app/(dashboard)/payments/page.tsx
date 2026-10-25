@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { BookingsUnifiedHub } from "@/components/bookings/BookingsUnifiedHub";
-import { getAllVehicles, getBookings, getAdminPayments } from "@/lib/operations";
+import { PaymentVerificationHub } from "@/components/payments/PaymentVerificationHub";
+import { getAdminPayments } from "@/lib/operations";
 import type { AdminPaymentsResponse } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -18,11 +18,6 @@ export default async function PaymentsPage() {
     pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
   };
 
-  const [bookings, vehicles] = await Promise.all([
-    getBookings(),
-    getAllVehicles(),
-  ]);
-
   try {
     initialData = await getAdminPayments({ limit: 100 });
   } catch {
@@ -34,12 +29,7 @@ export default async function PaymentsPage() {
 
   return (
     <Suspense fallback={<div className="p-8 text-center text-ink-soft">Memuat verifikasi pembayaran...</div>}>
-      <BookingsUnifiedHub
-        initialBookings={bookings}
-        vehicles={vehicles}
-        initialPayments={initialData}
-        initialTab="pembayaran"
-      />
+      <PaymentVerificationHub initialResponse={initialData} />
     </Suspense>
   );
 }
