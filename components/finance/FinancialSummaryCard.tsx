@@ -4,11 +4,10 @@ import { useState } from "react";
 import { formatRupiah } from "@/lib/format";
 import type { FinanceSummary } from "@/lib/operations";
 import { ComparisonMetricCard } from "@/components/ui/ComparisonMetricCard";
-import { IconCar, IconTrendingUp } from "@/components/ui/icons";
+import { IconClipboard, IconTrendingUp } from "@/components/ui/icons";
 import { Tabs } from "@/components/ui/Tabs";
 import { RevenueBarChart } from "@/components/finance/RevenueBarChart";
 import { YearOverYearChart } from "@/components/finance/YearOverYearChart";
-import { RentalModelDonutChart } from "@/components/finance/RentalModelDonutChart";
 
 type Props = {
   initialData: FinanceSummary;
@@ -16,44 +15,7 @@ type Props = {
 
 export function FinancialSummaryCard({ initialData }: Props) {
   const [data] = useState<FinanceSummary>(initialData);
-  const { summary, rentalTypes, monthlyTrends, weeklyBreakdown, yearOverYear } = data;
-
-  const prevTrend = monthlyTrends.length > 1 ? monthlyTrends[monthlyTrends.length - 2] : null;
-
-  const ringkasan = (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {/* 1. Total Omzet Bersih dengan Sparkline Tren */}
-      <ComparisonMetricCard
-        title="Total Omzet Bersih"
-        value={formatRupiah(summary.totalRevenue)}
-        baselineLabel={
-          prevTrend ? `vs ${prevTrend.label}: ${formatRupiah(prevTrend.revenue)}` : "Target omzet berjalan"
-        }
-        subtitle={`Dari ${summary.completedBookingsCount} transaksi selesai`}
-        sparklineData={monthlyTrends.map((t) => t.revenue)}
-        sparklineColor="#059669"
-        icon={<IconTrendingUp className="h-4 w-4" />}
-        iconBgColor="bg-emerald-50 text-emerald-600"
-      />
-
-      {/* 2. Rasio Model Lepas Kunci dengan Circular Progress */}
-      <ComparisonMetricCard
-        title="Model Lepas Kunci"
-        value={`${rentalTypes.withoutDriver.percentage}%`}
-        unitLabel="Porsi"
-        baselineLabel={`Lepas Kunci: ${formatRupiah(rentalTypes.withoutDriver.revenue)}`}
-        subtitle={`Dengan Supir: ${formatRupiah(rentalTypes.withDriver.revenue)}`}
-        circularProgress={{
-          value: rentalTypes.withoutDriver.percentage,
-          max: 100,
-          color: "#1e3a5f",
-          label: "Porsi Lepas Kunci",
-        }}
-        icon={<IconCar className="h-4 w-4" />}
-        iconBgColor="bg-navy/10 text-navy"
-      />
-    </div>
-  );
+  const { summary, monthlyTrends, weeklyBreakdown, yearOverYear } = data;
 
   /* Tab dikendalikan dari sini, bukan dibiarkan mengurus state sendiri.
      Alasannya: grafik memakai ResizeObserver untuk mengukur lebar wadahnya.
@@ -62,6 +24,34 @@ export function FinancialSummaryCard({ initialData }: Props) {
      tabnya benar-benar dibuka. */
   const [tabAktif, setTabAktif] = useState("ringkasan");
 
+  /* Kartu kanan sengaja berisi volume pekerjaan, bukan uang.
+     Sebelumnya kartu ini menampilkan persentase model sewa, padahal angka yang
+     sama sudah ada di grafik donut pada tab Model Sewa. Sekarang donutnya
+     dihapus dan kartu ini mengisi sisi yang belum terwakili di halaman mana pun:
+     berapa banyak pesanan yang masuk dan seberapa banyak yang masih berjalan. */
+  const ringkasan = (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <ComparisonMetricCard
+        title="Total Omzet Bersih"
+        value={formatRupiah(summary.totalRevenue)}
+        sparklineData={monthlyTrends.map((t) => t.revenue)}
+        sparklineColor="#059669"
+        icon={<IconTrendingUp className="h-4 w-4" />}
+        iconBgColor="bg-emerald-50 text-emerald-600"
+      />
+
+      <ComparisonMetricCard
+        title="Pesanan Masuk"
+        value={summary.totalAllBookings}
+        unitLabel="pesanan"
+        baselineLabel={`${summary.completedBookingsCount} selesai`}
+        subtitle={`${summary.confirmedOrActiveCount} berjalan`}
+        icon={<IconClipboard className="h-4 w-4" />}
+        iconBgColor="bg-navy/10 text-navy"
+      />
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <Tabs
@@ -69,7 +59,6 @@ export function FinancialSummaryCard({ initialData }: Props) {
           { id: "ringkasan", label: "Ringkasan" },
           { id: "omzet", label: "Omzet Tahunan" },
           { id: "yoy", label: "Tahun ke Tahun" },
-          { id: "model", label: "Model Sewa" },
         ]}
         activeTab={tabAktif}
         onChange={setTabAktif}
@@ -80,10 +69,8 @@ export function FinancialSummaryCard({ initialData }: Props) {
               <RevenueBarChart monthlyTrends={monthlyTrends} weeklyBreakdown={weeklyBreakdown} />
             ) : null,
           yoy: tabAktif === "yoy" ? <YearOverYearChart yearOverYear={yearOverYear} /> : null,
-          model: tabAktif === "model" ? <RentalModelDonutChart rentalTypes={rentalTypes} /> : null,
         }}
       />
     </div>
   );
 }
-
