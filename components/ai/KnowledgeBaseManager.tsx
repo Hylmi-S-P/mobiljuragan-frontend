@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import {
   createKnowledgeDocumentAction,
   updateKnowledgeDocumentAction,
   deleteKnowledgeDocumentAction,
   parseKnowledgeFileAction,
+  getKnowledgeCategoriesAction,
+  createKnowledgeCategoryAction,
+  updateKnowledgeCategoryAction,
+  deleteKnowledgeCategoryAction,
 } from "@/app/actions";
+import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import {
   Table,
   TableBody,
@@ -18,21 +25,51 @@ import {
 import { IconPlus, IconPencil, IconTrash } from "@/components/ui/icons";
 import type { KnowledgeDocument } from "@/lib/operations";
 
+export type KnowledgeCategory = {
+  id: string;
+  slug: string;
+  label: string;
+  orderIndex: number;
+  jumlahDokumen?: number;
+};
+
 type Props = {
   initialDocuments: KnowledgeDocument[];
+  /* Kategori datang dari server, bukan dipatri di berkas ini. Sebelumnya daftar
+     pilihan hanya bisa diubah dengan mengubah kode, sehingga admin tidak punya
+     cara menambah kategori sendiri. */
+  initialCategories?: KnowledgeCategory[];
 };
 
-const CATEGORY_LABELS: Record<string, { label: string; tone: string }> = {
-  SOP: { label: "SOP & Regulasi", tone: "bg-blue-50 text-blue-700 border-blue-200" },
-  ROUTE: { label: "Rute & Wilayah", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  TARIFF: { label: "Tarif Sewa", tone: "bg-amber-50 text-amber-700 border-amber-200" },
-  EMERGENCY: { label: "Darurat & Handoff", tone: "bg-rose-50 text-rose-700 border-rose-200" },
-  GENERAL: { label: "Umum", tone: "bg-canvas text-ink-soft border-rule" },
-};
+/* Warna hanya untuk membedakan kategori di layar. Ditentukan dari urutan, supaya
+   kategori baru otomatis mendapat warna tanpa perlu didaftarkan. */
+const TONE_KATEGORI = [
+  "bg-blue-50 text-blue-700 border-blue-200",
+  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "bg-amber-50 text-amber-700 border-amber-200",
+  "bg-rose-50 text-rose-700 border-rose-200",
+  "bg-violet-50 text-violet-700 border-violet-200",
+  "bg-canvas text-ink-soft border-rule",
+];
 
-export function KnowledgeBaseManager({ initialDocuments }: Props) {
+function toneKategori(index: number): string {
+  return TONE_KATEGORI[index % TONE_KATEGORI.length];
+}
+
+export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] }: Props) {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>(initialDocuments);
+  const [categories, setCategories] = useState<KnowledgeCategory[]>(initialCategories);
   const [isPending, startTransition] = useTransition();
+
+  /* Pengelola kategori, dibuka dari tombol di bawah pilihan kategori. */
+  const [kategoriTerbuka, setKategoriTerbuka] = useState(false);
+  const [kategoriBaru, setKategoriBaru] = useState("");
+  /* Kategori yang sedang diubah namanya. Kosong berarti form dalam mode tambah. */
+  const [kategoriDiedit, setKategoriDiedit] = useState<KnowledgeCategory | null>(null);
+  const [kategoriSibuk, setKategoriSibuk] = useState(false);
+  /* Kategori yang menunggu konfirmasi hapus. Kosong berarti tidak ada dialog. */
+  const [kategoriAkanDihapus, setKategoriAkanDihapus] = useState<KnowledgeCategory | null>(null);
+  const [kategoriError, setKategoriError] = useState<string | null>(null);
 
   // State Modal Tambah / Edit
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
@@ -69,6 +106,12 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+    if (ext !== ".md" && ext !== ".txt") {
+      setExtractError("Hanya berkas berformat .md dan .txt yang diperbolehkan.");
+      return;
+    }
 
     setIsExtracting(true);
     setExtractError(null);
@@ -199,20 +242,88 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
 
   const activeCount = documents.filter((d) => d.isActive).length;
 
+  /* ---- Pengelola kategori ---- */
+
+  const muatKategori = async () => {
+    /* Daftar diambil ulang setelah perubahan supaya nomor urut dan jumlah
+       dokumen ikut segar, bukan hanya label yang baru. */
+    try {
+      const segar = await getKnowledgeCategoriesAction();
+      if (segar.success && segar.data) setCategories(segar.data);
+    } catch {
+      /* Diamkan: kegagalan muat ulang tidak boleh menghapus daftar yang ada. */
+    }
+  };
+
+  const tambahKategori = async () => {
+    if (!kategoriBaru.trim()) return;
+    setKategoriSibuk(true);
+    setKategoriError(null);
+    const res = await createKnowledgeCategoryAction(kategoriBaru.trim());
+    if (res.success) {
+      setKategoriBaru("");
+      await muatKategori();
+    } else {
+      setKategoriError(res.message ?? "Gagal menambah kategori.");
+    }
+    setKategoriSibuk(false);
+  };
+
+  const hapusKategori = async (kategori: KnowledgeCategory) => {
+    setKategoriSibuk(true);
+    setKategoriError(null);
+    const res = await deleteKnowledgeCategoryAction(kategori.id);
+    setKategoriAkanDihapus(null);
+    if (res.success) {
+      await muatKategori();
+    } else {
+      /* Pesan dari server menyebut jumlah dokumen yang masih memakai, jadi
+         admin tahu apa yang harus dibereskan lebih dulu. */
+      setKategoriError(res.message ?? "Gagal menghapus kategori.");
+    }
+    setKategoriSibuk(false);
+  };
+
+  /* Mengubah nama kategori. `slug` sengaja tidak ikut berubah karena dokumen
+     menyimpan slug itu; menggantinya akan memutus hubungan dengan dokumen lama. */
+  const mulaiEditKategori = (kategori: KnowledgeCategory) => {
+    setKategoriDiedit(kategori);
+    setKategoriBaru(kategori.label);
+    setKategoriError(null);
+  };
+
+  const simpanEditKategori = async () => {
+    if (!kategoriDiedit || !kategoriBaru.trim()) return;
+    setKategoriSibuk(true);
+    setKategoriError(null);
+    const res = await updateKnowledgeCategoryAction(kategoriDiedit.id, {
+      label: kategoriBaru.trim(),
+    });
+    if (res.success) {
+      setKategoriDiedit(null);
+      setKategoriBaru("");
+      await muatKategori();
+    } else {
+      setKategoriError(res.message ?? "Gagal mengubah kategori.");
+    }
+    setKategoriSibuk(false);
+  };
+
+  const batalEditKategori = () => {
+    setKategoriDiedit(null);
+    setKategoriBaru("");
+    setKategoriError(null);
+  };
+
   return (
     <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-3 border-b border-rule pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-body font-semibold text-ink">
-              Basis Pengetahuan Rental (RAG Knowledge Hub)
-            </h2>
-            <span className="rounded-badge bg-emerald-50 px-2 py-0.5 text-micro font-semibold text-emerald-700 border border-emerald-200">
-              {activeCount} Dokumen Aktif
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-badge bg-emerald-50 px-2 py-0.5 text-micro font-semibold text-emerald-700 border border-emerald-200">
+            {activeCount} Dokumen Aktif
+          </span>
           <p className="text-meta text-ink-soft">
-            Dokumen SOP, regulasi lepas kunci, panduan rute Merauke, dan kontak darurat yang diinjeksikan ke AI.
+            SOP, regulasi lepas kunci, rute Merauke, dan kontak darurat yang diinjeksikan ke AI.
           </p>
         </div>
 
@@ -259,8 +370,16 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
             </TableHead>
             <TableBody>
               {documents.map((doc) => {
-                const cat = CATEGORY_LABELS[doc.category] || CATEGORY_LABELS.GENERAL;
-                return (
+                const indeksKategori = categories.findIndex((c) => c.slug === doc.category);
+            const cat = {
+              label:
+                indeksKategori >= 0
+                  ? categories[indeksKategori].label
+                  : doc.category || "Tanpa kategori",
+              tone: toneKategori(indeksKategori >= 0 ? indeksKategori : categories.length),
+            };
+                /* ---- Pengelola kategori ---- */
+  return (
                   <TableRow key={doc.id}>
                     <TableCell>
                       <span className="block text-body font-semibold text-ink">{doc.title}</span>
@@ -339,16 +458,16 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
                 <div className="rounded-lg border border-dashed border-rule bg-canvas/40 p-4 text-center">
                   <div className="flex flex-col items-center justify-center gap-1.5">
                     <span className="text-meta font-semibold text-ink">
-                      Unggah Berkas SOP / Regulasi (.pdf, .docx, .md, .txt)
+                      Unggah Berkas SOP / Regulasi (.md, .txt)
                     </span>
                     <p className="max-w-md text-micro text-ink-soft">
-                      Ekstraksi teks instan via parser workstation. Judul dan konten akan terisi otomatis.
+                      Ekstraksi teks instan dari berkas Markdown atau TXT. Judul dan konten akan terisi otomatis.
                     </p>
 
                     <label className="mt-2 inline-flex items-center gap-2 rounded-button bg-canvas-subtle px-3.5 py-1.5 text-meta font-medium text-ink border border-rule cursor-pointer hover:bg-canvas transition-colors">
                       <input
                         type="file"
-                        accept=".pdf,.docx,.doc,.md,.txt"
+                        accept=".md,.txt"
                         onChange={handleFileUpload}
                         disabled={isExtracting}
                         className="sr-only"
@@ -392,18 +511,30 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
                   onChange={(e) => setFormCategory(e.target.value)}
                   className="rounded-button border border-rule bg-white px-3 py-2 text-body text-ink outline-none focus:border-teal focus:ring-1 focus:ring-teal"
                 >
-                  <option value="SOP">SOP & Regulasi Rental</option>
-                  <option value="ROUTE">Rute & Wilayah Operasional</option>
-                  <option value="TARIFF">Tarif Sewa & Penyesuaian Biaya</option>
-                  <option value="EMERGENCY">Darurat & Handoff Staf</option>
-                  <option value="GENERAL">Umum / FAQ</option>
+                    {categories.length === 0 ? (
+                      <option value="">Belum ada kategori</option>
+                    ) : (
+                      categories.map((c) => (
+                        <option key={c.slug} value={c.slug}>
+                          {c.label}
+                        </option>
+                      ))
+                    )}
                 </select>
               </div>
+                <button
+                  type="button"
+                  onClick={() => setKategoriTerbuka(true)}
+                  className="self-start text-micro font-semibold text-teal hover:underline"
+                >
+                  Kelola kategori
+                </button>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-meta font-semibold text-ink">Isi Dokumen Pengetahuan</label>
-                <textarea
+                <AutoGrowTextarea
                   rows={6}
+                  maxHeight={420}
                   value={formContent}
                   onChange={(e) => setFormContent(e.target.value)}
                   placeholder="Tuliskan poin-poin persyaratan, aturan jalan, atau ketentuan operasional di sini..."
@@ -474,6 +605,161 @@ export function KnowledgeBaseManager({ initialDocuments }: Props) {
           </div>
         </div>
       ) : null}
+      {/* Pengelola kategori. Kategori yang masih dipakai dokumen tidak bisa
+          dihapus; server menolak dan pesannya ditampilkan di sini. */}
+      {kategoriTerbuka ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+          <div className="w-full max-w-lg rounded-card border border-rule bg-surface p-5 shadow-lg">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-subtitle font-bold text-ink">Kategori Dokumen</h3>
+                <p className="mt-1 text-meta text-ink-soft">
+                  Kategori dipakai untuk mengelompokkan dokumen pengetahuan RAG.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setKategoriTerbuka(false);
+                  setKategoriError(null);
+                  setKategoriBaru("");
+                }}
+                className="rounded p-1 text-ink-soft hover:bg-canvas hover:text-ink"
+                aria-label="Tutup"
+              >
+                Tutup
+              </button>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <input
+                value={kategoriBaru}
+                onChange={(e) => setKategoriBaru(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void (kategoriDiedit ? simpanEditKategori() : tambahKategori());
+                  }
+                }}
+                placeholder="Nama kategori"
+                maxLength={60}
+                className="h-10 min-w-0 flex-1 rounded-sm border border-rule bg-canvas px-3 text-meta text-ink focus:border-navy focus:outline-none"
+              />
+              <button
+                type="button"
+                disabled={kategoriSibuk || !kategoriBaru.trim()}
+                onClick={() => void (kategoriDiedit ? simpanEditKategori() : tambahKategori())}
+                className="rounded-sm bg-teal px-3 py-2 text-meta font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {kategoriDiedit ? "Simpan" : "Tambah"}
+              </button>
+              {kategoriDiedit ? (
+                <button
+                  type="button"
+                  onClick={batalEditKategori}
+                  className="rounded-sm border border-rule px-3 py-2 text-meta font-semibold text-ink hover:bg-canvas"
+                >
+                  Batal
+                </button>
+              ) : null}
+            </div>
+
+            {kategoriError ? (
+              <p className="mt-2 text-meta text-danger">{kategoriError}</p>
+            ) : null}
+
+            <ul className="mt-4 max-h-72 space-y-1.5 overflow-y-auto">
+              {[...categories]
+                .sort((a, b) => a.orderIndex - b.orderIndex)
+                .map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex items-center justify-between gap-2 rounded-sm border border-rule px-2.5 py-2"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-meta font-semibold text-ink">
+                        {c.label}
+                      </span>
+                      <span className="block text-micro text-ink-soft">
+                        {c.slug} · {c.jumlahDokumen ?? 0} dokumen
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={kategoriSibuk}
+                        onClick={() => mulaiEditKategori(c)}
+                        className="rounded-xs border border-rule px-1.5 py-0.5 text-micro hover:border-navy disabled:opacity-30"
+                        aria-label={`Ubah nama ${c.label}`}
+                      >
+                        Ubah
+                      </button>
+                      <button
+                        type="button"
+                        disabled={kategoriSibuk}
+                        onClick={() => setKategoriAkanDihapus(c)}
+                        className="rounded-xs border border-danger/40 px-1.5 py-0.5 text-micro text-danger hover:bg-danger/10 disabled:opacity-30"
+                        aria-label={`Hapus ${c.label}`}
+                      >
+                        Hapus
+                      </button>
+                    </span>
+                  </li>
+                ))}
+            </ul>
+
+            {categories.length === 0 ? (
+              <p className="mt-3 text-meta text-ink-soft">
+                Belum ada kategori. Tambahkan satu untuk mulai mengelompokkan dokumen.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Konfirmasi hapus kategori.
+          Ami poin 95 meminta setiap fitur hapus punya pop up konfirmasi.
+          Sebelumnya kategori terhapus seketika begitu tombol ditekan, dan itu
+          tidak bisa dibatalkan. */}
+      <Modal
+        open={kategoriAkanDihapus !== null}
+        onClose={kategoriSibuk ? () => {} : () => setKategoriAkanDihapus(null)}
+        title="Hapus kategori ini?"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setKategoriAkanDihapus(null)}
+              disabled={kategoriSibuk}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (kategoriAkanDihapus) void hapusKategori(kategoriAkanDihapus);
+              }}
+              disabled={kategoriSibuk}
+            >
+              {kategoriSibuk ? "Menghapus..." : "Ya, hapus kategori"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Kategori <strong>{kategoriAkanDihapus?.label}</strong> akan dihapus dari
+            daftar pilihan.
+          </p>
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+            <p>
+              Dokumen yang sudah ada tidak ikut terhapus, tetapi tidak lagi punya
+              kategori yang bisa dipilih. Kategori yang masih dipakai dokumen akan
+              ditolak oleh server.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -15,8 +15,8 @@ import type {
 export const VEHICLE_STATUS: Record<VehicleStatus, { label: string; tone: ChipTone }> = {
   tersedia: { label: "Tersedia", tone: "available" },
   disewa: { label: "Disewa", tone: "busy" },
-  servis: { label: "Servis", tone: "service" },
-  tidak_tersedia: { label: "Tidak Tersedia", tone: "neutral" },
+  servis: { label: "Servis", tone: "vehicleService" },
+  tidak_tersedia: { label: "Tidak Tersedia", tone: "vehicleUnavailable" },
 };
 
 /* Legenda Ringkasan dan Kalender hanya memuat status sewa, bukan status arsip. */
@@ -64,7 +64,7 @@ export const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
 
 export const ADMIN_ROLE: Record<AdminRole, string> = {
   super_admin: "Super Admin",
-  staf_operasional: "Staf Operasional (Kantor MobilJuragan)",
+  staf_operasional: "Staf",
 };
 
 export const TICKET_STATUS: Record<SupportTicketStatus, { label: string; tone: ChipTone }> = {
@@ -75,6 +75,27 @@ export const TICKET_STATUS: Record<SupportTicketStatus, { label: string; tone: C
   ditangani: { label: "Ditangani", tone: "busy" },
   selesai: { label: "Selesai", tone: "available" },
 };
+
+/* Tiga tahap yang ditampilkan ke pengguna.
+
+   Backend menyimpan lima status, tetapi di layar admin perbedaan antara
+   "ditangani" dan "menunggu pelanggan" tidak mengubah apa pun yang harus
+   dikerjakan. Yang perlu dibedakan hanya: belum disentuh, sedang dikerjakan,
+   dan sudah selesai. Status internal tetap utuh supaya alur dan riwayat tidak
+   berubah; ini murni cara menampilkannya. */
+export type TicketStage = "baru" | "diproses" | "selesai";
+
+export const TICKET_STAGE: Record<TicketStage, { label: string; tone: ChipTone }> = {
+  baru: { label: "Baru", tone: "pending" },
+  diproses: { label: "Diproses", tone: "busy" },
+  selesai: { label: "Selesai", tone: "available" },
+};
+
+export function ticketStageOf(status: string): TicketStage {
+  if (status === "baru" || status === "OPEN") return "baru";
+  if (status === "selesai" || status === "RESOLVED" || status === "CLOSED") return "selesai";
+  return "diproses";
+}
 
 /* Penamaan jenis bantuan tiket bantuan pelanggan selaras dengan aplikasi mobile MobilJuragan */
 export const TICKET_CATEGORY_LABEL: Record<string, string> = {

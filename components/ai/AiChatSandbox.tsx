@@ -120,9 +120,7 @@ export function AiChatSandbox({
             <IconChat className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-body font-semibold text-ink">
-              Test Chat Sandbox (Live Model &amp; RAG Simulator)
-            </h2>
+            <h2 className="text-body font-semibold text-ink">Test Chat AI</h2>
             <p className="text-meta text-ink-soft">
               Uji coba respons asisten AI secara interaktif dengan basis pengetahuan RAG resmi.
             </p>

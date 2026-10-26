@@ -19,6 +19,11 @@
   --color-ink: #0f172a;
   --color-ink-soft: #475569;
   --color-danger: #b42318;
+  /* Merah lembut untuk status armada yang tidak tersedia. Dipisahkan dari --color-danger
+     karena maknanya berbeda: ini penanda ketersediaan, bukan galat atau kegagalan.
+     Nadanya sengaja diturunkan supaya tetap terbaca sebagai peringatan tanpa menyala
+     seperti tombol hapus. */
+  --color-danger-soft: #a8433b;
 
   /* Tingkatan nada permukaan: kanvas, panel, pita tersisip, dan garis pemisah baris. */
   --color-inset: #f1f5f9;
@@ -113,4 +118,32 @@ html {
 :focus-visible {
   outline: 2px solid var(--color-teal);
   outline-offset: 2px;
+}
+
+/* Garis waktu pada notifikasi.
+   Sebelumnya lebarnya diperbarui lewat state React setiap 50 ms, sehingga satu
+   notifikasi memicu puluhan render ulang selama 3 detik. Elemen lain di halaman
+   ikut dihitung ulang tata letaknya dan tampak berkedip. Dengan animasi CSS,
+   browser mengurusnya sendiri tanpa menyentuh React sama sekali. */
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-toast-progress {
+  animation-name: toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* Hormati permintaan pengguna yang tidak ingin animasi. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-toast-progress {
+    animation: none;
+    width: 100%;
+  }
 }

@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { formatRupiah } from "@/lib/format";
-import { AMOUNT_PLACEHOLDER } from "@/lib/uiText";
 import type { CanonicalBookingStatus, LineItem } from "@/lib/types";
 
 type Props = {
@@ -54,8 +53,12 @@ export function BillingLineItemsCard({
               const isManualSurcharge = item.id.startsWith("li-");
               const isSupirBreakdown = item.id.includes("supir-breakdown");
 
-              // Kalkulasi tampilan nominal per baris
-              let subtotalDisplay = AMOUNT_PLACEHOLDER;
+              /* Nominal per baris.
+               *
+               * Baris sewa bisa belum punya angka karena admin belum menetapkan
+               * tarif. Dulu ditampilkan "[nominal]", yang terbaca seperti galat
+               * sistem. Sekarang dikatakan apa adanya. */
+              let subtotalDisplay = "Menunggu tarif admin";
               if (isSupirBreakdown) {
                 subtotalDisplay = "Termasuk Paket";
               } else if (isManualSurcharge) {
@@ -67,7 +70,8 @@ export function BillingLineItemsCard({
                 subtotalDisplay = formatRupiah(quotedAmount);
               } else if (item.amount) {
                 const numeric = Number(item.amount.replace(/[^\d]/g, "")) || 0;
-                subtotalDisplay = numeric > 0 ? formatRupiah(numeric) : AMOUNT_PLACEHOLDER;
+                subtotalDisplay =
+                  numeric > 0 ? formatRupiah(numeric) : "Menunggu tarif admin";
               }
 
               return (

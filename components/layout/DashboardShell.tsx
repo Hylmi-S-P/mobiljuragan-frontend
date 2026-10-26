@@ -1,11 +1,20 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
+
+import type { NavCounts } from "@/lib/navCounts";
 
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
-export function DashboardShell({ children }: { children: ReactNode }) {
+export function DashboardShell({
+  children,
+  navCounts,
+}: {
+  children: ReactNode;
+  /* Angka pekerjaan yang menunggu, dihitung di tata letak sisi server. */
+  navCounts?: NavCounts;
+}) {
   const [navOpen, setNavOpen] = useState(false);
 
   return (
@@ -16,7 +25,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       >
         Lewati ke konten
       </a>
-      <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
+      <Suspense fallback={null}>
+        <Sidebar open={navOpen} onClose={() => setNavOpen(false)} navCounts={navCounts} />
+      </Suspense>
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenNav={() => setNavOpen(true)} />
         <main id="konten" className="flex-1 px-5 py-5 lg:px-7">

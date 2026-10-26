@@ -30,7 +30,7 @@ export function LoginForm() {
 
   return (
     <form action={formAction} noValidate className="flex h-full flex-col">
-      <h1 className="text-[23.5px] font-bold leading-[1.2] text-ink">Masuk ke Akun Anda</h1>
+      <p className="text-meta font-semibold text-ink">Masuk ke akun Anda</p>
       <p className="mt-[7px] max-w-full text-[12px] leading-[1.45] text-rule-strong">
         Gunakan kredensial resmi staf untuk mengakses seluruh modul operasional.
       </p>

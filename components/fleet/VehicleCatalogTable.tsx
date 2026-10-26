@@ -6,16 +6,10 @@ import { saveVehicleAction, deleteVehicleAction } from "@/app/actions";
 import { DeleteVehicleModal } from "@/components/modals/DeleteVehicleModal";
 import { VehicleFormModal } from "@/components/modals/VehicleFormModal";
 import { Button } from "@/components/ui/Button";
+import { PlateBadge } from "@/components/ui/PlateBadge";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/Table";
+import { Toast } from "@/components/ui/Toast";
 import { IconCar, IconPencil, IconPlus } from "@/components/ui/icons";
 import { formatRupiah } from "@/lib/format";
 import type { Vehicle } from "@/lib/types";
@@ -29,8 +23,15 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [formTarget, setFormTarget] = useState<{ vehicleId: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+    /* Notifikasi memakai toast, bukan paragraf di atas panel. Paragraf itu mudah
+     terlewat karena berada jauh dari tombol yang baru ditekan, dan tidak hilang
+     sendiri sehingga menumpuk dengan pesan berikutnya. */
+  const [notice, setNotice] = useState<{
+    text: string;
+    tone: "success" | "error" | "info";
+  } | null>(null);
+  /* Nilai pending tidak ditampilkan; yang dipakai hanya startTransition. */
+  const [, startTransition] = useTransition();
 
   const editing = formTarget?.vehicleId
     ? vehicles.find((vehicle) => vehicle.id === formTarget.vehicleId)
@@ -42,69 +43,99 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
   return (
     <>
       {notice ? (
-        <p className="mt-3 rounded-sm border border-rule bg-surface px-3 py-2 text-meta text-ink">
-          {notice}
-        </p>
+        <Toast
+          message={notice.text}
+          tone={notice.tone}
+          durationMs={3500}
+          onClose={() => setNotice(null)}
+        />
       ) : null}
 
       <div className="mt-3">
         <Panel
-          title="Daftar unit & spesifikasi"
+          title="Katalog &amp; Spesifikasi Armada"
           icon={<IconCar />}
           action={
-            <Button variant="confirm" size="md" onClick={() => setFormTarget({ vehicleId: null })}>
+            <Button
+              variant="confirm"
+              size="md"
+              onClick={() => setFormTarget({ vehicleId: null })}
+            >
               <IconPlus className="h-4 w-4" />
-              Tambah Armada Baru
+              Tambah Armada
             </Button>
           }
         >
-          <Table caption="Katalog armada resmi MobilJuragan">
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell className="w-[320px]">Kendaraan &amp; Kategori</TableHeaderCell>
-                <TableHeaderCell className="w-[180px]">Tarif Sewa / Hari</TableHeaderCell>
-                <TableHeaderCell className="w-[160px]">Transmisi</TableHeaderCell>
-                <TableHeaderCell className="w-[140px]">Ketersediaan</TableHeaderCell>
-                <TableHeaderCell className="w-[140px]">Status &amp; Aksi</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+          {/* Tampilan kartu saja. Pilihan tabel dilepas karena isi yang sama sudah
+              terbaca di kartu, dan dua mode tampilan hanya menambah tombol tanpa
+              menambah informasi. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {vehicles.map((vehicle) => (
-                <TableRow key={vehicle.id}>
-                  <TableCell className="text-left">
-                    <span className="block whitespace-nowrap text-body font-semibold text-ink">
-                      {vehicle.name}
-                    </span>
-                    <span className="mt-1 block truncate text-meta text-ink-soft">
-                      {vehicle.category ?? "[kategori belum diisi]"}
-                      {vehicle.usage ? ` • ${vehicle.usage}` : ""}
-                    </span>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-body tabular-nums font-semibold text-ink">
-                    {formatRupiah(vehicle.pricePerDay ?? 400000)}
-                    <span className="block text-micro font-normal text-ink-soft">/ hari (dasar)</span>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-body">
-                    {vehicle.transmission ?? "Manual"}
-                  </TableCell>
-                  <TableCell>
-                    <StatusChip tone={VEHICLE_STATUS[vehicle.status].tone}>
-                      {VEHICLE_STATUS[vehicle.status].label}
-                    </StatusChip>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
+                <div
+                  key={vehicle.id}
+                  className="flex flex-col justify-between rounded-lg border border-rule bg-surface p-4 shadow-card hover:border-navy/40 transition-all"
+                >
+                  <div>
+                    {/* Header Kartu: Nama & Status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-body font-bold text-ink">{vehicle.name}</h3>
+                        <PlateBadge plate={vehicle.plate} className="mt-1" />
+                      </div>
+                      <StatusChip tone={VEHICLE_STATUS[vehicle.status].tone}>
+                        {VEHICLE_STATUS[vehicle.status].label}
+                      </StatusChip>
+                    </div>
+
+                    {/* Foto unit kalau ada. Kalau belum diunggah, bagian ini tidak
+                        dirender sama sekali supaya kartu tidak menyisakan ruang kosong. */}
+                    {vehicle.imageUrl ? (
+                      <div className="mt-3 overflow-hidden rounded-sm border border-rule">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={vehicle.imageUrl}
+                          alt={`Foto ${vehicle.name}`}
+                          className="h-32 w-full object-cover"
+                        />
+                      </div>
+                    ) : null}
+
+                    {/* Spesifikasi Ringkas */}
+                    <div className="mt-3.5 space-y-1.5 border-t border-rule/60 pt-3 text-meta text-ink-soft">
+                      <div className="flex justify-between">
+                        <span>Kategori &amp; Rute</span>
+                        <span className="font-medium text-ink">
+                          {vehicle.category ?? "Standar"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Transmisi</span>
+                        <span className="font-medium text-ink">{vehicle.transmission ?? "Manual"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Kartu: Tarif & Tombol Kelola */}
+                  <div className="mt-4 flex items-center justify-between border-t border-rule/60 pt-3">
+                    <div>
+                      <span className="block text-micro text-ink-soft">Tarif Dasar / Hari</span>
+                      <span className="text-body font-bold tabular-nums text-ink">
+                        {formatRupiah(vehicle.pricePerDay ?? 400000)}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
                       onClick={() => setFormTarget({ vehicleId: vehicle.id })}
+                      className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
                     >
-                      <IconPencil className="h-4 w-4" />
+                      <IconPencil className="h-3.5 w-3.5" />
                       Kelola
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                    </button>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
         </Panel>
       </div>
 
@@ -127,19 +158,20 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
                 ? current.map((vehicle) => (vehicle.id === saved.id ? saved : vehicle))
                 : [...current, saved];
             });
-            setNotice(
-              editing
+            setNotice({
+              text: editing
                 ? `Menyimpan perubahan unit ${saved.name}...`
                 : `Menambahkan unit ${saved.name}...`,
-            );
+              tone: "info",
+            });
             setFormTarget(null);
 
             startTransition(async () => {
               const res = await saveVehicleAction(saved);
               if (res.success) {
-                setNotice(res.message ?? "Data armada berhasil disimpan ke database.");
+                setNotice({ text: res.message ?? "Data armada berhasil disimpan ke database.", tone: "success" });
               } else {
-                setNotice(`Perhatian: ${res.message ?? "Gagal menyimpan ke server backend."}`);
+                setNotice({ text: res.message ?? "Gagal menyimpan ke server backend.", tone: "error" });
               }
             });
           }}
@@ -154,15 +186,15 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
             const targetId = deleting.id;
             const targetName = deleting.name;
             setVehicles((current) => current.filter((vehicle) => vehicle.id !== targetId));
-            setNotice(`Menghapus unit ${targetName}...`);
+            setNotice({ text: `Menghapus unit ${targetName}...`, tone: "info" });
             setDeleteTarget(null);
 
             startTransition(async () => {
               const res = await deleteVehicleAction(targetId);
               if (res.success) {
-                setNotice(res.message ?? `Unit ${targetName} dihapus.`);
+                setNotice({ text: res.message ?? `Unit ${targetName} dihapus.`, tone: "success" });
               } else {
-                setNotice(`Perhatian: ${res.message ?? "Gagal menghapus armada."}`);
+                setNotice({ text: res.message ?? "Gagal menghapus armada.", tone: "error" });
               }
             });
           }}

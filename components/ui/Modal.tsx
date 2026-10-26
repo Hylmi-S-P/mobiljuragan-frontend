@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "./Button";
 
@@ -20,6 +21,19 @@ export function Modal({ open, onClose, title, description, children, footer }: M
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
+
+  /* Portal hanya bisa dirender di klien. Tanpa penanda ini, render sisi server
+     tidak punya `document` dan akan gagal.
+
+     Dipakai `useSyncExternalStore` dan bukan `useState` + `useEffect`, karena
+     pola itu memicu render tambahan yang tidak perlu dan ditolak aturan
+     `react-hooks/set-state-in-effect`. Snapshot server `false`, snapshot klien
+     `true`, tanpa langganan karena nilainya tidak pernah berubah. */
+  const terpasang = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -62,9 +76,11 @@ export function Modal({ open, onClose, title, description, children, footer }: M
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !terpasang) return null;
 
-  return (
+  /* Dirender ke body supaya tidak terkurung induk yang punya `display: none`
+     atau `transform`. Tanpa ini, modal di dalam tab tersembunyi tidak terlihat. */
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
       <div aria-hidden="true" onClick={onClose} className="absolute inset-0 bg-ink/50" />
       <div
@@ -93,6 +109,7 @@ export function Modal({ open, onClose, title, description, children, footer }: M
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

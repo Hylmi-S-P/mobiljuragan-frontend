@@ -9,6 +9,7 @@ import {
   apiUpdateAdminAccount,
   apiDeleteAdminAccount,
   apiReplyToTicket,
+  apiTakeOverTicket,
   apiUpdateBookingStatus,
   apiAssignDriverToBooking,
   apiCreateDriver,
@@ -21,6 +22,10 @@ import {
   apiCreateKnowledgeDocument,
   apiUpdateKnowledgeDocument,
   apiDeleteKnowledgeDocument,
+  apiGetKnowledgeCategories,
+  apiCreateKnowledgeCategory,
+  apiUpdateKnowledgeCategory,
+  apiDeleteKnowledgeCategory,
   apiFetchGatewayModels,
   apiTestAiChat,
   apiGetAiGatewayLogs,
@@ -35,6 +40,7 @@ import {
   apiDeleteVehicle,
   ApiError,
 } from "@/lib/api";
+import { getTicketDetail, getTicketMessages, type TicketMessageView } from "@/lib/operations";
 import type { AdminRole, CanonicalBookingStatus, FaqItem, Vehicle } from "@/lib/types";
 
 export type ActionState = {
@@ -152,6 +158,18 @@ export async function updateAdminAction(
     return { success: false, message: "ID akun tidak valid." };
   }
 
+  if (password) {
+    if (password.length < 8) {
+      return { success: false, message: "Kata sandi baru minimal 8 karakter." };
+    }
+    if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return {
+        success: false,
+        message: "Kata sandi baru wajib mengandung minimal 1 huruf besar (A-Z) dan 1 angka (0-9).",
+      };
+    }
+  }
+
   try {
     await apiUpdateAdminAccount(id, {
       fullName,
@@ -232,6 +250,31 @@ export async function replyToTicketAction(ticketId: string, body: string): Promi
 }
 
 /**
+ * Memuat percakapan satu tiket saat admin berpindah tiket di Customer Care.
+ *
+ * Sebelumnya percakapan hanya diambil sekali untuk tiket pertama, lalu tidak pernah
+ * dimuat ulang. Akibatnya mengklik tiket lain tetap menampilkan pesan tiket pertama,
+ * pesan pelanggan tertukar antar tiket, dan balasan bisa dikirim ke tiket yang salah.
+ */
+export async function loadTicketMessagesAction(
+  ticketId: string,
+): Promise<{ success: boolean; messages: TicketMessageView[]; handledBy?: string; message?: string }> {
+  if (!ticketId) {
+    return { success: false, messages: [], message: "Tiket tidak valid." };
+  }
+
+  try {
+    const detail = await getTicketDetail(ticketId);
+    return { success: true, messages: detail.messages, handledBy: detail.handledBy };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, messages: [], message: err.message };
+    }
+    return { success: false, messages: [], message: "Percakapan tiket gagal dimuat." };
+  }
+}
+
+/**
  * Server Action untuk mengubah status tiket bantuan (RESOLVED / CLOSED / OPEN).
  */
 export async function updateTicketStatusAction(
@@ -256,6 +299,27 @@ export async function updateTicketStatusAction(
     success: true,
     message: `Status tiket berhasil diubah menjadi ${status === "RESOLVED" ? "Selesai" : status === "CLOSED" ? "Ditutup" : status}.`,
   };
+}
+
+/**
+ * Server Action untuk mengambil alih tiket bantuan dari asisten AI.
+ */
+export async function takeOverTicketAction(ticketId: string): Promise<ActionState> {
+  if (!ticketId) {
+    return { success: false, message: "Tiket tidak valid." };
+  }
+
+  try {
+    await apiTakeOverTicket(ticketId);
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal mengambil alih tiket dari AI." };
+  }
+
+  revalidatePath("/customer-care");
+  return { success: true, message: "Tiket berhasil diambil alih dari AI." };
 }
 
 /**
@@ -833,6 +897,9 @@ export async function saveVehicleAction(
           : vehicle.transmission?.toUpperCase() || "MANUAL",
       seatingCapacity: vehicle.seats ?? 7,
       pricePerDay: Number(vehicle.pricePerDay) || 400000,
+        /* Foto ikut dikirim. Sebelumnya hanya menjadi pratinjau di layar lalu
+           hilang saat modal ditutup, sehingga unit tidak pernah punya foto. */
+        imageUrl: vehicle.imageUrl ?? undefined,
       operationalStatus: (vehicle.status === "tersedia"
         ? "AVAILABLE"
         : vehicle.status === "servis"
@@ -893,4 +960,80 @@ export async function logoutAction(): Promise<void> {
   cookieStore.delete("admin_token");
   cookieStore.delete("client_token");
   redirect("/login");
+}
+
+/**
+ * Kategori dokumen pengetahuan RAG.
+ *
+ * Dipisah dari aksi dokumen karena urusannya berbeda: dokumen mengubah isi
+ * pengetahuan, kategori mengubah cara pengetahuan dikelompokkan.
+ */
+export async function createKnowledgeCategoryAction(
+  label: string,
+): Promise<ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number } }> {
+  if (!label.trim()) {
+    return { success: false, message: "Nama kategori wajib diisi." };
+  }
+
+  try {
+    const data = await apiCreateKnowledgeCategory(label.trim());
+    revalidatePath("/admin/ai-hub");
+    return { success: true, message: "Kategori berhasil ditambahkan.", data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menambah kategori." };
+  }
+}
+
+export async function updateKnowledgeCategoryAction(
+  id: string,
+  payload: { label?: string; orderIndex?: number },
+): Promise<ActionState> {
+  if (!id) {
+    return { success: false, message: "ID kategori tidak valid." };
+  }
+
+  try {
+    await apiUpdateKnowledgeCategory(id, payload);
+    revalidatePath("/admin/ai-hub");
+    return { success: true, message: "Kategori berhasil diperbarui." };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal memperbarui kategori." };
+  }
+}
+
+export async function deleteKnowledgeCategoryAction(id: string): Promise<ActionState> {
+  if (!id) {
+    return { success: false, message: "ID kategori tidak valid." };
+  }
+
+  try {
+    await apiDeleteKnowledgeCategory(id);
+    revalidatePath("/admin/ai-hub");
+    return { success: true, message: "Kategori berhasil dihapus." };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menghapus kategori." };
+  }
+}
+/** Memuat ulang daftar kategori setelah ada perubahan. */
+export async function getKnowledgeCategoriesAction(): Promise<
+  ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number; jumlahDokumen?: number }[] }
+> {
+  try {
+    const data = await apiGetKnowledgeCategories();
+    return { success: true, message: "Daftar kategori dimuat.", data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal memuat kategori." };
+  }
 }

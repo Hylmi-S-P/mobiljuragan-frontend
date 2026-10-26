@@ -3,19 +3,12 @@
 import { useState, useOptimistic, startTransition } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminAccountModal } from "@/components/modals/AdminAccountModal";
-import { DeleteAdminAccountModal } from "@/components/modals/DeleteAdminAccountModal";
+import { AdminManageModal } from "@/components/admin/AdminManageModal";
+import { AdminCardGrid } from "@/components/admin/AdminCardGrid";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
-import { StatusChip } from "@/components/ui/StatusChip";
-import { IconPlus, IconSearch, IconTrash } from "@/components/ui/icons";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui/Table";
+import { Toast } from "@/components/ui/Toast";
+import { IconPlus, IconSearch } from "@/components/ui/icons";
 import { ADMIN_ROLE } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
 import { useDebounce } from "@/lib/useDebounce";
@@ -48,16 +41,34 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const [formTarget, setFormTarget] = useState<{ accountId: string | null } | null>(null);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
-  /* TanStack Query: useQuery untuk data fetching & state management di browser.
-     `initialData` dipakai supaya tabel langsung terisi dari hasil SSR, tetapi harus
-     ditandai `initialDataUpdatedAt: 0`: tanpa itu React Query menganggap cache baru
-     saja diperbarui, sehingga selama staleTime (1 menit) browser tidak pernah
-     benar-benar memanggil Express. Dengan penanda ini, data SSR tetap tampil lebih
-     dulu sementara revalidasi ke /admin/users tetap berjalan di latar belakang. */
+  // Modal State
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [managingAccount, setManagingAccount] = useState<AdminAccount | null>(null);
+
+  // Toast feedback
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<"success" | "error" | "info">("success");
+
+  const showToast = (msg: string, tone: "success" | "error" | "info" = "success") => {
+    setToastMessage(msg);
+    setToastTone(tone);
+  };
+
+  // Mengambil akun yang sedang login untuk proteksi sesi aktif
+  const { data: currentUser } = useQuery<{ id: string; fullName: string; role: string }>({
+    queryKey: ["currentAdminMe"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/admin/auth/me");
+        return res.data?.data?.user;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: accounts = initialAccounts ?? [], isFetching } = useQuery<AdminAccount[]>({
     queryKey: ["adminAccounts"],
     queryFn: async (): Promise<AdminAccount[]> => {
@@ -71,14 +82,6 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
     initialDataUpdatedAt: 0,
   });
 
-  /* TanStack Query: useMutation & invalidateQueries untuk mutasi cepat status aktif/nonaktif.
-     
-     `onMutate` menulis perubahan ke cache lebih dulu. Ini bukan hiasan: `useOptimistic`
-     mengembalikan tampilan ke nilai sumbernya begitu transisi selesai, dan nilai sumber itu
-     berasal dari cache. Tanpa memperbarui cache, status akan berkedip balik ke nilai lama
-     selama refetch berjalan. Diukur dengan latensi 300 ms, kedip itu terlihat 324 ms;
-     pada latensi 800 ms menjadi 807 ms. `onError` mengembalikan cache ke keadaan semula
-     sehingga pembatalan tetap benar ketika jaringan gagal. */
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
       const res = await apiClient.patch(`/admin/users/${id}`, { isActive: active });
@@ -95,30 +98,22 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
       return { previous };
     },
     onError: (_error, _variables, context) => {
-      // Kembalikan cache ke keadaan sebelum mutasi supaya tampilan tidak menyesatkan.
       if (context?.previous) {
         queryClient.setQueryData(["adminAccounts"], context.previous);
       }
-      setNotice("Gagal memperbarui status akun via REST API.");
+      showToast("Gagal memperbarui status akun staf.", "error");
     },
     onSuccess: (_data, variables) => {
-      setNotice(`Status akun berhasil diubah menjadi ${variables.active ? "Aktif" : "Nonaktif"}.`);
+      showToast(
+        `Status akun berhasil diubah menjadi ${variables.active ? "Aktif" : "Nonaktif"}.`,
+        "success",
+      );
     },
     onSettled: () => {
-      // Sinkronkan ulang dengan server setelah mutasi selesai, berhasil maupun gagal.
       queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
     },
   });
 
-  const editing = formTarget?.accountId
-    ? accounts.find((account) => account.id === formTarget.accountId)
-    : undefined;
-
-  const deleting = deleteTargetId
-    ? accounts.find((account) => account.id === deleteTargetId)
-    : undefined;
-
-  // Pencarian langsung (live search) di browser memanfaatkan state terkelola yang ter-debounce
   const filteredAccounts = accounts.filter((account) => {
     const q = debouncedSearchQuery.toLowerCase().trim();
     if (!q) return true;
@@ -129,8 +124,6 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
     );
   });
 
-  /* useOptimistic membuat chip status berganti sebelum jaringan selesai.
-     Terukur sekitar 7 ms dari klik sampai DOM berubah, bukan menunggu respons server. */
   const [optimisticAccounts, setOptimisticAccount] = useOptimistic(
     filteredAccounts,
     (current, update: { id: string; active: boolean }) =>
@@ -138,9 +131,14 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
   );
 
   const handleToggleStatus = (account: AdminAccount) => {
+    // Proteksi akun login sendiri
+    if (currentUser && currentUser.id === account.id) {
+      showToast("Anda tidak dapat menonaktifkan akun sendiri yang sedang aktif login.", "error");
+      return;
+    }
+
     startTransition(async () => {
       const nextActive = !account.active;
-      // Perbarui UI secara optimis instan mendahului respons jaringan
       setOptimisticAccount({ id: account.id, active: nextActive });
       try {
         await toggleStatusMutation.mutateAsync({
@@ -148,21 +146,25 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
           active: nextActive,
         });
       } catch {
-        // Otomatis dibatalkan ke keadaan semula jika gagal
+        // Rollback otomatis dari onError
       }
     });
   };
 
   return (
     <>
-      {notice ? (
-        <p className="mt-3 rounded-sm border border-rule bg-surface px-3 py-2 text-meta text-ink">
-          {notice}
-        </p>
+      {toastMessage ? (
+        <Toast
+          message={toastMessage}
+          tone={toastTone}
+          durationMs={3000}
+          onClose={() => setToastMessage(null)}
+        />
       ) : null}
 
-      <div className="mt-3">
+      <div className="flex flex-col gap-4">
         <Panel
+          title="Manajemen Akun Pengelola & Staf Operasional"
           action={
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="relative">
@@ -181,109 +183,55 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
               <Button
                 variant="confirm"
                 size="md"
-                onClick={() => setFormTarget({ accountId: null })}
+                onClick={() => setIsCreateOpen(true)}
               >
                 <IconPlus className="h-4 w-4" />
-                Buat Akun Admin Baru
+                + Admin Baru
               </Button>
             </div>
           }
         >
           {isFetching ? (
-            <p className="mb-2 text-micro text-ink-soft">Menyinkronkan data terbaru...</p>
+            <p className="mb-3 text-micro text-ink-soft">Menyinkronkan data staf terbaru...</p>
           ) : null}
 
-          <Table caption="Akun staf dan hak akses portal admin">
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell className="w-[265px]">Nama</TableHeaderCell>
-                <TableHeaderCell className="w-[205px]">Nomor Telepon / Username</TableHeaderCell>
-                <TableHeaderCell className="w-[280px]">Peran</TableHeaderCell>
-                <TableHeaderCell className="w-[140px]">Status Akun</TableHeaderCell>
-                <TableHeaderCell className="w-[250px]">Aksi Kelola</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredAccounts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-6 text-center text-meta text-ink-soft">
-                    {(initialAccounts ?? []).length === 0
-                      ? "Belum ada akun staf atau admin yang terdaftar."
-                      : `Tidak ada akun staf atau admin yang cocok dengan pencarian "${searchQuery}".`}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                optimisticAccounts.map((account) => (
-                  <TableRow key={account.id}>
-                    <TableCell className="text-left font-semibold">{account.name}</TableCell>
-                    <TableCell>{account.username}</TableCell>
-                    <TableCell>{ADMIN_ROLE[account.role]}</TableCell>
-                    <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(account)}
-                        title="Klik untuk mengaktifkan atau menonaktifkan akun ini"
-                        className="cursor-pointer transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
-                      >
-                        <StatusChip tone={account.active ? "available" : "neutral"}>
-                          {account.active ? "Aktif" : "Nonaktif"}
-                        </StatusChip>
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setFormTarget({ accountId: account.id })}
-                        >
-                          Edit Admin
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          onClick={() => setDeleteTargetId(account.id)}
-                          aria-label={`Hapus akun ${account.name}`}
-                          className="text-danger hover:bg-danger/10"
-                        >
-                          <IconTrash className="h-4 w-4" />
-                          Hapus
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          {/* Grid Kartu Akun Staf */}
+          <AdminCardGrid
+            accounts={optimisticAccounts}
+            currentUserId={currentUser?.id}
+            onManageAccount={(account) => setManagingAccount(account)}
+            onToggleStatus={handleToggleStatus}
+            isPendingToggle={toggleStatusMutation.isPending}
+          />
         </Panel>
       </div>
 
-      {formTarget ? (
+      {/* Modal Tambah Akun Baru */}
+      {isCreateOpen ? (
         <AdminAccountModal
-          account={editing}
-          existingUsernames={accounts
-            .filter((account) => account.id !== editing?.id)
-            .map((account) => account.username)}
-          onClose={() => setFormTarget(null)}
+          existingUsernames={accounts.map((account) => account.username)}
+          onClose={() => setIsCreateOpen(false)}
           onSave={(saved) => {
-            // TanStack Query: invalidate queries agar cache otomatis diperbarui
             queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
-            setNotice(
-              editing
-                ? `Akun ${saved.username} berhasil diperbarui.`
-                : `Akun ${saved.username} berhasil didaftarkan.`,
-            );
-            setFormTarget(null);
+            showToast(`Akun ${saved.username} berhasil didaftarkan.`, "success");
+            setIsCreateOpen(false);
           }}
         />
       ) : null}
 
-      {deleting ? (
-        <DeleteAdminAccountModal
-          account={deleting}
-          onClose={() => {
-            setDeleteTargetId(null);
-            // Muat ulang daftar supaya akun yang benar-benar terhapus hilang dari tabel.
+      {/* Modal Kelola & Reset Kata Sandi Akun */}
+      {managingAccount ? (
+        <AdminManageModal
+          account={managingAccount}
+          currentUserId={currentUser?.id}
+          onClose={() => setManagingAccount(null)}
+          onSave={(saved) => {
             queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
+            showToast(`Profil akun ${saved.name} berhasil diperbarui.`, "success");
+          }}
+          onDeleted={(_id) => {
+            queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
+            showToast("Akun staf berhasil dihapus.", "info");
           }}
         />
       ) : null}

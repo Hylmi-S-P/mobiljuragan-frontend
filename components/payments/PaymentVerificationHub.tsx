@@ -20,7 +20,7 @@ import {
   IconSearch,
 } from "@/components/ui/icons";
 import { PaymentProofModal } from "@/components/payments/PaymentProofModal";
-import { formatRupiah } from "@/lib/format";
+import { formatRupiah, formatDateTimeWit } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
 import { useDebounce } from "@/lib/useDebounce";
@@ -36,27 +36,22 @@ type Props = {
 
 type TabFilter = "semua" | "menunggu" | "terbayar" | "ditolak";
 
-function formatDateTimeWit(iso: string | null | undefined): string {
-  if (!iso) return "-";
-  try {
-    const date = new Date(iso);
-    return (
-      new Intl.DateTimeFormat("id-ID", {
-        timeZone: "Asia/Jayapura",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date) + " WIT"
-    );
-  } catch {
-    return iso;
-  }
-}
-
 export function PaymentVerificationHub({ initialResponse }: Props) {
   const queryClient = useQueryClient();
+
+  // Ambil identitas staf/admin yang aktif login untuk modal verifikasi dan audit trail
+  const { data: currentAdmin } = useQuery<{ id: string; fullName: string; role: string }>({
+    queryKey: ["currentAdminMe"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/admin/auth/me");
+        return res.data?.data?.user;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Search & Tab Filter States
   const [activeTab, setActiveTab] = useState<TabFilter>("menunggu");
@@ -174,10 +169,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Lead Text */}
-      <PageLead lead="Antrean verifikasi bukti transfer bank dan rekonsiliasi mutasi nominal unik sistem pembayaran MobilJuragan Merauke." />
-
+    <div className="space-y-4">
       {/* Toast Notice */}
       {notice ? (
         <div
@@ -205,28 +197,9 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
 
       <Panel>
         {/* Controls: Search and Segmented Tab Filter */}
-        <div className="mb-4 space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1">
-              <label htmlFor="payment-search" className="block text-meta font-medium text-ink">
-                Cari kode booking, nama pelanggan, rekening, atau bank
-              </label>
-              <div className="relative mt-1">
-                <input
-                  id="payment-search"
-                  maxLength={80}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Ketik untuk mencari (contoh: Maria Mahuze, MBJ-2026, BRI, BCA)..."
-                  className="h-11 w-full rounded-sm border border-rule-strong bg-canvas pl-9 pr-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-                />
-                <IconSearch className="pointer-events-none absolute left-3 top-3 h-5 w-5 text-ink-soft" />
-              </div>
-            </div>
-          </div>
-
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* Segmented Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5 rounded-sm border border-rule bg-canvas p-1.5">
+          <div className="flex flex-wrap items-center gap-1 rounded-sm border border-rule bg-canvas p-1">
             <button
               type="button"
               onClick={() => setActiveTab("semua")}
@@ -282,18 +255,29 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
               Ditolak {counts.rejected > 0 ? `(${counts.rejected})` : ""}
             </button>
           </div>
+
+          {/* Search Box */}
+          <div className="relative min-w-[280px]">
+            <input
+              id="payment-search"
+              maxLength={80}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari kode booking, nama, rekening..."
+              className="h-10 w-full rounded-sm border border-rule bg-canvas pl-9 pr-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
+            />
+            <IconSearch className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-ink-soft" />
+          </div>
         </div>
 
         {/* Tabel Antrean Verifikasi Pembayaran */}
         <Table caption="Daftar Antrean Pembayaran dan Verifikasi Bukti Transfer MobilJuragan">
           <TableHead>
             <TableRow>
-              <TableHeaderCell className="text-left">Kode & Jadwal</TableHeaderCell>
+              <TableHeaderCell className="text-left">Kode &amp; Jadwal</TableHeaderCell>
               <TableHeaderCell className="text-left">Pelanggan</TableHeaderCell>
-              <TableHeaderCell>Metode Bayar</TableHeaderCell>
-              <TableHeaderCell className="text-right">Nominal Pas</TableHeaderCell>
+              <TableHeaderCell className="text-right">Nominal</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Bukti Transfer</TableHeaderCell>
               <TableHeaderCell className="text-right">Aksi</TableHeaderCell>
             </TableRow>
           </TableHead>
@@ -325,7 +309,6 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                   label: payment.status,
                   tone: "neutral" as const,
                 };
-                const hasProof = Boolean(payment.proofImageUrl);
                 const isPending = payment.status === "PENDING_VERIFICATION";
 
                 return (
@@ -362,17 +345,6 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                       </div>
                     </TableCell>
 
-                    {/* Metode & Bank */}
-                    <TableCell>
-                      <div className="inline-flex flex-col items-center">
-                        <span className="text-meta font-medium text-ink">
-                          {PAYMENT_METHOD_LABEL[payment.method] || payment.method}
-                        </span>
-                        {payment.bankName ? (
-                          <span className="text-micro text-ink-soft">{payment.bankName}</span>
-                        ) : null}
-                      </div>
-                    </TableCell>
 
                     {/* Nominal Pas (Dengan Kode Unik) */}
                     <TableCell className="text-right">
@@ -381,7 +353,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                           {formatRupiah(payment.totalAmount)}
                         </span>
                         <span className="text-micro text-ink-soft tabular-nums">
-                          Tarif: {formatRupiah(payment.baseAmount)} (+{payment.uniqueCode})
+                          {PAYMENT_METHOD_LABEL[payment.method] || payment.method} · Tarif: {formatRupiah(payment.baseAmount)} (+{payment.uniqueCode})
                         </span>
                       </div>
                     </TableCell>
@@ -389,37 +361,31 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                     {/* Status Badge */}
                     <TableCell>
                       <StatusChip tone={statusCfg.tone}>{statusCfg.label}</StatusChip>
+                      {payment.acknowledgedBy ? (
+                        <p
+                          className="mt-1 max-w-[18ch] truncate text-micro text-ink-soft"
+                          title={`Diverifikasi oleh: ${payment.acknowledgedBy}${payment.acknowledgedAt ? ` (${formatDateTimeWit(payment.acknowledgedAt)})` : ""}`}
+                        >
+                          Oleh: {payment.acknowledgedBy.split(" (")[0]}
+                        </p>
+                      ) : null}
                     </TableCell>
 
-                    {/* Bukti Transfer */}
-                    <TableCell>
-                      {hasProof ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenModal(payment)}
-                          className="inline-flex items-center gap-1 text-meta font-medium text-teal hover:underline"
-                        >
-                          Lihat Struk
-                        </button>
-                      ) : payment.method === "QRIS" ? (
-                        <span className="text-micro text-ink-soft">Otomatis QRIS</span>
-                      ) : payment.method === "CASH" ? (
-                        <span className="text-micro text-ink-soft">Tunai di Tempat</span>
-                      ) : (
-                        <span className="text-micro text-ink-soft">Belum Ada</span>
-                      )}
-                    </TableCell>
 
                     {/* Aksi */}
                     <TableCell className="text-right">
-                      <Button
-                        variant={isPending ? "confirm" : "outline"}
-                        size="sm"
+                      <button
+                        type="button"
                         onClick={() => handleOpenModal(payment)}
+                        className={`inline-flex items-center gap-1 rounded-sm px-2.5 py-1 text-meta font-medium transition-colors ${
+                          isPending
+                            ? "bg-navy text-white hover:bg-navy-hover"
+                            : "border border-rule bg-canvas text-ink hover:border-navy hover:text-navy"
+                        }`}
                       >
-                        {isPending ? "Periksa & Verifikasi" : "Detail"}
-                        <IconArrowRight className="h-4 w-4" />
-                      </Button>
+                        <span>{isPending ? "Periksa" : "Rincian"}</span>
+                        <IconArrowRight className="h-3 w-3" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 );
@@ -429,8 +395,12 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
         </Table>
       </Panel>
 
-      {/* Modal Pemeriksaan Bukti & Verifikasi Pembayaran */}
+      {/* Modal Pemeriksaan Bukti & Verifikasi Pembayaran.
+          `key` mengikat state modal ke pembayaran yang sedang dibuka. Tanpa ini,
+          centang "sudah dicocokkan" dan tahap konfirmasi terbawa ke pembayaran
+          berikutnya, sehingga admin bisa menandai lunas tanpa membaca peringatan. */}
       <PaymentProofModal
+        key={selectedPayment?.id ?? "tanpa-pembayaran"}
         open={isModalOpen}
         payment={selectedPayment}
         onClose={() => {
@@ -438,6 +408,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
           setSelectedPayment(null);
         }}
         onSuccess={handleVerifySuccess}
+        currentAdmin={currentAdmin}
       />
     </div>
   );

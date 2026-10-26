@@ -23,8 +23,8 @@ export function TableBody({ children }: { children: ReactNode }) {
   return <tbody className="divide-y divide-rule">{children}</tbody>;
 }
 
-export function TableRow({ children }: { children: ReactNode }) {
-  return <tr className="align-middle">{children}</tr>;
+export function TableRow({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <tr className={`align-middle ${className}`}>{children}</tr>;
 }
 
 export function TableHeaderCell({

@@ -72,19 +72,45 @@ type ApiVehicle = {
   transmission: string | null;
   seatingCapacity: number | null;
   pricePerDay?: number | null;
+  imageUrl?: string | null;
   operationalStatus: string;
+  /* Booking yang sedang mengunci unit. Kosong berarti unit bebas. */
+  bookings?: Array<{ id: string; bookingCode: string; status: string }>;
 };
+
+/**
+ * Menentukan status tampil armada.
+ *
+ * operationalStatus hanya berubah lewat perubahan manual admin, jadi unit yang
+ * sedang disewa tetap tertulis AVAILABLE dan katalog menampilkan "Tersedia" untuk
+ * mobil yang sudah keluar. Status tampil karena itu diturunkan dari booking aktif,
+ * bukan dari kolom itu.
+ *
+ * Servis dan tidak tersedia tetap menang atas "disewa": unit yang sedang diperbaiki
+ * tidak boleh tampil seolah sedang disewa pelanggan.
+ */
+function statusTampil(v: ApiVehicle): VehicleStatus {
+  const dasar = VEHICLE_STATUS[v.operationalStatus] ?? "tidak_tersedia";
+
+  if (dasar === "servis" || dasar === "tidak_tersedia") {
+    return dasar;
+  }
+
+  const adaBookingAktif = (v.bookings ?? []).length > 0;
+  return adaBookingAktif ? "disewa" : dasar;
+}
 
 function mapVehicle(v: ApiVehicle): Vehicle {
   return {
     id: v.externalId || v.id,
     name: v.name,
     plate: v.licensePlate,
-    status: VEHICLE_STATUS[v.operationalStatus] ?? "tidak_tersedia",
+    status: statusTampil(v),
     category: v.category,
     transmission: v.transmission,
     seats: v.seatingCapacity,
     pricePerDay: v.pricePerDay ?? 400000,
+    imageUrl: v.imageUrl ?? null,
     // `usage` dan `allowedModes` tidak dikirim backend. Dibiarkan null/kosong
     // daripada diisi teks karangan.
     usage: null,
@@ -184,6 +210,24 @@ const BOOKING_STATUS_MAP: Record<CanonicalBookingStatus, BookingStatus> = {
   CANCELLED: "ditolak",
 };
 
+/* Pesanan yang sudah dikonfirmasi tetapi belum punya supir harus muncul sebagai
+   "perlu alokasi supir", bukan "tarif terkonfirmasi". Sebelumnya status ini tidak
+   pernah dihasilkan sama sekali, sehingga pill "Perlu Alokasi Sopir" di halaman
+   Pemesanan Masuk selalu menampilkan angka nol dan terlihat seperti filter rusak. */
+function resolveBookingStatus(b: ApiBooking): BookingStatus {
+  const dasar = BOOKING_STATUS_MAP[b.status] ?? "perlu_konfirmasi_tarif";
+
+  const butuhSupir = b.rentalType === "WITH_DRIVER";
+  const sudahDikonfirmasi = dasar === "tarif_terkonfirmasi";
+  const supirBelumAda = b.driverId === null || b.driverId === undefined;
+
+  if (butuhSupir && sudahDikonfirmasi && supirBelumAda) {
+    return "perlu_alokasi_sopir";
+  }
+
+  return dasar;
+}
+
 type ApiBooking = {
   id: string;
   bookingCode: string;
@@ -201,6 +245,13 @@ type ApiBooking = {
   customer?: { fullName: string; phoneNumber: string } | null;
   vehicle?: { externalId: string | null; id: string; name: string; licensePlate: string; pricePerDay?: number } | null;
   driver?: { fullName: string; readiness?: string } | null;
+  payment?: {
+    id: string;
+    status: any;
+    proofImageUrl?: string | null;
+    method?: string | null;
+    totalAmount?: string | number | null;
+  } | null;
 };
 
 function countDays(start: string, end: string): number {
@@ -247,8 +298,9 @@ function mapBooking(b: ApiBooking): Booking {
     startDate: b.startDateTime,
     endDate: b.endDateTime,
     dayCount: countDays(b.startDateTime, b.endDateTime),
-    status: BOOKING_STATUS_MAP[b.status] ?? "perlu_konfirmasi_tarif",
+    status: resolveBookingStatus(b),
     rawStatus: b.status,
+    tariffStatus: b.tariffStatus,
     quotedAmount: b.quotedAmount !== null && b.quotedAmount !== undefined ? Number(b.quotedAmount) : null,
     driverId: b.driverId,
     serviceType: isDriverService ? "Dengan Supir" : "Lepas Kunci",
@@ -257,6 +309,18 @@ function mapBooking(b: ApiBooking): Booking {
     driverStatus: b.driver?.readiness ? (DRIVER_READINESS[b.driver.readiness] ?? null) : null,
     whatsappIntent: (b as { whatsappIntent?: { message: string; url: string } }).whatsappIntent ?? null,
     lineItems,
+    payment: b.payment
+      ? {
+          id: b.payment.id,
+          status: b.payment.status,
+          proofImageUrl: b.payment.proofImageUrl ?? null,
+          method: b.payment.method ?? null,
+          totalAmount:
+            b.payment.totalAmount !== null && b.payment.totalAmount !== undefined
+              ? Number(b.payment.totalAmount)
+              : null,
+        }
+      : null,
   };
 }
 
@@ -350,6 +414,8 @@ export type SupportTicketView = {
   title: string;
   category: string;
   status: string;
+  handledBy?: "AI" | "HUMAN" | string;
+  handoverAt?: string | null;
   messageCount: number;
   updatedAt: string;
 };
@@ -377,6 +443,8 @@ type ApiTicket = {
   title: string;
   category: string;
   status: string;
+  handledBy?: string;
+  handoverAt?: string | null;
   updatedAt: string;
   customer?: { fullName: string } | null;
   _count?: { messages: number };
@@ -391,6 +459,8 @@ export async function getSupportTickets(): Promise<SupportTicketView[]> {
     title: t.title,
     category: t.category,
     status: TICKET_STATUS_MAP[t.status] ?? "baru",
+    handledBy: t.handledBy,
+    handoverAt: t.handoverAt,
     messageCount: t._count?.messages ?? 0,
     updatedAt: t.updatedAt,
   }));
@@ -407,39 +477,42 @@ type ApiTicketDetail = ApiTicket & {
 };
 
 export async function getTicketMessages(ticketId: string): Promise<TicketMessageView[]> {
+  const detail = await getTicketDetail(ticketId);
+  return detail.messages;
+}
+
+export async function getTicketDetail(
+  ticketId: string,
+): Promise<{ messages: TicketMessageView[]; handledBy?: string }> {
   const data = await apiGet<ApiTicketDetail>(`/admin/tickets/${encodeURIComponent(ticketId)}`);
-  return (data?.messages ?? []).map((m) => ({
+  const messages = (data?.messages ?? []).map((m) => ({
     id: m.id,
-    from: m.isCustomer ? "pelanggan" : "tim",
+    from: m.isCustomer ? ("pelanggan" as const) : ("tim" as const),
     text: m.body,
     sentAt: m.sentAt,
     senderName: m.sender?.fullName ?? "Tim",
   }));
+  return { messages, handledBy: data?.handledBy };
 }
+
 
 /* Laporan Keuangan */
 
 export type FinanceSummary = {
   summary: {
     totalRevenue: number;
-    pendingRevenue: number;
     completedBookingsCount: number;
     confirmedOrActiveCount: number;
-    averageOrderValue: number;
     totalAllBookings: number;
   };
-  rentalTypes: {
-    withoutDriver: {
-      count: number;
-      revenue: number;
-      percentage: number;
-    };
-    withDriver: {
-      count: number;
-      revenue: number;
-      percentage: number;
-    };
+
+  /* Perbandingan model sewa. Angkanya dihitung dari pembayaran lunas, sama
+     seperti omzet total, sehingga persentasenya selalu berjumlah 100%. */
+  rentalTypes?: {
+    withoutDriver: { count: number; revenue: number; percentage: number };
+    withDriver: { count: number; revenue: number; percentage: number };
   };
+
   fleetBreakdown: Array<{
     vehicleId: string;
     externalId: string;
@@ -452,6 +525,21 @@ export type FinanceSummary = {
   }>;
   monthlyTrends: Array<{
     label: string;
+    shortLabel: string;
+    tahun: number;
+    bulan: number;
+    revenue: number;
+    bookings: number;
+    weekly: number[];
+  }>;
+  weeklyBreakdown: Array<{
+    label: string;
+    tahun: number;
+    bulan: number;
+    minggu: Array<{ label: string; revenue: number }>;
+  }>;
+  yearOverYear: Array<{
+    tahun: number;
     revenue: number;
     bookings: number;
   }>;
@@ -522,6 +610,26 @@ export async function getAiConfig(): Promise<AiConfigData> {
 
 export async function getKnowledgeDocuments(): Promise<KnowledgeDocument[]> {
   return await apiGet<KnowledgeDocument[]>("/admin/ai/documents");
+}
+
+/** Kategori dokumen pengetahuan RAG. Dikelola admin dari portal. */
+export type KnowledgeCategoryView = {
+  id: string;
+  slug: string;
+  label: string;
+  orderIndex: number;
+  jumlahDokumen?: number;
+};
+
+export async function getKnowledgeCategories(): Promise<KnowledgeCategoryView[]> {
+  /* Kegagalan memuat kategori tidak boleh menjatuhkan seluruh halaman AI Hub.
+     Daftar kosong membuat layar menampilkan pesan "belum ada kategori", yang
+     masih bisa ditindaklanjuti admin. */
+  try {
+    return await apiGet<KnowledgeCategoryView[]>("/admin/ai/categories");
+  } catch {
+    return [];
+  }
 }
 
 export type AiGatewayLog = {

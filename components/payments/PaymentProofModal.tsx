@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { IconAlert, IconCreditCard } from "@/components/ui/icons";
-import { formatRupiah } from "@/lib/format";
+import { formatRupiah, formatDateTimeWit } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
 import type { AdminPaymentItem } from "@/lib/types";
@@ -15,6 +16,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSuccess?: (updated: AdminPaymentItem, action: "APPROVE" | "REJECT") => void;
+  currentAdmin?: { fullName?: string; role?: string } | null;
 };
 
 function resolveImageUrl(url: string | null | undefined): string | null {
@@ -27,11 +29,59 @@ function resolveImageUrl(url: string | null | undefined): string | null {
   return `${cleanBase}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
-export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) {
+export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAdmin }: Props) {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+
+  // Ambil identitas staf/admin yang aktif login untuk audit trail verifikasi
+  const { data: meUser } = useQuery<{ id: string; fullName: string; role: string }>({
+    queryKey: ["currentAdminMe"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/admin/auth/me");
+        return res.data?.data?.user;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const activeUser = currentAdmin || meUser;
+  const adminName = activeUser?.fullName || "Admin MobilJuragan";
+  const rawRole = activeUser?.role || "ADMIN";
+  const adminRole =
+    rawRole === "ADMIN" || rawRole === "super_admin"
+      ? "Super Admin"
+      : rawRole === "STAFF" || rawRole === "staf_operasional"
+        ? "Staf Operasional"
+        : rawRole;
+
+  /* Menandai lunas tidak bisa dibatalkan dari layar ini: setelah PAID, tombol
+     setujui dan tolak hilang, dan backend menolak perubahan status apa pun. Karena
+     itu persetujuan dibuat dua tahap — admin harus menyatakan sudah mencocokkan
+     dana lebih dulu, baru tombolnya aktif. */
+  const [danaDicocokkan, setDanaDicocokkan] = useState(false);
+  /* Konfirmasi saat mencentang "Terbayar". */
+  const [konfirmasiCentang, setKonfirmasiCentang] = useState(false);
+  /* Dua konfirmasi berurutan saat menekan tombol verifikasi. 0 = belum,
+     1 = peringatan pertama, 2 = peringatan terakhir. */
+  const [tahapKonfirmasi, setTahapKonfirmasi] = useState<0 | 1 | 2>(0);
+
+  /* Reset form state saat modal tertutup */
+  useEffect(() => {
+    if (!open) {
+      setDanaDicocokkan(false);
+      setKonfirmasiCentang(false);
+      setTahapKonfirmasi(0);
+      setNotes("");
+      setError(null);
+      setImageError(false);
+    }
+  }, [open]);
+
 
   if (!payment) return null;
 
@@ -49,6 +99,14 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
       return;
     }
 
+    /* Untuk persetujuan, permintaan baru dikirim setelah admin melewati dua
+       konfirmasi. Ini mencegah status lunas tersimpan karena salah tekan. */
+    if (action === "APPROVE" && tahapKonfirmasi < 2) {
+      setTahapKonfirmasi((n) => (n === 0 ? 1 : 2));
+      setError(null);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setError(null);
@@ -59,6 +117,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
       });
 
       const updated = (res.data?.data || res.data) as AdminPaymentItem;
+      setTahapKonfirmasi(0);
       onSuccess?.(updated, action);
       onClose();
     } catch (err: unknown) {
@@ -78,33 +137,64 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
       </Button>
 
       {isPending ? (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="danger"
-            onClick={() => handleVerify("REJECT")}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Memproses..." : "Tolak Pembayaran"}
-          </Button>
-          <Button
-            variant="confirm"
-            onClick={() => handleVerify("APPROVE")}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Memproses..." : "Setujui Pembayaran"}
-          </Button>
+        <div className="flex flex-col items-end gap-2">
+          {/* Pernyataan admin dipisah dari checkbox supaya label tetap ringkas. */}
+          <label className="flex max-w-md items-start gap-2 text-meta text-ink cursor-pointer">
+            <input
+              type="checkbox"
+              checked={danaDicocokkan}
+              onChange={(event) => {
+                /* Mencentang harus dikonfirmasi dulu: ini pernyataan bahwa dana
+                   benar-benar sudah diperiksa di aplikasi keuangan. */
+                if (event.target.checked) setKonfirmasiCentang(true);
+                else setDanaDicocokkan(false);
+              }}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded-xs border border-rule-strong cursor-pointer"
+            />
+            <span className="leading-snug break-words">
+              <strong className="font-semibold text-navy">Terbayar</strong> — saya sudah
+              memeriksa mutasi di aplikasi keuangan dan dana benar-benar masuk sebesar
+              nominal tagihan.
+            </span>
+          </label>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="danger"
+              onClick={() => handleVerify("REJECT")}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Memproses..." : "Tolak Pembayaran"}
+            </Button>
+            <Button
+              variant="confirm"
+              onClick={() => handleVerify("APPROVE")}
+              disabled={isSubmitting || !danaDicocokkan}
+            >
+              {isSubmitting ? "Memproses..." : "Verifikasi Pembayaran"}
+            </Button>
+          </div>
         </div>
       ) : (
-        <div className="text-meta text-ink-soft">
-          {payment.status === "PAID"
-            ? "Pembayaran ini sudah lunas terverifikasi."
-            : "Status pembayaran: " + statusConfig.label}
+        <div className="flex flex-col items-end gap-0.5 text-meta text-ink-soft">
+          <div>
+            {payment.status === "PAID"
+              ? "Pembayaran ini sudah lunas terverifikasi."
+              : "Status pembayaran: " + statusConfig.label}
+          </div>
+          {payment.acknowledgedBy ? (
+            <div className="text-micro text-teal">
+              Diverifikasi oleh: <span className="font-medium text-ink">{payment.acknowledgedBy}</span>
+              {payment.acknowledgedAt ? ` pada ${formatDateTimeWit(payment.acknowledgedAt)}` : ""}
+            </div>
+          ) : null}
         </div>
       )}
     </div>
   );
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -242,6 +332,16 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
                   {payment.senderAccount || "-"}
                 </p>
               </div>
+
+              {payment.acknowledgedBy ? (
+                <div className="col-span-2 rounded-xs border border-rule bg-canvas p-2.5 text-meta">
+                  <p className="text-micro font-semibold uppercase text-ink-soft">Pemeriksa Mutasi Bank (Audit Trail)</p>
+                  <p className="mt-0.5 font-medium text-ink">{payment.acknowledgedBy}</p>
+                  {payment.acknowledgedAt ? (
+                    <p className="text-micro text-ink-soft">{formatDateTimeWit(payment.acknowledgedAt)}</p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             {/* Input Catatan Staf / Alasan Penolakan */}
@@ -263,5 +363,116 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) 
         </div>
       </div>
     </Modal>
+      {/* Konfirmasi centang "Terbayar".
+          Ami meminta centang memunculkan confirmation modal lebih dulu, karena
+          centang ini pernyataan bahwa dana sudah diperiksa langsung di aplikasi
+          keuangan, bukan sekadar melihat bukti transfer. */}
+      <Modal
+        open={konfirmasiCentang}
+        onClose={() => setKonfirmasiCentang(false)}
+        title="Dana sudah masuk?"
+        description="Centang ini menyatakan Anda sudah memeriksa mutasi langsung."
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setKonfirmasiCentang(false)}>
+              Belum, cek lagi
+            </Button>
+            <Button
+              variant="confirm"
+              onClick={() => {
+                setDanaDicocokkan(true);
+                setKonfirmasiCentang(false);
+              }}
+            >
+              Ya, dana sudah masuk
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Pastikan Anda sudah membuka aplikasi keuangan (m-banking, Gopay Merchant,
+            atau rekening perusahaan) dan melihat dana masuk sebesar nominal tagihan
+            ini. Bukti transfer saja belum cukup.
+          </p>
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+            <p>
+              Kalau dana belum terlihat, tutup dialog ini dan cek lagi nanti. Jangan
+              menandai lunas berdasarkan bukti transfer yang belum cocok.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Konfirmasi pertama tombol verifikasi. */}
+      <Modal
+        open={tahapKonfirmasi === 1}
+        onClose={() => setTahapKonfirmasi(0)}
+        title="Tandai pembayaran ini lunas?"
+        description="Langkah 1 dari 2."
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setTahapKonfirmasi(0)}>
+              Batal
+            </Button>
+            <Button variant="confirm" onClick={() => setTahapKonfirmasi(2)}>
+              Ya, lanjutkan
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Pembayaran ini akan ditandai <strong>lunas terverifikasi</strong> atas nama
+            Anda, dan tercatat di jejak audit.
+          </p>
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+            <p>
+              Satu langkah lagi sebelum tersimpan. Anda masih bisa membatalkan di
+              langkah berikutnya.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Konfirmasi kedua: peringatan terakhir. */}
+      <Modal
+        open={tahapKonfirmasi === 2}
+        onClose={isSubmitting ? () => {} : () => setTahapKonfirmasi(0)}
+        title="Perubahan ini tidak bisa dikembalikan"
+        description="Langkah 2 dari 2."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setTahapKonfirmasi(0)}
+              disabled={isSubmitting}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => handleVerify("APPROVE")}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Memproses..." : "Ya, tandai lunas sekarang"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Setelah tersimpan, status lunas <strong>tidak bisa dibatalkan</strong> dan
+            tidak bisa dikembalikan ke menunggu verifikasi.
+          </p>
+          <div className="rounded-sm border border-danger/40 bg-danger/10 p-3 text-meta text-danger">
+            <p>
+              Kalau Anda ragu, batalkan sekarang dan periksa ulang mutasi rekening.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+    </>
   );
 }

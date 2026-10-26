@@ -25,12 +25,15 @@ import {
 type SidebarProps = {
   open: boolean;
   onClose: () => void;
+  /* Angka pekerjaan yang menunggu, dipetakan per tujuan navigasi. */
+  navCounts?: Record<string, number>;
 };
 
 /* Satu ikon per tujuan navigasi, semuanya dari keluarga ikon yang sama. */
 const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactElement> = {
   "/": IconDashboard,
   "/bookings": IconInbox,
+  "/bookings?tab=pembayaran": IconCreditCard,
   "/payments": IconCreditCard,
   "/fleet/catalog": IconCar,
   "/fleet/calendar": IconCalendar,
@@ -42,7 +45,7 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
   "/admin": IconShield,
 };
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const fleetActive = NAV_ENTRIES.some(
@@ -52,6 +55,17 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   /* Akordeon mengikuti rute armada; pilihan manual pengguna menang sampai ia mengubahnya lagi. */
   const [fleetOverride, setFleetOverride] = useState<boolean | null>(null);
   const fleetOpen = fleetOverride ?? fleetActive;
+
+  function isNavActive(entryHref: string): boolean {
+    if (entryHref === "/bookings") {
+      return (
+        pathname === "/bookings" ||
+        pathname.startsWith("/bookings/") ||
+        pathname.startsWith("/payments")
+      );
+    }
+    return pathname === entryHref;
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -151,15 +165,16 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               );
             }
 
-            const active = pathname === entry.href;
+            const active = isNavActive(entry.href);
             const Ikon = IKON_NAV[entry.href] ?? IconDashboard;
+            const jumlah = navCounts?.[entry.href] ?? 0;
             return (
               <Link
                 key={entry.href}
                 href={entry.href}
                 aria-current={active ? "page" : undefined}
                 onClick={onClose}
-                className={`flex h-11 items-center gap-2.5 rounded-nav px-3 text-body font-medium transition-colors ${
+                className={`flex h-11 items-center gap-2 rounded-nav px-2.5 text-body font-medium transition-colors ${
                   active
                     ? "bg-teal text-white"
                     : "text-white/85 hover:bg-navy-hover hover:text-white"
@@ -168,7 +183,21 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <Ikon
                   className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/70"}`}
                 />
-                {entry.label}
+                <span className="flex-1 whitespace-nowrap">{entry.label}</span>
+                {/* Indikator notifikasi responsif & adaptif:
+                    - Satuan (1–9): Berbentuk lingkaran sempurna 20x20 px (min-w-5 h-5).
+                    - Puluhan (10–99): Mengembang mulus menjadi pil lonjong dengan padding aman px-1.5 tanpa teks terpotong (overflow).
+                    - Ratusan (100+): Dibatasi 99+ (atau pil adaptif) agar tata letak sidebar tetap presisi. */}
+                {jumlah > 0 ? (
+                  <span
+                    aria-label={`${jumlah} menunggu tindakan`}
+                    className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
+                      active ? "bg-white text-teal" : "bg-gold text-ink"
+                    }`}
+                  >
+                    {jumlah > 99 ? "99+" : jumlah}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

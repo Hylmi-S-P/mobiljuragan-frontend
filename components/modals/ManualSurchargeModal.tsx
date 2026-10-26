@@ -4,8 +4,8 @@ import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { formatCurrencyInput } from "@/lib/format";
-import { AMOUNT_PLACEHOLDER, SURCHARGE_CATEGORIES } from "@/lib/uiText";
+import { formatCurrencyInput, formatRupiah } from "@/lib/format";
+import { SURCHARGE_CATEGORIES } from "@/lib/uiText";
 import type { Booking, LineItem } from "@/lib/types";
 
 type Props = {
@@ -23,6 +23,10 @@ export function ManualSurchargeModal({ onClose, onApply, booking }: Props) {
   const [direction, setDirection] = useState<"tambah" | "kurang">("tambah");
   const [justification, setJustification] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  /* Tarif dasar yang sudah ditetapkan admin. Null berarti belum ada, dan itu
+     dikatakan apa adanya, bukan diganti penanda "[nominal]". */
+  const estimasiAwal = booking.quotedAmount;
 
   function handleApply() {
     const nextErrors: Record<string, string> = {};
@@ -176,9 +180,9 @@ export function ManualSurchargeModal({ onClose, onApply, booking }: Props) {
         </div>
 
         <div className="rounded-sm border border-rule bg-canvas px-3.5 py-2.5 text-micro text-ink-soft">
-          <p>Estimasi awal booking: {AMOUNT_PLACEHOLDER}</p>
+          <p>Tarif dasar booking: {estimasiAwal != null ? formatRupiah(estimasiAwal) : "belum ditetapkan admin"}</p>
           <p className="mt-1">
-            Penyesuaian manual: {amount.trim().length > 0 ? amount.trim() : AMOUNT_PLACEHOLDER}
+            Penyesuaian manual: {amount.trim().length > 0 ? amount.trim() : "belum diisi"}
           </p>
           <p className="mt-1 font-bold text-ink">
             Total tagihan baru dihitung oleh sistem setelah tarif dasar dikonfirmasi.
