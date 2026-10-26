@@ -231,7 +231,7 @@ export function AdminManageModal({
 
           <div>
             <label htmlFor={`${fieldId}-phone`} className="block text-meta font-medium text-ink">
-              Nomor Telepon / Username
+              Username
             </label>
             <input
               id={`${fieldId}-phone`}

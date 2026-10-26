@@ -5,6 +5,7 @@ import { updateAiConfigAction } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { IconSparkles } from "@/components/ui/icons";
+import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import type { AiConfigData } from "@/lib/operations";
 
 type Props = {
@@ -103,8 +104,8 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
 
         {/* Textarea Persona */}
         <div className="flex flex-col gap-1.5">
-          <textarea
-            rows={4}
+          <AutoGrowTextarea
+            maxHeight={420}
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             placeholder="Tuliskan persona asisten di sini..."

@@ -1,45 +1,15 @@
-import { Suspense } from "react";
-import type { Metadata } from "next";
-import { BookingsUnifiedHub } from "@/components/bookings/BookingsUnifiedHub";
-import { getAllVehicles, getBookings, getAdminPayments } from "@/lib/operations";
-import type { AdminPaymentsResponse } from "@/lib/types";
+import { permanentRedirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Verifikasi Pembayaran | MobilJuragan",
-  description:
-    "Antrean verifikasi bukti transfer bank, pencocokan nominal mutasi unik, dan validasi pelunasan sewa armada CV. Mobil Juragan Express Transport Merauke.",
-};
-
-export const dynamic = "force-dynamic";
-
-export default async function PaymentsPage() {
-  let initialData: AdminPaymentsResponse = {
-    items: [],
-    pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
-  };
-
-  const [bookings, vehicles] = await Promise.all([
-    getBookings(),
-    getAllVehicles(),
-  ]);
-
-  try {
-    initialData = await getAdminPayments({ limit: 100 });
-  } catch {
-    initialData = {
-      items: [],
-      pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
-    };
-  }
-
-  return (
-    <Suspense fallback={<div className="p-8 text-center text-ink-soft">Memuat verifikasi pembayaran...</div>}>
-      <BookingsUnifiedHub
-        initialBookings={bookings}
-        vehicles={vehicles}
-        initialPayments={initialData}
-        initialTab="pembayaran"
-      />
-    </Suspense>
-  );
+/**
+ * Verifikasi pembayaran bukan lagi halaman sendiri.
+ *
+ * Halimah menilai halaman ini fungsinya sedikit dan bisa dijadikan satu dengan
+ * pemesanan masuk. Sekarang isinya hidup sebagai tab di `/bookings`, dan rute
+ * ini hanya mengalihkan ke sana.
+ *
+ * Dipertahankan sebagai redirect, bukan dihapus, supaya tautan lama
+ * (bookmark admin, notifikasi, tautan internal) tidak berakhir di 404.
+ */
+export default function PaymentsPage() {
+  permanentRedirect("/bookings?tab=pembayaran");
 }

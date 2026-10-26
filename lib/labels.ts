@@ -158,3 +158,15 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   BANK_TRANSFER: "Transfer Bank",
   CASH: "Tunai di Tempat (COD)",
 };
+
+/* Golongan SIM yang bisa dipilih. Urutannya dari yang paling ringan ke paling
+   berat, mengikuti kebiasaan pencatatan di Indonesia. */
+export const DRIVER_LICENSE: Record<
+  "SIM_A" | "SIM_B1" | "SIM_B2" | "SIM_C",
+  { label: string; keterangan: string }
+> = {
+  SIM_A: { label: "SIM A", keterangan: "Sepeda motor" },
+  SIM_B1: { label: "SIM B1", keterangan: "Kendaraan ringan, maksimal 3.500 kg" },
+  SIM_B2: { label: "SIM B2", keterangan: "Kendaraan berat, di atas 3.500 kg" },
+  SIM_C: { label: "SIM C", keterangan: "Kendaraan niaga" },
+};

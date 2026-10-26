@@ -17,9 +17,28 @@ import { VEHICLE_STATUS } from "@/lib/labels";
 
 type Props = {
   initialVehicles: Vehicle[];
+  /* Id unit yang sedang tersewa saat ini. Dipakai untuk menurunkan badge
+     "Disewa". Kalau kosong (mis. pengambilan data gagal), badge mengikuti
+     status operasional seperti sebelumnya. */
+  rentedVehicleIds?: string[];
 };
 
-export function VehicleCatalogTable({ initialVehicles }: Props) {
+/**
+ * Status yang ditampilkan di kartu katalog.
+ *
+ * Unit yang sedang tersewa selalu tampil "Disewa", apa pun status gudangnya —
+ * sama seperti aturan di kalender armada. Selain itu, status gudang dipakai apa
+ * adanya.
+ */
+function statusKatalog(
+  vehicle: Vehicle,
+  sedangTersewa: boolean,
+): Vehicle["status"] {
+  if (sedangTersewa) return "disewa";
+  return vehicle.status;
+}
+
+export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [formTarget, setFormTarget] = useState<{ vehicleId: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -70,7 +89,13 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
               terbaca di kartu, dan dua mode tampilan hanya menambah tombol tanpa
               menambah informasi. */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {vehicles.map((vehicle) => (
+              {vehicles.map((vehicle) => {
+                const statusTampil = statusKatalog(
+                  vehicle,
+                  rentedVehicleIds.includes(vehicle.id),
+                );
+
+                return (
                 <div
                   key={vehicle.id}
                   className="flex flex-col justify-between rounded-lg border border-rule bg-surface p-4 shadow-card hover:border-navy/40 transition-all"
@@ -82,8 +107,8 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
                         <h3 className="text-body font-bold text-ink">{vehicle.name}</h3>
                         <PlateBadge plate={vehicle.plate} className="mt-1" />
                       </div>
-                      <StatusChip tone={VEHICLE_STATUS[vehicle.status].tone}>
-                        {VEHICLE_STATUS[vehicle.status].label}
+                      <StatusChip tone={VEHICLE_STATUS[statusTampil].tone}>
+                        {VEHICLE_STATUS[statusTampil].label}
                       </StatusChip>
                     </div>
 
@@ -134,7 +159,8 @@ export function VehicleCatalogTable({ initialVehicles }: Props) {
                     </button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
         </Panel>
       </div>

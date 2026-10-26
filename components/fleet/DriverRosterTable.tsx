@@ -82,6 +82,16 @@ export function DriverRosterTable({ initialDrivers }: Props) {
     formData.set("fullName", saved.label);
     if (saved.contact) formData.set("phoneNumber", saved.contact);
     if (saved.licenseNumber) formData.set("licenseNumber", saved.licenseNumber);
+
+    /* Golongan SIM selalu dikirim, termasuk string kosong saat admin memilih
+       "Belum ditetapkan". Kalau dilewati, server tidak bisa membedakan
+       "tidak diubah" dari "dikosongkan". */
+    formData.set("licenseType", saved.licenseType ?? "");
+
+    /* Foto SIM juga selalu dikirim. String kosong berarti fotonya dihapus —
+       itu yang membuat tombol Hapus foto berpengaruh. */
+    formData.set("licensePhotoUrl", saved.licensePhotoUrl ?? "");
+
     formData.set("route", saved.route);
 
     startTransition(async () => {
