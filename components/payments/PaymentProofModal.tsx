@@ -64,13 +64,18 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
      itu persetujuan dibuat dua tahap — admin harus menyatakan sudah mencocokkan
      dana lebih dulu, baru tombolnya aktif. */
   const [danaDicocokkan, setDanaDicocokkan] = useState(false);
-  const [setujuKedua, setSetujuKedua] = useState(false);
+  /* Konfirmasi saat mencentang "Terbayar". */
+  const [konfirmasiCentang, setKonfirmasiCentang] = useState(false);
+  /* Dua konfirmasi berurutan saat menekan tombol verifikasi. 0 = belum,
+     1 = peringatan pertama, 2 = peringatan terakhir. */
+  const [tahapKonfirmasi, setTahapKonfirmasi] = useState<0 | 1 | 2>(0);
 
   /* Reset form state saat modal tertutup */
   useEffect(() => {
     if (!open) {
       setDanaDicocokkan(false);
-      setSetujuKedua(false);
+      setKonfirmasiCentang(false);
+      setTahapKonfirmasi(0);
       setNotes("");
       setError(null);
       setImageError(false);
@@ -94,10 +99,10 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
       return;
     }
 
-    /* Tahap kedua untuk persetujuan: satu klik lagi setelah peringatan. Ini
-       mencegah admin menandai lunas karena salah tekan, bukan karena ragu. */
-    if (action === "APPROVE" && !setujuKedua) {
-      setSetujuKedua(true);
+    /* Untuk persetujuan, permintaan baru dikirim setelah admin melewati dua
+       konfirmasi. Ini mencegah status lunas tersimpan karena salah tekan. */
+    if (action === "APPROVE" && tahapKonfirmasi < 2) {
+      setTahapKonfirmasi((n) => (n === 0 ? 1 : 2));
       setError(null);
       return;
     }
@@ -112,6 +117,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
       });
 
       const updated = (res.data?.data || res.data) as AdminPaymentItem;
+      setTahapKonfirmasi(0);
       onSuccess?.(updated, action);
       onClose();
     } catch (err: unknown) {
@@ -132,24 +138,25 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
 
       {isPending ? (
         <div className="flex flex-col items-end gap-2">
-          {/* Peringatan muncul sebelum tombol setujui bisa ditekan. */}
-          {!setujuKedua ? (
-            <label className="flex max-w-md items-start gap-2 text-meta text-ink cursor-pointer">
-              <input
-                type="checkbox"
-                checked={danaDicocokkan}
-                onChange={(event) => setDanaDicocokkan(event.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded-xs border border-rule-strong cursor-pointer"
-              />
-              <span className="leading-snug break-words">
-                Saya, <strong className="font-semibold text-navy">{adminName}</strong> ({adminRole}), menyatakan telah memeriksa dan mencocokkan dana mutasi rekening bank dengan nominal tagihan. Status lunas tidak bisa dibatalkan setelah disimpan.
-              </span>
-            </label>
-          ) : (
-            <p className="max-w-md rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-meta text-danger leading-snug break-words">
-              Saya, <strong className="font-semibold">{adminName}</strong> ({adminRole}), menyatakan yakin menandai pembayaran ini lunas. Tindakan ini tidak bisa dibatalkan.
-            </p>
-          )}
+          {/* Pernyataan admin dipisah dari checkbox supaya label tetap ringkas. */}
+          <label className="flex max-w-md items-start gap-2 text-meta text-ink cursor-pointer">
+            <input
+              type="checkbox"
+              checked={danaDicocokkan}
+              onChange={(event) => {
+                /* Mencentang harus dikonfirmasi dulu: ini pernyataan bahwa dana
+                   benar-benar sudah diperiksa di aplikasi keuangan. */
+                if (event.target.checked) setKonfirmasiCentang(true);
+                else setDanaDicocokkan(false);
+              }}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded-xs border border-rule-strong cursor-pointer"
+            />
+            <span className="leading-snug break-words">
+              <strong className="font-semibold text-navy">Terbayar</strong> — saya sudah
+              memeriksa mutasi di aplikasi keuangan dan dana benar-benar masuk sebesar
+              nominal tagihan.
+            </span>
+          </label>
 
           <div className="flex items-center gap-2">
             <Button
@@ -162,13 +169,9 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
             <Button
               variant="confirm"
               onClick={() => handleVerify("APPROVE")}
-              disabled={isSubmitting || (!setujuKedua && !danaDicocokkan)}
+              disabled={isSubmitting || !danaDicocokkan}
             >
-              {isSubmitting
-                ? "Memproses..."
-                : setujuKedua
-                  ? "Ya, Tandai Lunas"
-                  : "Setujui Pembayaran"}
+              {isSubmitting ? "Memproses..." : "Verifikasi Pembayaran"}
             </Button>
           </div>
         </div>
@@ -191,6 +194,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
   );
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -359,5 +363,116 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
         </div>
       </div>
     </Modal>
+      {/* Konfirmasi centang "Terbayar".
+          Ami meminta centang memunculkan confirmation modal lebih dulu, karena
+          centang ini pernyataan bahwa dana sudah diperiksa langsung di aplikasi
+          keuangan, bukan sekadar melihat bukti transfer. */}
+      <Modal
+        open={konfirmasiCentang}
+        onClose={() => setKonfirmasiCentang(false)}
+        title="Dana sudah masuk?"
+        description="Centang ini menyatakan Anda sudah memeriksa mutasi langsung."
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setKonfirmasiCentang(false)}>
+              Belum, cek lagi
+            </Button>
+            <Button
+              variant="confirm"
+              onClick={() => {
+                setDanaDicocokkan(true);
+                setKonfirmasiCentang(false);
+              }}
+            >
+              Ya, dana sudah masuk
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Pastikan Anda sudah membuka aplikasi keuangan (m-banking, Gopay Merchant,
+            atau rekening perusahaan) dan melihat dana masuk sebesar nominal tagihan
+            ini. Bukti transfer saja belum cukup.
+          </p>
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+            <p>
+              Kalau dana belum terlihat, tutup dialog ini dan cek lagi nanti. Jangan
+              menandai lunas berdasarkan bukti transfer yang belum cocok.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Konfirmasi pertama tombol verifikasi. */}
+      <Modal
+        open={tahapKonfirmasi === 1}
+        onClose={() => setTahapKonfirmasi(0)}
+        title="Tandai pembayaran ini lunas?"
+        description="Langkah 1 dari 2."
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setTahapKonfirmasi(0)}>
+              Batal
+            </Button>
+            <Button variant="confirm" onClick={() => setTahapKonfirmasi(2)}>
+              Ya, lanjutkan
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Pembayaran ini akan ditandai <strong>lunas terverifikasi</strong> atas nama
+            Anda, dan tercatat di jejak audit.
+          </p>
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+            <p>
+              Satu langkah lagi sebelum tersimpan. Anda masih bisa membatalkan di
+              langkah berikutnya.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Konfirmasi kedua: peringatan terakhir. */}
+      <Modal
+        open={tahapKonfirmasi === 2}
+        onClose={isSubmitting ? () => {} : () => setTahapKonfirmasi(0)}
+        title="Perubahan ini tidak bisa dikembalikan"
+        description="Langkah 2 dari 2."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setTahapKonfirmasi(0)}
+              disabled={isSubmitting}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => handleVerify("APPROVE")}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Memproses..." : "Ya, tandai lunas sekarang"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-body text-ink">
+            Setelah tersimpan, status lunas <strong>tidak bisa dibatalkan</strong> dan
+            tidak bisa dikembalikan ke menunggu verifikasi.
+          </p>
+          <div className="rounded-sm border border-danger/40 bg-danger/10 p-3 text-meta text-danger">
+            <p>
+              Kalau Anda ragu, batalkan sekarang dan periksa ulang mutasi rekening.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+    </>
   );
 }

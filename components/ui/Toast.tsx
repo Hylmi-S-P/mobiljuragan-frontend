@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { IconClose } from "./icons";
 
 export type ToastTone = "success" | "error" | "info";
@@ -15,6 +15,10 @@ export type ToastProps = {
 /**
  * Toast feedback notifikasi mengambang dengan durasi auto-dismiss 2.5 - 4 detik,
  * garis progres waktu, dan tombol tutup instan.
+ *
+ * Posisinya di kanan atas, bukan kanan bawah: pada layar ponsel bagian bawah
+ * sering tertutup tombol aksi atau keyboard, sehingga notifikasi di sana mudah
+ * terlewat.
  */
 export function Toast({
   message,
@@ -22,23 +26,18 @@ export function Toast({
   durationMs = 3000,
   onClose,
 }: ToastProps) {
-  const [progress, setProgress] = useState(100);
-  const onCloseRef = React.useRef(onClose);
-  onCloseRef.current = onClose;
-
+  /* Hanya satu pengatur waktu, tanpa state yang diperbarui terus-menerus.
+     Sebelumnya garis progres memakai `setProgress` tiap 50 ms, yang memicu
+     render ulang puluhan kali selama 3 detik dan membuat elemen lain di halaman
+     tampak berkedip. Sekarang garis progres dianimasikan CSS, dan React hanya
+     dipakai untuk menutup notifikasi sekali di akhir. */
   useEffect(() => {
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, 100 - (elapsed / durationMs) * 100);
-      setProgress(remaining);
-      if (remaining <= 0) {
-        clearInterval(interval);
-        onCloseRef.current();
-      }
-    }, 50);
-
-    return () => clearInterval(interval);
+    const timer = setTimeout(onClose, durationMs);
+    return () => clearTimeout(timer);
+    /* `onClose` sengaja tidak masuk daftar ketergantungan. Kalau dimasukkan,
+       setiap render induk membuat fungsi baru dan pengatur waktu ikut diulang,
+       sehingga notifikasi tidak pernah selesai menutup sendiri. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durationMs]);
 
   const toneConfig = {
@@ -63,7 +62,7 @@ export function Toast({
     <div
       role="alert"
       aria-live="polite"
-      className={`fixed bottom-5 right-5 z-50 flex max-w-sm flex-col overflow-hidden rounded-md border shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2 ${toneConfig.bg}`}
+      className={`fixed right-5 top-5 z-50 flex max-w-sm flex-col overflow-hidden rounded-md border shadow-lg transition-all animate-in fade-in slide-in-from-top-2 ${toneConfig.bg}`}
     >
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         <span className="text-body font-medium text-ink">{message}</span>
@@ -77,11 +76,12 @@ export function Toast({
         </button>
       </div>
 
-      {/* Progress bar timer auto dismiss */}
+      {/* Garis waktu. Dianimasikan CSS dari lebar penuh ke nol, jadi tidak ada
+          render ulang React selama notifikasi tampil. */}
       <div className="h-0.5 w-full bg-canvas">
         <div
-          className={`h-full transition-all duration-75 ${toneConfig.barBg}`}
-          style={{ width: `${progress}%` }}
+          className={`h-full ${toneConfig.barBg} animate-toast-progress`}
+          style={{ animationDuration: `${durationMs}ms` }}
         />
       </div>
     </div>

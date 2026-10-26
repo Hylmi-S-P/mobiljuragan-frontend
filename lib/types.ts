@@ -7,6 +7,9 @@ export type Vehicle = {
   name: string;
   plate: string;
   status: VehicleStatus;
+  /* Foto unit. Disimpan sebagai data URL di database, bukan tautan berkas,
+     karena proyek ini tidak menjalankan layanan penyimpanan berkas terpisah. */
+  imageUrl?: string | null;
   /* Spesifikasi teknis unit, dipakai untuk pencocokan mode sewa di katalog. */
   category: string | null;
   transmission: string | null;

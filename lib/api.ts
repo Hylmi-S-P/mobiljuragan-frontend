@@ -1106,3 +1106,100 @@ export async function apiDeleteVehicle(id: string) {
 
   return json.data;
 }
+
+/** Kategori dokumen pengetahuan untuk RAG. */
+export type KnowledgeCategoryApi = {
+  id: string;
+  slug: string;
+  label: string;
+  orderIndex: number;
+  jumlahDokumen?: number;
+};
+
+export async function apiGetKnowledgeCategories(): Promise<KnowledgeCategoryApi[]> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/categories`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "GET_CATEGORIES_FAILED",
+      json?.error?.message || "Gagal memuat kategori pengetahuan.",
+    );
+  }
+  return (json?.data ?? []) as KnowledgeCategoryApi[];
+}
+
+export async function apiCreateKnowledgeCategory(label: string) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/categories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ label }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CREATE_CATEGORY_FAILED",
+      json?.error?.message || "Gagal menambah kategori.",
+    );
+  }
+  return json.data as KnowledgeCategoryApi;
+}
+
+export async function apiUpdateKnowledgeCategory(id: string, payload: { label?: string; orderIndex?: number }) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/categories/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_CATEGORY_FAILED",
+      json?.error?.message || "Gagal memperbarui kategori.",
+    );
+  }
+  return json.data as KnowledgeCategoryApi;
+}
+
+export async function apiDeleteKnowledgeCategory(id: string) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/ai/categories/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "DELETE_CATEGORY_FAILED",
+      json?.error?.message || "Gagal menghapus kategori.",
+    );
+  }
+  return json.data;
+}

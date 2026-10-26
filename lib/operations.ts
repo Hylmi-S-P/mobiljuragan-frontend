@@ -72,19 +72,45 @@ type ApiVehicle = {
   transmission: string | null;
   seatingCapacity: number | null;
   pricePerDay?: number | null;
+  imageUrl?: string | null;
   operationalStatus: string;
+  /* Booking yang sedang mengunci unit. Kosong berarti unit bebas. */
+  bookings?: Array<{ id: string; bookingCode: string; status: string }>;
 };
+
+/**
+ * Menentukan status tampil armada.
+ *
+ * operationalStatus hanya berubah lewat perubahan manual admin, jadi unit yang
+ * sedang disewa tetap tertulis AVAILABLE dan katalog menampilkan "Tersedia" untuk
+ * mobil yang sudah keluar. Status tampil karena itu diturunkan dari booking aktif,
+ * bukan dari kolom itu.
+ *
+ * Servis dan tidak tersedia tetap menang atas "disewa": unit yang sedang diperbaiki
+ * tidak boleh tampil seolah sedang disewa pelanggan.
+ */
+function statusTampil(v: ApiVehicle): VehicleStatus {
+  const dasar = VEHICLE_STATUS[v.operationalStatus] ?? "tidak_tersedia";
+
+  if (dasar === "servis" || dasar === "tidak_tersedia") {
+    return dasar;
+  }
+
+  const adaBookingAktif = (v.bookings ?? []).length > 0;
+  return adaBookingAktif ? "disewa" : dasar;
+}
 
 function mapVehicle(v: ApiVehicle): Vehicle {
   return {
     id: v.externalId || v.id,
     name: v.name,
     plate: v.licensePlate,
-    status: VEHICLE_STATUS[v.operationalStatus] ?? "tidak_tersedia",
+    status: statusTampil(v),
     category: v.category,
     transmission: v.transmission,
     seats: v.seatingCapacity,
     pricePerDay: v.pricePerDay ?? 400000,
+    imageUrl: v.imageUrl ?? null,
     // `usage` dan `allowedModes` tidak dikirim backend. Dibiarkan null/kosong
     // daripada diisi teks karangan.
     usage: null,
@@ -459,24 +485,18 @@ export async function getTicketDetail(
 export type FinanceSummary = {
   summary: {
     totalRevenue: number;
-    pendingRevenue: number;
     completedBookingsCount: number;
     confirmedOrActiveCount: number;
-    averageOrderValue: number;
     totalAllBookings: number;
   };
-  rentalTypes: {
-    withoutDriver: {
-      count: number;
-      revenue: number;
-      percentage: number;
-    };
-    withDriver: {
-      count: number;
-      revenue: number;
-      percentage: number;
-    };
+
+  /* Perbandingan model sewa. Angkanya dihitung dari pembayaran lunas, sama
+     seperti omzet total, sehingga persentasenya selalu berjumlah 100%. */
+  rentalTypes?: {
+    withoutDriver: { count: number; revenue: number; percentage: number };
+    withDriver: { count: number; revenue: number; percentage: number };
   };
+
   fleetBreakdown: Array<{
     vehicleId: string;
     externalId: string;
@@ -489,6 +509,21 @@ export type FinanceSummary = {
   }>;
   monthlyTrends: Array<{
     label: string;
+    shortLabel: string;
+    tahun: number;
+    bulan: number;
+    revenue: number;
+    bookings: number;
+    weekly: number[];
+  }>;
+  weeklyBreakdown: Array<{
+    label: string;
+    tahun: number;
+    bulan: number;
+    minggu: Array<{ label: string; revenue: number }>;
+  }>;
+  yearOverYear: Array<{
+    tahun: number;
     revenue: number;
     bookings: number;
   }>;
@@ -559,6 +594,26 @@ export async function getAiConfig(): Promise<AiConfigData> {
 
 export async function getKnowledgeDocuments(): Promise<KnowledgeDocument[]> {
   return await apiGet<KnowledgeDocument[]>("/admin/ai/documents");
+}
+
+/** Kategori dokumen pengetahuan RAG. Dikelola admin dari portal. */
+export type KnowledgeCategoryView = {
+  id: string;
+  slug: string;
+  label: string;
+  orderIndex: number;
+  jumlahDokumen?: number;
+};
+
+export async function getKnowledgeCategories(): Promise<KnowledgeCategoryView[]> {
+  /* Kegagalan memuat kategori tidak boleh menjatuhkan seluruh halaman AI Hub.
+     Daftar kosong membuat layar menampilkan pesan "belum ada kategori", yang
+     masih bisa ditindaklanjuti admin. */
+  try {
+    return await apiGet<KnowledgeCategoryView[]>("/admin/ai/categories");
+  } catch {
+    return [];
+  }
 }
 
 export type AiGatewayLog = {

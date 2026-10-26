@@ -64,7 +64,7 @@ export const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
 
 export const ADMIN_ROLE: Record<AdminRole, string> = {
   super_admin: "Super Admin",
-  staf_operasional: "Staf Operasional (Kantor MobilJuragan)",
+  staf_operasional: "Staf",
 };
 
 export const TICKET_STATUS: Record<SupportTicketStatus, { label: string; tone: ChipTone }> = {

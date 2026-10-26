@@ -55,6 +55,11 @@ export function VehicleFormModal({
   );
   const [photoName, setPhotoName] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  /* Foto disimpan sebagai data URL di state, terpisah dari pratinjau.
+     Pratinjau memakai object URL yang dibebaskan saat modal ditutup; data URL
+     inilah yang benar-benar dikirim ke server. Sebelumnya tidak ada, sehingga
+     foto hanya terlihat di layar lalu hilang. */
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(vehicle?.imageUrl ?? null);
 
   /* Object URL pratinjau harus dibebaskan saat modal ditutup. Tanpa ini, setiap
      berkas yang pernah dipilih tetap tertahan di memori sampai halaman dimuat ulang. */
@@ -103,6 +108,14 @@ export function VehicleFormModal({
     });
     setPhotoName(file.name);
     tampilkanPratinjau(file);
+
+    /* Pembacaan dilakukan sekali di sini, bukan saat menyimpan, supaya kegagalan
+       baca berkas langsung terlihat dan tidak menahan proses simpan. */
+    const pembaca = new FileReader();
+    pembaca.onload = () => {
+      if (typeof pembaca.result === "string") setPhotoDataUrl(pembaca.result);
+    };
+    pembaca.readAsDataURL(file);
   }
 
   /* Pratinjau memakai object URL, bukan pembacaan base64. Berkas 5 MB menjadi sekitar
@@ -145,6 +158,7 @@ export function VehicleFormModal({
       transmission,
       seats: vehicle?.seats ?? 7,
       pricePerDay: numericPrice,
+      imageUrl: photoDataUrl,
       /* Karakteristik penggunaan sengaja tidak lagi diisi dari form. Field-nya
          dihapus karena tidak pernah tampil di antarmuka dan tidak pernah diteruskan
          backend, jadi nilai lama dipertahankan agar data yang sudah ada tidak hilang

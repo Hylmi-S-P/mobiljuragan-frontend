@@ -45,19 +45,22 @@ export function FaqCardGrid({
             className="group relative flex flex-col justify-between rounded-card border border-rule bg-surface p-4 sm:p-5 shadow-xs transition-all duration-200 hover:border-navy/40 hover:shadow-sm"
           >
             <div>
-              {/* Header Kartu: Kategori & Toggle Visibilitas Mobile */}
+              {/* Header kartu: kategori dan sakelar visibilitas.
+
+                  Label teks di samping sakelar sengaja tidak ditampilkan.
+                  Badge di bagian bawah kartu sudah menyebut "Tayang di Mobile"
+                  atau "Disembunyikan", jadi menulis "Mobile: Aktif" di sini
+                  hanya mengulang hal yang sama tiga kali dalam satu kartu. */}
               <div className="flex items-center justify-between gap-2 border-b border-rule/50 pb-3">
                 <StatusChip tone="neutral">{faq.category}</StatusChip>
-                <div className="flex items-center gap-1.5" title="Visibilitas di aplikasi pelanggan">
-                  <span className="text-micro font-medium text-ink-soft">Mobile:</span>
-                  <Toggle
-                    checked={faq.isActive}
-                    disabled={isPendingToggle}
-                    onChange={() => onToggleActive(faq)}
-                    labelOn="Aktif"
-                    labelOff="Sembunyi"
-                  />
-                </div>
+                <Toggle
+                  checked={faq.isActive}
+                  disabled={isPendingToggle}
+                  onChange={() => onToggleActive(faq)}
+                  labelOn="Aktif"
+                  labelOff="Sembunyi"
+                  hideLabel
+                />
               </div>
 
               {/* Pertanyaan FAQ */}

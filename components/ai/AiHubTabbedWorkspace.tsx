@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AiTelemetryCards } from "@/components/ai/AiTelemetryCards";
 import { NineRouterConsoleWidget } from "@/components/ai/NineRouterConsoleWidget";
 import { SystemPromptDrawer } from "@/components/ai/SystemPromptDrawer";
-import { KnowledgeBaseManager } from "@/components/ai/KnowledgeBaseManager";
+import { KnowledgeBaseManager, type KnowledgeCategory } from "@/components/ai/KnowledgeBaseManager";
 import { AiChatSandbox } from "@/components/ai/AiChatSandbox";
 import type {
   AiConfigData,
@@ -22,6 +22,7 @@ type Props = {
   config: AiConfigData["config"];
   documents: KnowledgeDocument[];
   activeDocCount: number;
+  categories?: KnowledgeCategory[];
 };
 
 type TabType = "telemetry" | "rag" | "sandbox";
@@ -32,6 +33,7 @@ export function AiHubTabbedWorkspace({
   config,
   documents,
   activeDocCount,
+  categories = [],
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("telemetry");
 
@@ -109,7 +111,7 @@ export function AiHubTabbedWorkspace({
         </div>
 
         <div className={activeTab === "rag" ? "space-y-6" : "hidden"}>
-          <KnowledgeBaseManager initialDocuments={documents} />
+          <KnowledgeBaseManager initialDocuments={documents} initialCategories={categories} />
         </div>
 
         <div className={activeTab === "sandbox" ? "space-y-6" : "hidden"}>

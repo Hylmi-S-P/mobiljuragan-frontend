@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ComparisonMetricCard } from "@/components/ui/ComparisonMetricCard";
-import { CircularProgressRing } from "@/components/ui/CircularProgressRing";
 import {
   IconArrowRight,
   IconCalendar,
@@ -45,9 +44,6 @@ export default async function OverviewPage() {
   // Data tren bulanan untuk sparkline ComparisonMetricCard
   const monthlyTrends = finance?.monthlyTrends ?? [];
 
-  const readinessPercent = Math.round((unitTersedia.length / Math.max(vehicles.length, 1)) * 100);
-  const utilizationPercent = Math.round((unitDisewa.length / Math.max(vehicles.length, 1)) * 100);
-
   /* Jadwal terdekat disusun per jadwal, bukan per kendaraan, lalu diurutkan menurut
      tanggal mulai. */
   const jadwalTerdekat = calendar.fleet
@@ -79,17 +75,11 @@ export default async function OverviewPage() {
     <div className="space-y-6">
       {/* 4 KPI Metric Cards (Pola Zoho IoT & Dribbble Clean Card) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* 1. Kesiapan Armada dengan Circular Progress Ring */}
+        {/* 1. Armada Siap Jalan */}
         <ComparisonMetricCard
           title="Armada Siap Jalan"
           value={unitTersedia.length}
           unitLabel={`/ ${vehicles.length} Unit`}
-          circularProgress={{
-            value: readinessPercent,
-            max: 100,
-            color: "#0e7c7b",
-            label: "Kesiapan Armada",
-          }}
           icon={<IconCar className="h-4 w-4" />}
           iconBgColor="bg-emerald-50 text-emerald-600"
         />
@@ -105,17 +95,11 @@ export default async function OverviewPage() {
           iconBgColor="bg-amber-50 text-amber-600"
         />
 
-        {/* 3. Armada Sedang Beroperasi dengan Circular Progress Ring */}
+        {/* 3. Armada Sedang Beroperasi */}
         <ComparisonMetricCard
           title="Sedang Beroperasi"
           value={unitDisewa.length}
           unitLabel="Unit Sewa"
-          circularProgress={{
-            value: utilizationPercent,
-            max: 100,
-            color: "#1e3a5f",
-            label: "Utilisasi Armada",
-          }}
           icon={<IconCalendar className="h-4 w-4" />}
           iconBgColor="bg-navy/10 text-navy"
         />
@@ -205,28 +189,24 @@ export default async function OverviewPage() {
         )}
       </Panel>
 
-      {/* Grid 2 Kolom: Status Kesiapan Armada & Jadwal Terdekat */}
+      {/* Grid 2 Kolom: Status Armada & Jadwal Operasional */}
       <div className="grid items-start gap-4 lg:grid-cols-2">
         {/* Status Armada Merauke */}
         <Panel title="Status Armada Merauke" icon={<IconCar className="h-4 w-4" />}>
-          {/* Ringkasan Cincin Progres Kesiapan di Atas Daftar */}
+          {/* Ringkasan jumlah unit siap jalan.
+
+              Cincin persentase "Kesiapan X%" dihapus sesuai permintaan: angka
+              persen kesiapan tidak dipakai untuk mengambil keputusan apa pun,
+              sedangkan hitungan "X dari Y unit" sudah menyampaikan hal yang sama
+              tanpa perlu membaca cincin kecil. */}
           <div className="mb-3.5 flex items-center justify-between rounded-sm border border-rule/60 bg-canvas/60 p-3">
-            <div className="flex items-center gap-3">
-              <CircularProgressRing
-                value={readinessPercent}
-                size={40}
-                strokeWidth={4}
-                color="#0e7c7b"
-                label={`Kesiapan ${readinessPercent}%`}
-              />
-              <div>
-                <span className="block text-meta font-semibold text-ink">
-                  {unitTersedia.length} dari {vehicles.length} Armada Siap Jalan
-                </span>
-                <span className="text-micro text-ink-soft">
-                  {unitDisewa.length} sedang beroperasi, {vehicles.length - unitTersedia.length - unitDisewa.length} servis/pool
-                </span>
-              </div>
+            <div>
+              <span className="block text-meta font-semibold text-ink">
+                {unitTersedia.length} dari {vehicles.length} Armada Siap Jalan
+              </span>
+              <span className="text-micro text-ink-soft">
+                {unitDisewa.length} sedang beroperasi, {vehicles.length - unitTersedia.length - unitDisewa.length} servis/pool
+              </span>
             </div>
             <Link
               href="/fleet"
@@ -257,9 +237,9 @@ export default async function OverviewPage() {
           </div>
         </Panel>
 
-        {/* Jadwal Operasional Terdekat */}
+        {/* Jadwal Operasional */}
         <Panel
-          title="Jadwal Operasional Terdekat"
+          title="Jadwal Operasional"
           icon={<IconCalendar className="h-4 w-4" />}
           action={
             <Link

@@ -6,12 +6,14 @@ import { getFinanceSummary } from "@/lib/operations";
 export const metadata: Metadata = {
   title: "Laporan Keuangan | MobilJuragan",
   description:
-    "Laporan omzet pemasukan, estimasi piutang berjalan, dan kontribusi pendapatan unit armada CV. Mobil Juragan Express Transport Merauke.",
+    "Laporan omzet pemasukan dan pendapatan per unit armada CV. Mobil Juragan Express Transport Merauke.",
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function FinancePage() {
+  /* Seluruh angka di halaman ini datang dari database. Tidak ada lagi jalur
+     data contoh: laporan keuangan harus selalu bisa dipertanggungjawabkan. */
   const financeData = await getFinanceSummary("all");
 
   return (
