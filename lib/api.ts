@@ -7,6 +7,7 @@ import type {
   AdminRole,
   CanonicalBookingStatus,
   FaqItem,
+  BookingDocument,
 } from "./types";
 
 const API_BASE_URL =
@@ -1281,4 +1282,53 @@ export async function apiDeleteKnowledgeCategory(id: string) {
     );
   }
   return json.data;
+}
+
+export async function apiGetBookingDocuments(bookingId: string): Promise<BookingDocument | null> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/bookings/${encodeURIComponent(bookingId)}/documents`, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "GET_DOCUMENTS_FAILED",
+      json?.error?.message || "Gagal mengambil dokumen pemesanan.",
+    );
+  }
+  return json.data as BookingDocument | null;
+}
+
+export async function apiAdminVerifyBookingDocuments(
+  bookingId: string,
+  action: "APPROVE" | "REJECT",
+  rejectionReason?: string,
+): Promise<BookingDocument> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/bookings/${encodeURIComponent(bookingId)}/documents/verify`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ action, rejectionReason }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "VERIFY_DOCUMENTS_FAILED",
+      json?.error?.message || "Gagal memverifikasi dokumen pemesanan.",
+    );
+  }
+  return json.data as BookingDocument;
 }

@@ -42,9 +42,11 @@ import {
   apiClaimTicket,
   apiTakeoverTicket,
   apiReleaseTicket,
+  apiGetBookingDocuments,
+  apiAdminVerifyBookingDocuments,
 } from "@/lib/api";
 import { getTicketDetail, getTicketMessages, type TicketMessageView } from "@/lib/operations";
-import type { AdminRole, CanonicalBookingStatus, FaqItem, Vehicle } from "@/lib/types";
+import type { AdminRole, CanonicalBookingStatus, FaqItem, Vehicle, BookingDocument } from "@/lib/types";
 
 export type ActionState = {
   success?: boolean;
@@ -1126,5 +1128,44 @@ export async function getKnowledgeCategoriesAction(): Promise<
       return { success: false, message: err.message };
     }
     return { success: false, message: "Gagal memuat kategori." };
+  }
+}
+
+export async function getBookingDocumentsAction(
+  bookingId: string,
+): Promise<ActionState & { data?: BookingDocument | null }> {
+  try {
+    const data = await apiGetBookingDocuments(bookingId);
+    return { success: true, data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal memuat dokumen pemesanan." };
+  }
+}
+
+export async function verifyBookingDocumentsAction(
+  bookingId: string,
+  action: "APPROVE" | "REJECT",
+  rejectionReason?: string,
+): Promise<ActionState & { data?: BookingDocument }> {
+  try {
+    const data = await apiAdminVerifyBookingDocuments(bookingId, action, rejectionReason);
+    revalidatePath("/bookings");
+    revalidatePath(`/bookings/${bookingId}`);
+    return {
+      success: true,
+      message:
+        action === "APPROVE"
+          ? "Dokumen persyaratan lepas kunci berhasil diverifikasi dan disetujui."
+          : "Dokumen persyaratan telah ditolak. Pelanggan dapat mengunggah ulang perbaikan.",
+      data,
+    };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal memverifikasi dokumen." };
   }
 }

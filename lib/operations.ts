@@ -260,6 +260,19 @@ type ApiBooking = {
     method?: string | null;
     totalAmount?: string | number | null;
   } | null;
+  document?: {
+    id: string;
+    bookingId: string;
+    statementLetterUrl: string | null;
+    ktpUrl: string | null;
+    simUrl: string | null;
+    status: any;
+    rejectionReason: string | null;
+    verifiedAt: string | null;
+    verifiedBy: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
 };
 
 function countDays(start: string, end: string): number {
@@ -313,6 +326,21 @@ function mapBooking(b: ApiBooking): Booking {
             b.payment.totalAmount !== null && b.payment.totalAmount !== undefined
               ? Number(b.payment.totalAmount)
               : null,
+        }
+      : null,
+    document: b.document
+      ? {
+          id: b.document.id,
+          bookingId: b.document.bookingId,
+          statementLetterUrl: b.document.statementLetterUrl ?? null,
+          ktpUrl: b.document.ktpUrl ?? null,
+          simUrl: b.document.simUrl ?? null,
+          status: b.document.status,
+          rejectionReason: b.document.rejectionReason ?? null,
+          verifiedAt: b.document.verifiedAt ?? null,
+          verifiedBy: b.document.verifiedBy ?? null,
+          createdAt: b.document.createdAt,
+          updatedAt: b.document.updatedAt,
         }
       : null,
   };

@@ -9,6 +9,7 @@ import { BookingTimelineBar } from "./BookingTimelineBar";
 import { CustomerInfoCard } from "./CustomerInfoCard";
 import { VehicleUnitCard } from "./VehicleUnitCard";
 import { DriverAllocationCard } from "./DriverAllocationCard";
+import { LepasKunciDocumentReviewCard } from "./LepasKunciDocumentReviewCard";
 import { BillingLineItemsCard } from "./BillingLineItemsCard";
 import { BookingActionSidebar } from "./BookingActionSidebar";
 import type {
@@ -283,17 +284,21 @@ export function BookingDetailClient({
           {/* Modul 3: Kartu Kendaraan yang Dipilih */}
           <VehicleUnitCard vehicle={vehicle} />
 
-          {/* Modul 4: Kartu Alokasi Operasional & Penugasan Supir */}
-          <DriverAllocationCard
-            booking={booking}
-            availableDrivers={availableDrivers}
-            selectedDriverId={selectedDriverId}
-            assignedDriverName={assignedDriverName}
-            onAssignDriver={handleAutoAssignDriver}
-            isPending={isPending}
-            isLuarKota={isLuarKotaBooking}
-            disabled={isCompleted || isRejected}
-          />
+          {/* Modul 4: Kartu Alokasi Operasional Supir atau Verifikasi Dokumen Lepas Kunci */}
+          {isDriverService ? (
+            <DriverAllocationCard
+              booking={booking}
+              availableDrivers={availableDrivers}
+              selectedDriverId={selectedDriverId}
+              assignedDriverName={assignedDriverName}
+              onAssignDriver={handleAutoAssignDriver}
+              isPending={isPending}
+              isLuarKota={isLuarKotaBooking}
+              disabled={isCompleted || isRejected}
+            />
+          ) : (
+            <LepasKunciDocumentReviewCard booking={booking} />
+          )}
 
           {/* Modul 5: Kartu Rincian Tagihan & Penyesuaian Biaya */}
           <BillingLineItemsCard

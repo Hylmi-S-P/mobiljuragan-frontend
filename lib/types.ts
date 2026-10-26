@@ -72,6 +72,27 @@ export type Booking = {
     method?: PaymentMethod | string | null;
     totalAmount?: number | null;
   } | null;
+  document?: BookingDocument | null;
+};
+
+export type BookingDocumentStatus =
+  | "PENDING_UPLOAD"
+  | "PENDING_VERIFICATION"
+  | "VERIFIED"
+  | "REJECTED";
+
+export type BookingDocument = {
+  id: string;
+  bookingId: string;
+  statementLetterUrl: string | null;
+  ktpUrl: string | null;
+  simUrl: string | null;
+  status: BookingDocumentStatus;
+  rejectionReason: string | null;
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type DriverStatus = "siaga" | "libur" | "sedang_tugas";
