@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { assignDriverAction, updateBookingStatusAction } from "@/app/actions";
 import { ManualSurchargeModal } from "@/components/modals/ManualSurchargeModal";
 import { Button } from "@/components/ui/Button";
+import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import { BookingTimelineBar } from "./BookingTimelineBar";
 import { CustomerInfoCard } from "./CustomerInfoCard";
 import { VehicleUnitCard } from "./VehicleUnitCard";
@@ -401,9 +402,9 @@ export function BookingDetailClient({
               >
                 Alasan Penolakan Resmi <span className="text-danger">*</span>
               </label>
-              <textarea
+              <AutoGrowTextarea
+            maxHeight={200}
                 id="reject-reason-modal"
-                rows={3}
                 maxLength={300}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}

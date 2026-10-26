@@ -176,6 +176,8 @@ type ApiDriver = {
   fullName: string;
   phoneNumber: string | null;
   licenseNumber: string | null;
+  licenseType: string | null;
+  licensePhotoUrl: string | null;
   routeScope: string;
   readiness: string;
 };
@@ -188,6 +190,14 @@ function mapDriver(d: ApiDriver): Driver {
     route: DRIVER_ROUTE[d.routeScope] ?? "dalam_kota",
     contact: d.phoneNumber,
     licenseNumber: d.licenseNumber,
+    /* Nilai dari server bisa berupa string apa pun; disaring ke golongan yang
+       dikenal supaya tipe di frontend tetap sempit. */
+    licenseType: (["SIM_A", "SIM_B1", "SIM_B2", "SIM_C"] as const).includes(
+      d.licenseType as "SIM_A",
+    )
+      ? (d.licenseType as Driver["licenseType"])
+      : null,
+    licensePhotoUrl: d.licensePhotoUrl,
     status: DRIVER_READINESS[d.readiness] ?? "siaga",
   };
 }
@@ -416,6 +426,13 @@ export type SupportTicketView = {
   status: string;
   handledBy?: "AI" | "HUMAN" | string;
   handoverAt?: string | null;
+  /* Admin yang sedang memegang tiket. Null berarti belum diambil
+     siapa pun, dan selama itu admin mana pun boleh membalas. */
+  assignedAdminId: string | null;
+  assignedAdminName: string | null;
+  assignedAt: string | null;
+  /* true kalau tiket ini dipegang admin yang sedang membuka halaman. */
+  isMine: boolean;
   messageCount: number;
   updatedAt: string;
 };
@@ -445,6 +462,11 @@ type ApiTicket = {
   status: string;
   handledBy?: string;
   handoverAt?: string | null;
+  /* Admin yang sedang memegang tiket. Null berarti belum diambil siapa pun. */
+  assignedAdmin?: { id: string; fullName: string } | null;
+  assignedAt?: string | null;
+  /* Dihitung di server: apakah tiket ini dipegang admin yang meminta. */
+  isMine?: boolean;
   updatedAt: string;
   customer?: { fullName: string } | null;
   _count?: { messages: number };
@@ -461,6 +483,10 @@ export async function getSupportTickets(): Promise<SupportTicketView[]> {
     status: TICKET_STATUS_MAP[t.status] ?? "baru",
     handledBy: t.handledBy,
     handoverAt: t.handoverAt,
+    assignedAdminId: t.assignedAdmin?.id ?? null,
+    assignedAdminName: t.assignedAdmin?.fullName ?? null,
+    assignedAt: t.assignedAt ?? null,
+    isMine: Boolean(t.isMine),
     messageCount: t._count?.messages ?? 0,
     updatedAt: t.updatedAt,
   }));
@@ -711,6 +737,27 @@ export async function verifyPayment(
   }
 
   return json?.data as AdminPaymentItem;
+}
+
+/**
+ * Id unit yang sedang tersewa saat ini.
+ *
+ * Katalog armada memakai ini untuk menampilkan badge "Disewa". Tanpa data ini,
+ * katalog hanya membaca `operationalStatus`, yang menyimpan keadaan unit di
+ * gudang dan tidak diperbarui saat ada sewa berjalan â€” sehingga unit yang
+ * sedang disewa tetap tampil "Tersedia".
+ *
+ * Kegagalan mengambil data tidak boleh menjatuhkan halaman katalog. Kalau gagal,
+ * hasilnya himpunan kosong dan katalog tampil seperti sebelumnya. Badge yang
+ * kurang lengkap lebih baik daripada halaman yang gagal dibuka.
+ */
+export async function getRentedVehicleIds(): Promise<Set<string>> {
+  try {
+    const data = await apiGet<{ vehicleIds?: string[] }>("/admin/fleet/rented");
+    return new Set(data?.vehicleIds ?? []);
+  } catch {
+    return new Set();
+  }
 }
 
 

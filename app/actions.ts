@@ -39,6 +39,9 @@ import {
   apiUpdateVehicle,
   apiDeleteVehicle,
   ApiError,
+  apiClaimTicket,
+  apiTakeoverTicket,
+  apiReleaseTicket,
 } from "@/lib/api";
 import { getTicketDetail, getTicketMessages, type TicketMessageView } from "@/lib/operations";
 import type { AdminRole, CanonicalBookingStatus, FaqItem, Vehicle } from "@/lib/types";
@@ -323,6 +326,57 @@ export async function takeOverTicketAction(ticketId: string): Promise<ActionStat
 }
 
 /**
+ * A15.1 â€” mengambil tiket supaya terkunci ke admin ini.
+ */
+export async function claimTicketAction(ticketId: string): Promise<ActionState> {
+  if (!ticketId) return { success: false, message: "Tiket tidak valid." };
+
+  try {
+    await apiClaimTicket(ticketId);
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal mengambil tiket." };
+  }
+
+  revalidatePath("/customer-care");
+  return { success: true, message: "Tiket diambil. Sekarang Anda bisa membalas." };
+}
+
+/**
+ * A15.1 â€” mengambil alih tiket dari admin lain. Khusus ADMIN.
+ */
+export async function takeoverAssignedTicketAction(ticketId: string): Promise<ActionState> {
+  if (!ticketId) return { success: false, message: "Tiket tidak valid." };
+
+  try {
+    await apiTakeoverTicket(ticketId);
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal mengambil alih tiket." };
+  }
+
+  revalidatePath("/customer-care");
+  return { success: true, message: "Tiket diambil alih dari admin sebelumnya." };
+}
+
+/**
+ * A15.1 â€” melepas tiket supaya bisa diambil admin lain.
+ */
+export async function releaseTicketAction(ticketId: string): Promise<ActionState> {
+  if (!ticketId) return { success: false, message: "Tiket tidak valid." };
+
+  try {
+    await apiReleaseTicket(ticketId);
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal melepas tiket." };
+  }
+
+  revalidatePath("/customer-care");
+  return { success: true, message: "Tiket dilepas. Admin lain sekarang bisa mengambilnya." };
+}
+
+/**
  * Server Action untuk mengubah status pemesanan sewa (konfirmasi tarif, penolakan, pelunasan, serah terima, selesai).
  */
 export async function updateBookingStatusAction(
@@ -404,6 +458,18 @@ export async function createDriverAction(
   const fullName = (formData.get("fullName") as string)?.trim() || "";
   const phoneNumber = (formData.get("phoneNumber") as string)?.trim() || undefined;
   const licenseNumber = (formData.get("licenseNumber") as string)?.trim() || undefined;
+  /* Jenis SIM dipilih dari daftar, jadi nilainya sudah pasti salah satu enum.
+     String kosong berarti "belum ditetapkan" dan dikirim sebagai null. */
+  const licenseTypeRaw = (formData.get("licenseType") as string)?.trim() || "";
+  const licenseType =
+    licenseTypeRaw === "SIM_A" ||
+    licenseTypeRaw === "SIM_B1" ||
+    licenseTypeRaw === "SIM_B2" ||
+    licenseTypeRaw === "SIM_C"
+      ? licenseTypeRaw
+      : null;
+  /* Foto SIM berupa data URL Base64. String kosong berarti fotonya dihapus. */
+  const licensePhotoUrl = (formData.get("licensePhotoUrl") as string)?.trim() || null;
   const rawRoute = (formData.get("route") as string)?.trim() || "dalam_kota";
   const routeScope = rawRoute === "luar_kota" ? "LUAR_KOTA" : "DALAM_KOTA";
 
@@ -415,7 +481,14 @@ export async function createDriverAction(
   }
 
   try {
-    await apiCreateDriver({ fullName, phoneNumber, licenseNumber, routeScope });
+    await apiCreateDriver({
+        fullName,
+        phoneNumber,
+        licenseNumber,
+        licenseType,
+        licensePhotoUrl,
+        routeScope,
+      });
   } catch (err) {
     if (err instanceof ApiError) {
       return { success: false, message: err.message };
@@ -438,13 +511,32 @@ export async function updateDriverAction(
   const fullName = (formData.get("fullName") as string)?.trim() || undefined;
   const phoneNumber = (formData.get("phoneNumber") as string)?.trim() || undefined;
   const licenseNumber = (formData.get("licenseNumber") as string)?.trim() || undefined;
+  /* Jenis SIM dipilih dari daftar, jadi nilainya sudah pasti salah satu enum.
+     String kosong berarti "belum ditetapkan" dan dikirim sebagai null. */
+  const licenseTypeRaw = (formData.get("licenseType") as string)?.trim() || "";
+  const licenseType =
+    licenseTypeRaw === "SIM_A" ||
+    licenseTypeRaw === "SIM_B1" ||
+    licenseTypeRaw === "SIM_B2" ||
+    licenseTypeRaw === "SIM_C"
+      ? licenseTypeRaw
+      : null;
+  /* Foto SIM berupa data URL Base64. String kosong berarti fotonya dihapus. */
+  const licensePhotoUrl = (formData.get("licensePhotoUrl") as string)?.trim() || null;
   const rawRoute = (formData.get("route") as string)?.trim() || "dalam_kota";
   const routeScope = rawRoute === "luar_kota" ? "LUAR_KOTA" : "DALAM_KOTA";
 
   if (!id) return { success: false, message: "ID supir tidak valid." };
 
   try {
-    await apiUpdateDriver(id, { fullName, phoneNumber, licenseNumber, routeScope });
+    await apiUpdateDriver(id, {
+      fullName,
+      phoneNumber,
+      licenseNumber,
+      licenseType,
+      licensePhotoUrl,
+      routeScope,
+    });
   } catch (err) {
     if (err instanceof ApiError) {
       return { success: false, message: err.message };

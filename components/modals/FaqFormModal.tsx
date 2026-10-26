@@ -109,10 +109,10 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
           <label htmlFor={`${fieldId}-question`} className="block text-meta font-medium text-ink">
             Pertanyaan <span className="text-danger">*</span>
           </label>
-          <textarea
+          <AutoGrowTextarea
+            maxHeight={160}
             id={`${fieldId}-question`}
             name="question"
-            rows={2}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             aria-invalid={Boolean(state?.errors?.question)}

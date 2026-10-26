@@ -357,10 +357,16 @@ export async function apiAssignDriverToBooking(id: string, driverId: string, not
 
 
 // Menambah pengemudi resmi baru ke roster supir.
+
+/** Golongan SIM yang diterima backend. Harus sama dengan enum DriverLicenseType. */
+export type DriverLicenseTypePayload = "SIM_A" | "SIM_B1" | "SIM_B2" | "SIM_C";
+
 export async function apiCreateDriver(data: {
   fullName: string;
   phoneNumber?: string;
   licenseNumber?: string;
+  licenseType?: DriverLicenseTypePayload | null;
+  licensePhotoUrl?: string | null;
   routeScope: "DALAM_KOTA" | "LUAR_KOTA";
 }) {
   const token = await getSessionToken();
@@ -397,6 +403,8 @@ export async function apiUpdateDriver(
     fullName?: string;
     phoneNumber?: string;
     licenseNumber?: string;
+    licenseType?: DriverLicenseTypePayload | null;
+    licensePhotoUrl?: string | null;
     routeScope?: "DALAM_KOTA" | "LUAR_KOTA";
   },
 ) {
@@ -426,6 +434,77 @@ export async function apiUpdateDriver(
 }
 
 
+
+/**
+ * Mengambil tiket yang belum dipegang siapa pun.
+ *
+ * Ditolak 409 kalau ternyata sudah dipegang admin lain — bukan ditimpa diam-diam,
+ * karena admin perlu tahu ada orang lain yang sedang mengerjakannya.
+ */
+export async function apiClaimTicket(ticketId: string) {
+  const token = await getSessionToken();
+  const res = await fetch(
+    `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`,
+    {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    },
+  );
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CLAIM_TICKET_FAILED",
+      json?.error?.message || "Gagal mengambil tiket.",
+      json?.error?.details,
+    );
+  }
+  return json.data;
+}
+
+/** Mengambil alih tiket yang sedang dipegang admin lain. Khusus ADMIN. */
+export async function apiTakeoverTicket(ticketId: string) {
+  const token = await getSessionToken();
+  const res = await fetch(
+    `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/takeover`,
+    {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    },
+  );
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "TAKEOVER_TICKET_FAILED",
+      json?.error?.message || "Gagal mengambil alih tiket.",
+      json?.error?.details,
+    );
+  }
+  return json.data;
+}
+
+/** Melepas tiket supaya bisa diambil admin lain. */
+export async function apiReleaseTicket(ticketId: string) {
+  const token = await getSessionToken();
+  const res = await fetch(
+    `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`,
+    {
+      method: "DELETE",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    },
+  );
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "RELEASE_TICKET_FAILED",
+      json?.error?.message || "Gagal melepas tiket.",
+      json?.error?.details,
+    );
+  }
+  return json.data;
+}
 
 // Mengubah status kesiapan supir (SIAGA / LIBUR).
 export async function apiUpdateDriverReadiness(

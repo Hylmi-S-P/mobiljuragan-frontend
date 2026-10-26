@@ -354,9 +354,10 @@ export function VehicleFormModal({
                   onChange={() => toggleMode(mode)}
                   className="h-5 w-5 rounded-sm border border-rule-strong accent-teal"
                 />
-                {mode === "dengan_supir"
-                  ? `${BOOKING_MODE_LABEL[mode]} (Operasional 10 Jam/Hari)`
-                  : BOOKING_MODE_LABEL[mode]}
+                {/* Keterangan "(Operasional 10 Jam/Hari)" sengaja dilepas: durasi
+                    operasional berbeda per paket sewa, jadi menuliskannya di sini
+                    justru membuat admin mengira itu angka tetap. */}
+                {BOOKING_MODE_LABEL[mode]}
               </label>
             ))}
           </div>

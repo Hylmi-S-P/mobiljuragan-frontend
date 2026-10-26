@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { IconAlert, IconCreditCard } from "@/components/ui/icons";
+import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import { formatRupiah, formatDateTimeWit } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
@@ -349,9 +350,9 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
               <label htmlFor="verify-notes" className="block text-meta font-medium text-ink">
                 Catatan Verifikasi / Alasan Penolakan {isPending ? "(Wajib jika ditolak)" : ""}
               </label>
-              <textarea
+              <AutoGrowTextarea
+            maxHeight={200}
                 id="verify-notes"
-                rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Tuliskan catatan rekonsiliasi m-banking atau alasan jika menolak bukti..."

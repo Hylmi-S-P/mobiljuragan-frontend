@@ -10,10 +10,13 @@ import { Topbar } from "./Topbar";
 export function DashboardShell({
   children,
   navCounts,
+  navDetails,
 }: {
   children: ReactNode;
   /* Angka pekerjaan yang menunggu, dihitung di tata letak sisi server. */
   navCounts?: NavCounts;
+  /* Rincian angka per menu, dipakai badge agar bisa menjelaskan komposisinya. */
+  navDetails?: Record<string, { baru: number; dibalas: number }>;
 }) {
   const [navOpen, setNavOpen] = useState(false);
 
@@ -26,7 +29,12 @@ export function DashboardShell({
         Lewati ke konten
       </a>
       <Suspense fallback={null}>
-        <Sidebar open={navOpen} onClose={() => setNavOpen(false)} navCounts={navCounts} />
+        <Sidebar
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        navCounts={navCounts}
+        navDetails={navDetails}
+      />
       </Suspense>
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenNav={() => setNavOpen(true)} />
