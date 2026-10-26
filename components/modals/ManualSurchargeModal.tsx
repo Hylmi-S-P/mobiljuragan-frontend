@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import { formatCurrencyInput, formatRupiah } from "@/lib/format";
 import { SURCHARGE_CATEGORIES } from "@/lib/uiText";
 import type { Booking, LineItem } from "@/lib/types";
@@ -162,11 +163,11 @@ export function ManualSurchargeModal({ onClose, onApply, booking }: Props) {
           >
             Catatan justifikasi operasional (wajib untuk audit internal)
           </label>
-          <textarea
+          <AutoGrowTextarea
+            maxHeight={220}
             id={`${fieldId}-justification`}
             value={justification}
             onChange={(event) => setJustification(event.target.value)}
-            rows={3}
             aria-invalid={Boolean(errors.justification)}
             aria-describedby={errors.justification ? `${fieldId}-justification-error` : undefined}
             className="mt-1 w-full rounded-sm border border-rule-strong bg-canvas px-3 py-2 text-body text-ink"

@@ -84,8 +84,17 @@ export type Driver = {
   route: DriverRoute;
   contact: string | null;
   licenseNumber: string | null;
+  /* Golongan SIM sebagai pilihan, bukan teks bebas. Lihat catatan di
+     backend/prisma/schema.prisma: teks bebas menghasilkan "SIM A", "sim a", dan
+     "A" untuk hal yang sama, dan itu tidak bisa dipakai untuk penyaringan. */
+  licenseType: DriverLicenseType | null;
+  /* Foto SIM sebagai data URL Base64. Null kalau belum diunggah. */
+  licensePhotoUrl: string | null;
   status: DriverStatus;
 };
+
+/** Golongan SIM yang diakui sistem. Harus sama dengan enum di backend. */
+export type DriverLicenseType = "SIM_A" | "SIM_B1" | "SIM_B2" | "SIM_C";
 
 export type AdminRole = "super_admin" | "staf_operasional";
 
