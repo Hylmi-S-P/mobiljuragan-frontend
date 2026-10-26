@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateAiConfigAction, fetchGatewayModelsAction } from "@/app/actions";
 import { IconSparkles } from "@/components/ui/icons";
+import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import type { AiConfigData } from "@/lib/operations";
 
 type Props = {
@@ -285,9 +286,9 @@ export function AiGatewayConfigCard({ initialConfig, stats }: Props) {
           <label htmlFor="systemPrompt" className="text-meta font-semibold text-ink">
             Instruksi Sistem & Persona Asisten (System Prompt)
           </label>
-          <textarea
+          <AutoGrowTextarea
+            maxHeight={320}
             id="systemPrompt"
-            rows={4}
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             required

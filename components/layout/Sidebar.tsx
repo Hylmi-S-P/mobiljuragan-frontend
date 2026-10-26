@@ -27,6 +27,9 @@ type SidebarProps = {
   onClose: () => void;
   /* Angka pekerjaan yang menunggu, dipetakan per tujuan navigasi. */
   navCounts?: Record<string, number>;
+  /* Rincian angka: berapa yang benar-benar baru, berapa yang menunggu balasan
+     admin setelah pelanggan membalas. Dipakai badge untuk menjelaskan isinya. */
+  navDetails?: Record<string, { baru: number; dibalas: number }>;
 };
 
 /* Satu ikon per tujuan navigasi, semuanya dari keluarga ikon yang sama. */
@@ -45,7 +48,7 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
   "/admin": IconShield,
 };
 
-export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
+export function Sidebar({ open, onClose, navCounts, navDetails }: SidebarProps) {
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const fleetActive = NAV_ENTRIES.some(
@@ -185,19 +188,36 @@ export function Sidebar({ open, onClose, navCounts }: SidebarProps) {
                 />
                 <span className="flex-1 whitespace-nowrap">{entry.label}</span>
                 {/* Indikator notifikasi responsif & adaptif:
-                    - Satuan (1–9): Berbentuk lingkaran sempurna 20x20 px (min-w-5 h-5).
-                    - Puluhan (10–99): Mengembang mulus menjadi pil lonjong dengan padding aman px-1.5 tanpa teks terpotong (overflow).
+                    - Satuan (1â€“9): Berbentuk lingkaran sempurna 20x20 px (min-w-5 h-5).
+                    - Puluhan (10â€“99): Mengembang mulus menjadi pil lonjong dengan padding aman px-1.5 tanpa teks terpotong (overflow).
                     - Ratusan (100+): Dibatasi 99+ (atau pil adaptif) agar tata letak sidebar tetap presisi. */}
-                {jumlah > 0 ? (
-                  <span
-                    aria-label={`${jumlah} menunggu tindakan`}
-                    className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
-                      active ? "bg-white text-teal" : "bg-gold text-ink"
-                    }`}
-                  >
-                    {jumlah > 99 ? "99+" : jumlah}
-                  </span>
-                ) : null}
+                {jumlah > 0 ? (() => {
+                  const rincian = navDetails?.[entry.href];
+                  /* Nada warna membedakan dua keadaan yang sama-sama menunggu tindakan:
+                     emas untuk tiket yang belum pernah disentuh, navy untuk tiket yang
+                     sudah dibalas pelanggan dan sekarang menunggu admin lagi. */
+                  const adaYangDibalas = (rincian?.dibalas ?? 0) > 0;
+                  const adaYangBaru = (rincian?.baru ?? 0) > 0;
+                  const keterangan = rincian
+                    ? `${jumlah} menunggu tindakan: ${rincian.baru} baru, ${rincian.dibalas} sudah dibalas pelanggan`
+                    : `${jumlah} menunggu tindakan`;
+
+                  return (
+                    <span
+                      aria-label={keterangan}
+                      title={keterangan}
+                      className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
+                        active
+                          ? "bg-white text-teal"
+                          : adaYangDibalas && !adaYangBaru
+                            ? "bg-navy text-white"
+                            : "bg-gold text-ink"
+                      }`}
+                    >
+                      {jumlah > 99 ? "99+" : jumlah}
+                    </span>
+                  );
+                })() : null}
               </Link>
             );
           })}
