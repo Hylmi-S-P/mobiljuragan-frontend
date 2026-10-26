@@ -14,6 +14,7 @@ import { BillingLineItemsCard } from "./BillingLineItemsCard";
 import { BookingActionSidebar } from "./BookingActionSidebar";
 import type {
   Booking,
+  BookingDocument,
   BookingStatus,
   CanonicalBookingStatus,
   Driver,
@@ -57,6 +58,9 @@ export function BookingDetailClient({
   );
   const [selectedDriverId, setSelectedDriverId] = useState<string>(
     booking.driverId ?? "",
+  );
+  const [document, setDocument] = useState<BookingDocument | null>(
+    booking.document ?? null,
   );
   const initialDriverName = useMemo(() => {
     if (booking.driverName) return booking.driverName;
@@ -297,7 +301,10 @@ export function BookingDetailClient({
               disabled={isCompleted || isRejected}
             />
           ) : (
-            <LepasKunciDocumentReviewCard booking={booking} />
+            <LepasKunciDocumentReviewCard
+              booking={booking}
+              onDocumentUpdated={setDocument}
+            />
           )}
 
           {/* Modul 5: Kartu Rincian Tagihan & Penyesuaian Biaya */}
@@ -315,6 +322,7 @@ export function BookingDetailClient({
         <div className="min-w-0 lg:col-span-4 lg:sticky lg:top-6 lg:self-start max-h-[calc(100vh-3rem)] overflow-y-auto">
           <BookingActionSidebar
             booking={booking}
+            document={document}
             status={status}
             rawStatus={rawStatus}
             quotedAmount={quotedAmount}

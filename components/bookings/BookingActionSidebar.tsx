@@ -5,10 +5,11 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { formatRupiah, formatRupiahDots, parseRupiahDots } from "@/lib/format";
 import { BOOKING_STATUS } from "@/lib/labels";
 import { TARIFF_PENDING_NOTE } from "@/lib/uiText";
-import type { Booking, BookingStatus, CanonicalBookingStatus } from "@/lib/types";
+import type { Booking, BookingDocument, BookingStatus, CanonicalBookingStatus } from "@/lib/types";
 
 type Props = {
   booking: Booking;
+  document?: BookingDocument | null;
   status: BookingStatus;
   rawStatus: CanonicalBookingStatus;
   quotedAmount: number;
@@ -26,6 +27,7 @@ type Props = {
 
 export function BookingActionSidebar({
   booking,
+  document,
   status,
   rawStatus,
   quotedAmount,
@@ -53,6 +55,7 @@ export function BookingActionSidebar({
 
   // Validasi tombol setujui
   const isDriverBlocked = isDriverService && !hasAssignedDriver;
+  const isDocumentBlocked = !isDriverService && (document?.status ?? booking.document?.status) !== "VERIFIED";
 
   return (
     <aside className="rounded-lg border border-rule bg-surface p-4 shadow-card space-y-4">
@@ -139,11 +142,17 @@ export function BookingActionSidebar({
             </p>
           ) : null}
 
+          {isDocumentBlocked ? (
+            <p className="text-micro text-amber-800 bg-amber-50 border border-amber-300 rounded-sm p-2">
+              Verifikasi seluruh 3 dokumen lepas kunci di panel kiri sebelum mengonfirmasi tarif.
+            </p>
+          ) : null}
+
           <Button
             variant="confirm"
             size="md"
             className="w-full"
-            disabled={isPending || isDriverBlocked}
+            disabled={isPending || isDriverBlocked || isDocumentBlocked}
             onClick={onConfirmBooking}
           >
             {isPending ? "Memproses..." : "Konfirmasi Tarif & Setujui Booking"}
