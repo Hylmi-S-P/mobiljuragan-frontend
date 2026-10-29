@@ -209,7 +209,7 @@ export default async function OverviewPage() {
               </span>
             </div>
             <Link
-              href="/fleet"
+              href="/fleet/catalog"
               className="text-micro font-semibold text-navy hover:underline shrink-0"
             >
               Lihat Katalog &rarr;
