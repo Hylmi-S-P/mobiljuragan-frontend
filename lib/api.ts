@@ -1332,3 +1332,144 @@ export async function apiAdminVerifyBookingDocuments(
   }
   return json.data as BookingDocument;
 }
+
+
+// ==========================================
+// Template Dokumen Resmi (Form Kesanggupan)
+// ==========================================
+
+/**
+ * Satu versi dokumen yang tersimpan.
+ *
+ * Dokumen berupa berkas unggahan admin, bukan isi terstruktur. Karena itu yang
+ * disimpan adalah keterangan berkasnya, bukan klausul per butir.
+ */
+export type VersiTemplate = {
+  id: string;
+  kode: string;
+  judul: string;
+  versi: number;
+  berkasNama: string;
+  berkasMime: string;
+  berkasByte: number;
+  isActive: boolean;
+  catatan: string | null;
+  dibuatOleh: string | null;
+  diperbaruiOleh: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Keterangan dokumen yang sedang aktif. */
+export type TemplateAktif = {
+  id: string;
+  kode: string;
+  judul: string;
+  versi: number;
+  berkasNama: string;
+  berkasMime: string;
+  berkasByte: number;
+  catatan: string | null;
+  dibuatOleh: string | null;
+  createdAt: string;
+};
+
+export async function getDaftarVersiTemplate(kode?: string): Promise<VersiTemplate[]> {
+  const token = await getSessionToken();
+  const query = kode ? `?kode=${encodeURIComponent(kode)}` : "";
+
+  const res = await fetch(`${API_BASE_URL}/admin/document-templates${query}`, {
+    method: "GET",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "FETCH_TEMPLATES_FAILED",
+      json?.error?.message || "Gagal memuat daftar versi dokumen.",
+    );
+  }
+
+  return Array.isArray(json?.data?.items) ? (json.data.items as VersiTemplate[]) : [];
+}
+
+export async function getTemplateAktif(): Promise<TemplateAktif | null> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/document-templates/aktif`, {
+    method: "GET",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "FETCH_TEMPLATE_FAILED",
+      json?.error?.message || "Gagal memuat dokumen aktif.",
+    );
+  }
+
+  return (json?.data ?? null) as TemplateAktif | null;
+}
+
+/**
+ * Mengunggah berkas dokumen sebagai versi baru.
+ *
+ * Memakai FormData, bukan JSON, karena berkas bisa berukuran beberapa megabita.
+ * Mengubahnya menjadi Base64 akan membengkakkan ukurannya sekitar sepertiga dan
+ * memaksa seluruh isi berkas ditampung di memori dua kali.
+ */
+export async function apiUnggahTemplate(data: {
+  berkas: File;
+  judul?: string;
+  catatan?: string;
+}): Promise<VersiTemplate> {
+  const token = await getSessionToken();
+
+  const form = new FormData();
+  form.append("berkas", data.berkas, data.berkas.name);
+  if (data.judul) form.append("judul", data.judul);
+  if (data.catatan) form.append("catatan", data.catatan);
+
+  const res = await fetch(`${API_BASE_URL}/admin/document-templates`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: form,
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPLOAD_TEMPLATE_FAILED",
+      json?.error?.message || "Gagal mengunggah dokumen.",
+    );
+  }
+
+  return json.data as VersiTemplate;
+}
+
+export async function apiAktifkanVersi(id: string): Promise<VersiTemplate> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/document-templates/${id}/aktifkan`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "ACTIVATE_TEMPLATE_FAILED",
+      json?.error?.message || "Gagal mengaktifkan versi dokumen.",
+    );
+  }
+
+  return json.data as VersiTemplate;
+}
