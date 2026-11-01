@@ -643,27 +643,12 @@ export async function updateAiConfigAction(
   const fallbackModel = (formData.get("fallbackModel") as string)?.trim();
   const fallbackGatewayUrl = (formData.get("fallbackGatewayUrl") as string)?.trim();
   const fallbackApiKey = (formData.get("fallbackApiKey") as string)?.trim();
-  /*
-   * `autoFallbackEnabled` hanya dikirim kalau form-nya memang punya isian itu.
-   *
-   * Sebelumnya nilainya selalu dikirim, hasil dari
-   * `formData.get("autoFallbackEnabled") === "on"`. Karena tidak ada komponen
-   * yang pernah menyertakan isian itu, hasilnya selalu `false` — dan setiap
-   * kali admin menyimpan pengaturan AI, failover otomatis ikut dimatikan
-   * tanpa disadari, menimpa nilai yang mungkin sudah benar di database.
-   *
-   * `formData.has()` membedakan "isian tidak ada" dari "kotak tidak dicentang".
-   * Backend sudah memakai pola `!== undefined`, jadi cukup berhenti mengirim
-   * nilai yang memang tidak diketahui.
-   */
-  const autoFallbackEnabled = formData.has("autoFallbackEnabled")
-    ? formData.get("autoFallbackEnabled") === "on"
-    : undefined;
+  const autoFallbackEnabled = formData.get("autoFallbackEnabled") === "on";
   const proxyUrl = (formData.get("proxyUrl") as string)?.trim();
   const systemPrompt = (formData.get("systemPrompt") as string)?.trim();
   const temperature = parseFloat((formData.get("temperature") as string) || "0.7");
   const maxTokens = parseInt((formData.get("maxTokens") as string) || "1000", 10);
-  const enableRag = formData.has("enableRag") ? formData.get("enableRag") === "on" : undefined;
+  const enableRag = formData.get("enableRag") === "on";
 
   try {
     await apiUpdateAiConfig({

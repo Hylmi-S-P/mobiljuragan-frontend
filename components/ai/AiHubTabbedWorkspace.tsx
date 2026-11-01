@@ -6,7 +6,6 @@ import { NineRouterConsoleWidget } from "@/components/ai/NineRouterConsoleWidget
 import { SystemPromptDrawer } from "@/components/ai/SystemPromptDrawer";
 import { KnowledgeBaseManager, type KnowledgeCategory } from "@/components/ai/KnowledgeBaseManager";
 import { AiChatSandbox } from "@/components/ai/AiChatSandbox";
-import { AiGatewayConfigCard } from "@/components/ai/AiGatewayConfigCard";
 import type {
   AiConfigData,
   AiGatewayHealth,
@@ -116,11 +115,6 @@ export function AiHubTabbedWorkspace({
         </div>
 
         <div className={activeTab === "sandbox" ? "space-y-6" : "hidden"}>
-          {/* Konfigurasi gateway sebelumnya TIDAK pernah dirender di mana pun:
-              komponennya ada, tetapi tidak dipakai, sehingga admin tidak punya
-              jalan mengubah URL gateway, API key, model, maupun failover dari
-              dashboard. Sekarang ditampilkan di tab ini. */}
-          <AiGatewayConfigCard initialConfig={config} stats={{ documentCount: activeDocCount, activeDocumentCount: activeDocCount }} />
           <SystemPromptDrawer initialConfig={config} activeDocCount={activeDocCount} />
           <AiChatSandbox
             initialTemperature={config.temperature}

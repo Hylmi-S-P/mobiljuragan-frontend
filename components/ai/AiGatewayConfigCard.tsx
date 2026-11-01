@@ -23,21 +23,6 @@ export function AiGatewayConfigCard({ initialConfig, stats }: Props) {
   const [maxTokens, setMaxTokens] = useState(initialConfig.maxTokens);
   const [enableRag, setEnableRag] = useState(initialConfig.enableRag);
 
-  /*
-   * Isian failover. Sebelumnya backend sudah menyimpan ketiga nilai ini dan
-   * `updateAiConfigAction` sudah membacanya, tetapi tidak ada satu pun input di
-   * dashboard yang menyediakannya. Akibatnya fitur failover hanya bisa diubah
-   * lewat SQL langsung.
-   */
-  const [autoFallbackEnabled, setAutoFallbackEnabled] = useState(
-    initialConfig.autoFallbackEnabled ?? false,
-  );
-  const [fallbackModel, setFallbackModel] = useState(initialConfig.fallbackModel ?? "");
-  const [fallbackGatewayUrl, setFallbackGatewayUrl] = useState(
-    initialConfig.fallbackGatewayUrl ?? "",
-  );
-  const [fallbackApiKey, setFallbackApiKey] = useState(initialConfig.fallbackApiKey ?? "");
-
   const [availableModels, setAvailableModels] = useState<string[]>([
     initialConfig.activeModel,
     "gemini-2.5-flash",
@@ -81,17 +66,7 @@ export function AiGatewayConfigCard({ initialConfig, stats }: Props) {
     formData.append("systemPrompt", systemPrompt);
     formData.append("temperature", String(temperature));
     formData.append("maxTokens", String(maxTokens));
-    /* Isian failover hanya dikirim kalau memang ada di form, supaya nilai yang
-       belum pernah disentuh admin tidak ikut ditimpa. */
-    formData.append("autoFallbackEnabled", autoFallbackEnabled ? "on" : "off");
-    if (fallbackModel.trim()) formData.append("fallbackModel", fallbackModel.trim());
-    if (fallbackGatewayUrl.trim())
-      formData.append("fallbackGatewayUrl", fallbackGatewayUrl.trim());
-    if (fallbackApiKey.trim()) formData.append("fallbackApiKey", fallbackApiKey.trim());
-    /* Selalu dikirim, termasuk saat dimatikan. Kalau hanya dikirim ketika
-       dicentang, mematikan RAG tidak akan tersimpan — server membedakan
-       "isian tidak ada" dari "isian bernilai off". */
-    formData.append("enableRag", enableRag ? "on" : "off");
+    if (enableRag) formData.append("enableRag", "on");
 
     startTransition(async () => {
       const res = await updateAiConfigAction(null, formData);
@@ -345,77 +320,6 @@ export function AiGatewayConfigCard({ initialConfig, stats }: Props) {
           </label>
         </div>
 
-        {/* Failover Otomatis */}
-        <div className="rounded-md border border-rule/70 bg-canvas/40 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col">
-              <span className="text-meta font-semibold text-ink">Failover Otomatis</span>
-              <span className="text-micro text-ink-soft">
-                Kalau gateway utama gagal, permintaan dicoba ke model dan gateway cadangan di
-                bawah ini.
-              </span>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoFallbackEnabled}
-                onChange={(e) => setAutoFallbackEnabled(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-canvas-subtle peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-rule after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal"></div>
-            </label>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="fallbackModel" className="text-meta font-semibold text-ink">
-                Model Cadangan
-              </label>
-              <input
-                id="fallbackModel"
-                type="text"
-                value={fallbackModel}
-                onChange={(e) => setFallbackModel(e.target.value)}
-                placeholder="gemini-2.5-flash"
-                className="rounded-button border border-rule bg-white px-3 py-2 text-body text-ink outline-none focus:border-teal focus:ring-1 focus:ring-teal"
-              />
-              <span className="text-micro text-ink-soft">
-                Dipakai kalau model aktif gagal menjawab.
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="fallbackApiKey" className="text-meta font-semibold text-ink">
-                API Key Cadangan (Opsional)
-              </label>
-              <input
-                id="fallbackApiKey"
-                type="password"
-                value={fallbackApiKey}
-                onChange={(e) => setFallbackApiKey(e.target.value)}
-                placeholder="Kosongkan jika memakai key yang sama"
-                className="rounded-button border border-rule bg-white px-3 py-2 text-body text-ink outline-none focus:border-teal focus:ring-1 focus:ring-teal"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-1.5">
-            <label htmlFor="fallbackGatewayUrl" className="text-meta font-semibold text-ink">
-              Gateway Cadangan (Opsional)
-            </label>
-            <input
-              id="fallbackGatewayUrl"
-              type="text"
-              value={fallbackGatewayUrl}
-              onChange={(e) => setFallbackGatewayUrl(e.target.value)}
-              placeholder="https://generativelanguage.googleapis.com/v1beta/openai"
-              className="rounded-button border border-rule bg-white px-3 py-2 text-body text-ink outline-none focus:border-teal focus:ring-1 focus:ring-teal"
-            />
-            <span className="text-micro text-ink-soft">
-              Kosongkan untuk memakai gateway utama dengan model cadangan.
-            </span>
-          </div>
-        </div>
         {/* Arsitektur 9Router Native Model Combo */}
         <div className="rounded-md border border-teal/20 bg-teal/5 p-4 text-meta text-ink leading-relaxed">
           <div className="flex items-start gap-3">

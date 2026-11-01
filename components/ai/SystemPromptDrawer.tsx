@@ -37,20 +37,7 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
     formData.append("systemPrompt", systemPrompt);
     formData.append("temperature", String(initialConfig.temperature));
     formData.append("maxTokens", String(initialConfig.maxTokens));
-    /*
-     * Selalu dikirim, termasuk saat dimatikan. Kalau hanya dikirim ketika
-     * dicentang, mematikan RAG lewat drawer ini tidak akan tersimpan: server
-     * membedakan "isian tidak ada" (= jangan diubah) dari "bernilai off".
-     */
-    formData.append("enableRag", enableRag ? "on" : "off");
-
-    /*
-     * Isian failover sengaja TIDAK dikirim dari sini.
-     *
-     * Drawer ini hanya mengurus persona dan RAG. Nilai failover yang tersimpan
-     * di database harus dibiarkan apa adanya, bukan ditimpa dengan nilai default
-     * yang kebetulan dibaca komponen ini.
-     */
+    if (enableRag) formData.append("enableRag", "on");
 
     startTransition(async () => {
       const res = await updateAiConfigAction(null, formData);
