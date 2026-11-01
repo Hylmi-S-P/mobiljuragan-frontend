@@ -31,6 +31,7 @@ import {
   apiGetAiGatewayLogs,
   apiClearAiGatewayLogs,
   apiParseKnowledgeFile,
+  apiUnggahFotoKendaraan,
   apiUnggahTemplate,
   apiAktifkanVersi,
   apiCreateFaq,
@@ -48,7 +49,13 @@ import {
   apiAdminVerifyBookingDocuments,
 } from "@/lib/api";
 import { getTicketDetail, getTicketMessages, type TicketMessageView } from "@/lib/operations";
-import type { AdminRole, CanonicalBookingStatus, FaqItem, Vehicle, BookingDocument } from "@/lib/types";
+import type {
+  AdminRole,
+  CanonicalBookingStatus,
+  FaqItem,
+  Vehicle,
+  BookingDocument,
+} from "@/lib/types";
 
 export type ActionState = {
   success?: boolean;
@@ -267,9 +274,12 @@ export async function replyToTicketAction(ticketId: string, body: string): Promi
  * dimuat ulang. Akibatnya mengklik tiket lain tetap menampilkan pesan tiket pertama,
  * pesan pelanggan tertukar antar tiket, dan balasan bisa dikirim ke tiket yang salah.
  */
-export async function loadTicketMessagesAction(
-  ticketId: string,
-): Promise<{ success: boolean; messages: TicketMessageView[]; handledBy?: string; message?: string }> {
+export async function loadTicketMessagesAction(ticketId: string): Promise<{
+  success: boolean;
+  messages: TicketMessageView[];
+  handledBy?: string;
+  message?: string;
+}> {
   if (!ticketId) {
     return { success: false, messages: [], message: "Tiket tidak valid." };
   }
@@ -489,13 +499,13 @@ export async function createDriverAction(
 
   try {
     await apiCreateDriver({
-        fullName,
-        phoneNumber,
-        licenseNumber,
-        licenseType,
-        licensePhotoUrl,
-        routeScope,
-      });
+      fullName,
+      phoneNumber,
+      licenseNumber,
+      licenseType,
+      licensePhotoUrl,
+      routeScope,
+    });
   } catch (err) {
     if (err instanceof ApiError) {
       return { success: false, message: err.message };
@@ -778,7 +788,10 @@ export async function clearAiGatewayLogsAction() {
     revalidatePath("/admin/ai-hub");
     return { success: true };
   } catch (err) {
-    return { success: false, message: err instanceof Error ? err.message : "Gagal membersihkan log." };
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : "Gagal membersihkan log.",
+    };
   }
 }
 
@@ -829,7 +842,8 @@ export async function createFaqAction(
   const answer = (formData.get("answer") as string)?.trim() || "";
   const category = (formData.get("category") as string)?.trim() || "Umum";
   const orderIndexStr = formData.get("orderIndex") as string;
-  const orderIndex = orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : 0;
+  const orderIndex =
+    orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : 0;
   const activeVal = formData.get("isActive");
   const isActive = activeVal !== null ? activeVal === "true" || activeVal === "on" : true;
 
@@ -872,7 +886,8 @@ export async function updateFaqAction(
   const answer = (formData.get("answer") as string)?.trim();
   const category = (formData.get("category") as string)?.trim();
   const orderIndexStr = formData.get("orderIndex") as string;
-  const orderIndex = orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : undefined;
+  const orderIndex =
+    orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : undefined;
   const activeVal = formData.get("isActive");
   const isActive = activeVal !== null ? activeVal === "true" || activeVal === "on" : undefined;
 
@@ -981,9 +996,7 @@ export async function updateFaqPriorityAction(
 /**
  * Server Action untuk menyimpan atau menambah armada mobil beserta tarif sewa harian.
  */
-export async function saveVehicleAction(
-  vehicle: Vehicle,
-): Promise<ActionState & { data?: any }> {
+export async function saveVehicleAction(vehicle: Vehicle): Promise<ActionState & { data?: any }> {
   try {
     const isNew = vehicle.id.startsWith("v-") || !vehicle.id;
     const payload = {
@@ -996,9 +1009,9 @@ export async function saveVehicleAction(
           : vehicle.transmission?.toUpperCase() || "MANUAL",
       seatingCapacity: vehicle.seats ?? 7,
       pricePerDay: Number(vehicle.pricePerDay) || 400000,
-        /* Foto ikut dikirim. Sebelumnya hanya menjadi pratinjau di layar lalu
+      /* Foto ikut dikirim. Sebelumnya hanya menjadi pratinjau di layar lalu
            hilang saat modal ditutup, sehingga unit tidak pernah punya foto. */
-        imageUrl: vehicle.imageUrl ?? undefined,
+      imageUrl: vehicle.imageUrl ?? undefined,
       operationalStatus: (vehicle.status === "tersedia"
         ? "AVAILABLE"
         : vehicle.status === "servis"
@@ -1069,7 +1082,9 @@ export async function logoutAction(): Promise<void> {
  */
 export async function createKnowledgeCategoryAction(
   label: string,
-): Promise<ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number } }> {
+): Promise<
+  ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number } }
+> {
   if (!label.trim()) {
     return { success: false, message: "Nama kategori wajib diisi." };
   }
@@ -1124,7 +1139,15 @@ export async function deleteKnowledgeCategoryAction(id: string): Promise<ActionS
 }
 /** Memuat ulang daftar kategori setelah ada perubahan. */
 export async function getKnowledgeCategoriesAction(): Promise<
-  ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number; jumlahDokumen?: number }[] }
+  ActionState & {
+    data?: {
+      id: string;
+      slug: string;
+      label: string;
+      orderIndex: number;
+      jumlahDokumen?: number;
+    }[];
+  }
 > {
   try {
     const data = await apiGetKnowledgeCategories();
@@ -1226,6 +1249,36 @@ export async function aktifkanVersiTemplateAction(id: string): Promise<ActionSta
     return {
       success: false,
       message: error instanceof Error ? error.message : "Gagal mengaktifkan versi.",
+    };
+  }
+}
+
+/**
+ * Mengunggah foto armada setelah data unitnya tersimpan.
+ *
+ * Dipisah dari `saveVehicleAction` karena endpoint unggah membutuhkan ID unit
+ * yang sudah ada. Untuk unit baru, ID itu baru didapat setelah penyimpanan
+ * pertama berhasil.
+ */
+export async function unggahFotoKendaraanAction(
+  id: string,
+  formData: FormData,
+): Promise<ActionState & { imageUrl?: string }> {
+  const berkas = formData.get("berkas");
+
+  if (!(berkas instanceof File) || berkas.size === 0) {
+    return { success: false, message: "Pilih berkas foto terlebih dahulu." };
+  }
+
+  try {
+    const imageUrl = await apiUnggahFotoKendaraan(id, berkas);
+    revalidatePath("/fleet/catalog");
+    revalidatePath("/fleet/calendar");
+    return { success: true, message: "Foto armada tersimpan.", imageUrl };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Gagal mengunggah foto armada.",
     };
   }
 }

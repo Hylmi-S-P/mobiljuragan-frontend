@@ -10,13 +10,15 @@ import {
   VEHICLE_CATEGORY_OPTIONS,
   VEHICLE_TRANSMISSION_OPTIONS,
 } from "@/lib/labels";
+import { tautanMedia } from "@/lib/media";
 import type { BookingMode, Vehicle, VehicleStatus } from "@/lib/types";
 
 type Props = {
   vehicle?: Vehicle;
   existingPlates: string[];
   onClose: () => void;
-  onSave: (vehicle: Vehicle) => void;
+  /** Berkas foto baru, hanya terisi kalau admin memilih foto pada sesi ini. */
+  onSave: (vehicle: Vehicle, berkasFoto: File | null) => void;
   /** Dipanggil saat admin meminta penghapusan dari dalam modal kelola. */
   onRequestDelete?: (vehicleId: string) => void;
 };
@@ -55,11 +57,14 @@ export function VehicleFormModal({
   );
   const [photoName, setPhotoName] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  /* Foto disimpan sebagai data URL di state, terpisah dari pratinjau.
-     Pratinjau memakai object URL yang dibebaskan saat modal ditutup; data URL
-     inilah yang benar-benar dikirim ke server. Sebelumnya tidak ada, sehingga
-     foto hanya terlihat di layar lalu hilang. */
-  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(vehicle?.imageUrl ?? null);
+  /*
+   * Foto yang sudah tersimpan di server, dipakai ulang saat unit disunting
+   * tanpa mengganti fotonya. Untuk berkas baru, yang dikirim adalah `photoFile`
+   * lewat multipart — bukan isinya sebagai Base64.
+   */
+  const [photoDataUrl] = useState<string | null>(vehicle?.imageUrl ?? null);
+  /* Berkas asli disimpan supaya bisa dikirim lewat multipart, bukan Base64. */
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   /* Object URL pratinjau harus dibebaskan saat modal ditutup. Tanpa ini, setiap
      berkas yang pernah dipilih tetap tertahan di memori sampai halaman dimuat ulang. */
@@ -109,13 +114,14 @@ export function VehicleFormModal({
     setPhotoName(file.name);
     tampilkanPratinjau(file);
 
-    /* Pembacaan dilakukan sekali di sini, bukan saat menyimpan, supaya kegagalan
-       baca berkas langsung terlihat dan tidak menahan proses simpan. */
-    const pembaca = new FileReader();
-    pembaca.onload = () => {
-      if (typeof pembaca.result === "string") setPhotoDataUrl(pembaca.result);
-    };
-    pembaca.readAsDataURL(file);
+    /*
+     * Berkas asli disimpan, bukan isinya sebagai Base64. Berkas inilah yang
+     * dikirim ke server lewat multipart, lalu dinormalkan sharp di sana.
+     *
+     * Pratinjau tetap memakai object URL supaya tidak perlu membaca seluruh
+     * berkas ke memori hanya untuk menampilkannya.
+     */
+    setPhotoFile(file);
   }
 
   /* Pratinjau memakai object URL, bukan pembacaan base64. Berkas 5 MB menjadi sekitar
@@ -149,23 +155,26 @@ export function VehicleFormModal({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    onSave({
-      id: vehicle?.id ?? `v-${Date.now()}`,
-      name: name.trim().toUpperCase(),
-      plate: normalizedPlate,
-      status,
-      category,
-      transmission,
-      seats: vehicle?.seats ?? 7,
-      pricePerDay: numericPrice,
-      imageUrl: photoDataUrl,
-      /* Karakteristik penggunaan sengaja tidak lagi diisi dari form. Field-nya
-         dihapus karena tidak pernah tampil di antarmuka dan tidak pernah diteruskan
-         backend, jadi nilai lama dipertahankan agar data yang sudah ada tidak hilang
-         saat unit disunting. */
-      usage: vehicle?.usage ?? null,
-      allowedModes: modes,
-    });
+    onSave(
+      {
+        id: vehicle?.id ?? `v-${Date.now()}`,
+        name: name.trim().toUpperCase(),
+        plate: normalizedPlate,
+        status,
+        category,
+        transmission,
+        seats: vehicle?.seats ?? 7,
+        pricePerDay: numericPrice,
+        imageUrl: photoDataUrl,
+        /* Karakteristik penggunaan sengaja tidak lagi diisi dari form. Field-nya
+           dihapus karena tidak pernah tampil di antarmuka dan tidak pernah diteruskan
+           backend, jadi nilai lama dipertahankan agar data yang sudah ada tidak hilang
+           saat unit disunting. */
+        usage: vehicle?.usage ?? null,
+        allowedModes: modes,
+      },
+      photoFile,
+    );
   }
 
   return (
@@ -313,7 +322,8 @@ export function VehicleFormModal({
             />
           </div>
           <p className="mt-1 text-micro text-ink-soft">
-            Nominal tarif dasar sewa per hari yang tampil secara dinamis pada katalog aplikasi mobile pelanggan.
+            Nominal tarif dasar sewa per hari yang tampil secara dinamis pada katalog aplikasi
+            mobile pelanggan.
           </p>
           {errors.pricePerDay ? (
             <p id={`${fieldId}-price-error`} className="mt-1 text-meta text-danger">
@@ -380,16 +390,18 @@ export function VehicleFormModal({
             {photoName ? `Berkas dipilih: ${photoName}.` : "PNG atau JPG, maksimal 5 MB."}
           </p>
 
-          {photoUrl ? (
+          {photoUrl || photoDataUrl ? (
             <div className="mt-2 flex items-start gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={photoUrl}
+                src={photoUrl ?? tautanMedia(photoDataUrl) ?? ""}
                 alt={`Pratinjau foto ${name || "unit armada"}`}
                 className="h-20 w-28 rounded-sm border border-rule object-cover"
               />
               <p className="text-micro text-ink-soft">
-                Pratinjau berkas yang dipilih. Berkas belum diunggah ke server.
+                {photoUrl
+                  ? "Pratinjau berkas yang dipilih. Berkas belum diunggah ke server."
+                  : "Foto yang sedang dipakai unit ini. Pilih berkas baru untuk menggantinya."}
               </p>
             </div>
           ) : null}
