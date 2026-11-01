@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip, type ChipTone } from "@/components/ui/StatusChip";
 import { verifyBookingDocumentsAction } from "@/app/actions";
+import { isPdfUrl, resolveDocumentUrl } from "@/lib/documentUrl";
 import type { Booking, BookingDocument, BookingDocumentStatus } from "@/lib/types";
 
 type Props = {
@@ -59,6 +60,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
   const [document, setDocument] = useState<BookingDocument | null>(booking.document ?? null);
   const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
   const [previewModalTitle, setPreviewModalTitle] = useState<string>("");
+  const [previewFailed, setPreviewFailed] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
@@ -119,8 +121,14 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
   }
 
   function openPreview(url: string, title: string) {
-    setPreviewModalUrl(url);
+    setPreviewFailed(false);
+    setPreviewModalUrl(resolveDocumentUrl(url));
     setPreviewModalTitle(title);
+  }
+
+  function closePreview() {
+    setPreviewModalUrl(null);
+    setPreviewFailed(false);
   }
 
   return (
@@ -324,7 +332,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
               <h3 className="text-subtitle font-bold text-ink">{previewModalTitle}</h3>
               <button
                 type="button"
-                onClick={() => setPreviewModalUrl(null)}
+                onClick={closePreview}
                 className="rounded-sm px-2 py-1 text-meta text-ink-soft hover:bg-canvas hover:text-ink"
               >
                 Tutup
@@ -332,13 +340,19 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
             </div>
 
             <div className="mt-3 flex-1 overflow-auto rounded bg-canvas p-2 flex items-center justify-center min-h-[300px]">
-              {previewModalUrl.startsWith("data:image/") ||
-              (previewModalUrl.startsWith("http") && !previewModalUrl.endsWith(".pdf")) ? (
+              {previewFailed ? (
+                <div className="rounded border border-danger/30 bg-danger-soft/10 p-4 text-meta text-danger">
+                  Berkas tidak dapat ditampilkan. Kemungkinan berkas sudah dihapus dari
+                  penyimpanan server atau sesi admin Anda berakhir — muat ulang halaman
+                  lalu coba lagi.
+                </div>
+              ) : !isPdfUrl(previewModalUrl) ? (
                 <div className="relative max-h-[70vh] w-full flex items-center justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={previewModalUrl}
                     alt={previewModalTitle}
+                    onError={() => setPreviewFailed(true)}
                     className="max-h-[70vh] max-w-full rounded object-contain"
                   />
                 </div>
@@ -354,7 +368,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
             <div className="mt-3 flex justify-end">
               <button
                 type="button"
-                onClick={() => setPreviewModalUrl(null)}
+                onClick={closePreview}
                 className="rounded-sm border border-rule bg-surface px-4 py-1.5 text-meta font-medium text-ink hover:bg-canvas"
               >
                 Kembali

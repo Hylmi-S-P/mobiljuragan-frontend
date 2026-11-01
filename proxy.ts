@@ -54,10 +54,12 @@ function redirectToLogin(request: NextRequest) {
 
 export const config = {
   /*
-   * Lindungi semua halaman kecuali aset statis, berkas Next internal, dan favicon.
-   * Route API dashboard tidak ada, jadi pola ini cukup.
+   * Lindungi semua halaman kecuali aset statis, berkas Next internal, favicon,
+   * dan route handler `/api/*`. Route handler memeriksa sesi sendiri: gerbang di
+   * sini akan memanggil `/admin/auth/me` untuk setiap gambar dokumen, sehingga
+   * pratinjau KTP/SIM lambat sekaligus gagal saat jaringan goyah.
    */
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|css|js|woff2?)$).*)",
+    "/((?!_next/static|_next/image|api/|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|css|js|woff2?)$).*)",
   ],
 };
