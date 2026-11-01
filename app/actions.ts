@@ -31,6 +31,8 @@ import {
   apiGetAiGatewayLogs,
   apiClearAiGatewayLogs,
   apiParseKnowledgeFile,
+  apiUnggahTemplate,
+  apiAktifkanVersi,
   apiCreateFaq,
   apiUpdateFaq,
   apiDeleteFaq,
@@ -1171,5 +1173,59 @@ export async function verifyBookingDocumentsAction(
       return { success: false, message: err.message };
     }
     return { success: false, message: "Gagal memverifikasi dokumen." };
+  }
+}
+
+// ==========================================
+// Template Dokumen Resmi (Form Kesanggupan)
+// ==========================================
+
+/**
+ * Mengunggah berkas dokumen resmi sebagai versi baru.
+ *
+ * Berkas diteruskan apa adanya ke backend. Pemeriksaan jenis dan ukuran
+ * dilakukan di sana, karena hanya di server isi berkas bisa dibaca untuk
+ * memastikan itu benar-benar PDF atau Word.
+ */
+export async function unggahTemplateDokumenAction(
+  formData: FormData,
+): Promise<ActionState & { versi?: number }> {
+  const berkas = formData.get("berkas");
+
+  if (!(berkas instanceof File) || berkas.size === 0) {
+    return { success: false, message: "Pilih berkas dokumen terlebih dahulu." };
+  }
+
+  const judul = (formData.get("judul") as string | null)?.trim() || undefined;
+  const catatan = (formData.get("catatan") as string | null)?.trim() || undefined;
+
+  try {
+    const hasil = await apiUnggahTemplate({ berkas, judul, catatan });
+
+    revalidatePath("/documents");
+    return {
+      success: true,
+      message: `Dokumen tersimpan sebagai versi ${hasil.versi} dan langsung dipakai pelanggan.`,
+      versi: hasil.versi,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Gagal mengunggah dokumen.",
+    };
+  }
+}
+
+/** Mengaktifkan kembali versi lama tanpa membuat versi baru. */
+export async function aktifkanVersiTemplateAction(id: string): Promise<ActionState> {
+  try {
+    const hasil = await apiAktifkanVersi(id);
+    revalidatePath("/documents");
+    return { success: true, message: `Versi ${hasil.versi} diaktifkan kembali.` };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Gagal mengaktifkan versi.",
+    };
   }
 }
