@@ -89,10 +89,13 @@ export async function loginAction(
   }
 
   const cookieStore = await cookies();
+  /* Di production cookie wajib hanya terkirim lewat HTTPS. */
+  const secure = process.env.NODE_ENV === "production";
   cookieStore.set("admin_token", token, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure,
     // Tanpa pilihan ingat sesi, cookie dihapus saat browser ditutup.
     // JWT backend tetap kedaluwarsa setelah 1 jam meski cookie masih ada.
     ...(rememberMe ? { maxAge: 60 * 60 * 24 * 7 } : {}),
@@ -101,6 +104,7 @@ export async function loginAction(
     httpOnly: false,
     sameSite: "lax",
     path: "/",
+    secure,
     ...(rememberMe ? { maxAge: 60 * 60 * 24 * 7 } : {}),
   });
 
