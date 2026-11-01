@@ -193,6 +193,21 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
 
                 const unggah = await unggahFotoKendaraanAction(res.data?.id ?? saved.id, formData);
                 if (unggah.success) {
+                  /*
+                   * Kartu diperbarui langsung dengan foto baru. Tanpa ini admin
+                   * melihat kartu tanpa foto sampai halaman dimuat ulang, dan
+                   * mengira unggahannya gagal.
+                   */
+                  if (unggah.imageUrl) {
+                    const urlFoto = unggah.imageUrl;
+                    setVehicles((current) =>
+                      current.map((item) =>
+                        item.id === saved.id || item.id === res.data?.id
+                          ? { ...item, imageUrl: urlFoto }
+                          : item,
+                      ),
+                    );
+                  }
                   show(res.message ?? "Data armada tersimpan.", "success");
                 } else {
                   show(
