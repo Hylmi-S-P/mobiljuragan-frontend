@@ -1149,9 +1149,15 @@ export async function verifyBookingDocumentsAction(
   bookingId: string,
   action: "APPROVE" | "REJECT",
   rejectionReason?: string,
+  rejectionTargets?: string[],
 ): Promise<ActionState & { data?: BookingDocument }> {
   try {
-    const data = await apiAdminVerifyBookingDocuments(bookingId, action, rejectionReason);
+    const data = await apiAdminVerifyBookingDocuments(
+      bookingId,
+      action,
+      rejectionReason,
+      rejectionTargets,
+    );
     revalidatePath("/bookings");
     revalidatePath(`/bookings/${bookingId}`);
     return {

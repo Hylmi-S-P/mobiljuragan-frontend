@@ -81,6 +81,8 @@ export type BookingDocumentStatus =
   | "VERIFIED"
   | "REJECTED";
 
+export type DocumentRejectionTarget = "KTP" | "SIM" | "STATEMENT";
+
 export type BookingDocument = {
   id: string;
   bookingId: string;
@@ -89,6 +91,8 @@ export type BookingDocument = {
   simUrl: string | null;
   status: BookingDocumentStatus;
   rejectionReason: string | null;
+  /** Dokumen yang ditolak; kosong berarti tidak ada penolakan aktif. */
+  rejectionTargets?: DocumentRejectionTarget[];
   verifiedAt: string | null;
   verifiedBy: string | null;
   createdAt: string;

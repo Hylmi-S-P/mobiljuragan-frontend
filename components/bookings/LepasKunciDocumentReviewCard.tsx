@@ -7,6 +7,11 @@ import { verifyBookingDocumentsAction } from "@/app/actions";
 import { isPdfUrl, resolveDocumentUrl } from "@/lib/documentUrl";
 import type { Booking, BookingDocument, BookingDocumentStatus } from "@/lib/types";
 
+/* Alamat API dipakai untuk tautan unduhan yang dibuka di tab baru (tidak lewat
+   server action). */
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+
 type Props = {
   booking: Booking;
   onDocumentUpdated?: (doc: BookingDocument) => void;
@@ -42,19 +47,63 @@ const STATUS_CONFIG: Record<
   },
 };
 
-const TARGET_PRESETS = [
-  { label: "Foto SIM A", tag: "[Foto SIM A]" },
-  { label: "Foto e-KTP", tag: "[Foto e-KTP]" },
-  { label: "Surat Pernyataan", tag: "[Surat Pernyataan]" },
-  { label: "Semua Dokumen", tag: "[Semua Dokumen]" },
+type DocumentTargetKey = "KTP" | "SIM" | "STATEMENT";
+
+/* Satu penolakan bisa mengenai lebih dari satu dokumen: KTP buram dan SIM
+   kedaluwarsa adalah dua masalah berbeda pada satu pengajuan. Karena itu ini
+   pilihan berganda, bukan salah-satu. */
+const TARGET_OPTIONS: { key: DocumentTargetKey; label: string; hint: string }[] = [
+  { key: "KTP", label: "e-KTP", hint: "Foto KTP asli" },
+  { key: "SIM", label: "SIM A", hint: "SIM A aktif" },
+  { key: "STATEMENT", label: "Surat Pernyataan", hint: "TTD basah" },
 ];
 
-const REASON_PRESETS = [
-  "Foto buram / tidak terbaca jelas",
-  "Masa berlaku habis atau tidak aktif",
-  "Tanda tangan basah belum ada / terpotong",
-  "Nama tidak cocok dengan data pemesan",
+/* Catatan cepat = jalan pintas menulis, bukan label terpisah. Yang dikirim ke
+   pelanggan tetap satu kalimat di kolom catatan, dan admin boleh mengubahnya.
+   Dikelompokkan supaya admin tidak memindai satu daftar panjang. */
+const QUICK_NOTES: { group: string; notes: string[] }[] = [
+  {
+    group: "Kualitas foto",
+    notes: [
+      "Foto buram / tidak fokus",
+      "Bagian dokumen terpotong",
+      "Silau / pantulan cahaya",
+      "Terlalu gelap untuk dibaca",
+      "Foto hasil cetak ulang atau tangkapan layar",
+    ],
+  },
+  {
+    group: "Isi dokumen",
+    notes: [
+      "Nama tidak sesuai data pemesan",
+      "Masa berlaku sudah habis",
+      "SIM bukan golongan A",
+      "Nomor identitas tidak terbaca",
+    ],
+  },
+  {
+    group: "Surat pernyataan",
+    notes: [
+      "Tanda tangan basah belum ada",
+      "Meterai belum ditempel",
+      "Kota dan tanggal belum diisi",
+    ],
+  },
+  {
+    group: "Lainnya",
+    notes: [
+      "Berkas yang diunggah bukan dokumen yang diminta",
+      "Dokumen perlu diperiksa langsung di kantor",
+      "Unggahan gagal terbaca oleh sistem, mohon kirim ulang",
+    ],
+  },
 ];
+
+const TARGET_LABEL: Record<DocumentTargetKey, string> = {
+  KTP: "e-KTP",
+  SIM: "SIM A",
+  STATEMENT: "Surat Pernyataan",
+};
 
 export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Props) {
   const [document, setDocument] = useState<BookingDocument | null>(booking.document ?? null);
@@ -63,31 +112,44 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
   const [previewFailed, setPreviewFailed] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionTargets, setRejectionTargets] = useState<DocumentTargetKey[]>([]);
   const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function handleSelectTargetTag(tag: string) {
-    setRejectionReason((prev) => {
-      const match = prev.match(/^\[(.*?)\]\s*:?\s*/);
-      if (match) {
-        const rest = prev.slice(match[0].length).trim();
-        return rest ? `${tag}: ${rest}` : `${tag}: `;
-      }
-      return prev.trim() ? `${tag}: ${prev.trim()}` : `${tag}: `;
-    });
+  function toggleTarget(key: DocumentTargetKey) {
+    setRejectionTargets((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
+    );
   }
 
   function handleAppendReason(reason: string) {
     setRejectionReason((prev) => {
       const trimmed = prev.trim();
-      if (!trimmed) {
-        return reason;
+      // Kalimat yang sudah ada tidak ditambahkan dua kali saat chip diklik ulang.
+      if (trimmed.toLowerCase().includes(reason.toLowerCase())) {
+        return trimmed;
       }
-      if (trimmed.endsWith(":")) {
-        return `${trimmed} ${reason}`;
-      }
-      return `${trimmed}. ${reason}`;
+      if (!trimmed) return reason;
+      return `${trimmed.replace(/[.;]+$/, "")}. ${reason}`;
     });
+  }
+
+  function handleRemoveReason(reason: string) {
+    // Catatan disusun sebagai kalimat yang dipisah titik; menghapus chip berarti
+    // membuang kalimat yang persis sama, bukan memotong teks di tengah kata.
+    setRejectionReason((prev) =>
+      prev
+        .split(". ")
+        .map((part) => part.replace(/\.$/, "").trim())
+        .filter((part) => part.toLowerCase() !== reason.toLowerCase())
+        .join(". "),
+    );
+  }
+
+  function resetRejectForm() {
+    setIsRejectModalOpen(false);
+    setRejectionReason("");
+    setRejectionTargets([]);
   }
 
   const currentStatus: BookingDocumentStatus = document?.status ?? "PENDING_UPLOAD";
@@ -98,18 +160,17 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
   const hasSim = Boolean(document?.simUrl);
   const uploadedCount = [hasStatement, hasKtp, hasSim].filter(Boolean).length;
 
-  function handleVerify(action: "APPROVE" | "REJECT", reason?: string) {
+  function handleVerify(action: "APPROVE" | "REJECT", reason?: string, targets?: string[]) {
     startTransition(async () => {
       setNotice(null);
-      const res = await verifyBookingDocumentsAction(booking.id, action, reason);
+      const res = await verifyBookingDocumentsAction(booking.id, action, reason, targets);
 
       if (res.success && res.data) {
         setDocument(res.data);
         onDocumentUpdated?.(res.data);
         setNotice({ text: res.message || "Status dokumen berhasil diperbarui." });
         if (action === "REJECT") {
-          setIsRejectModalOpen(false);
-          setRejectionReason("");
+          resetRejectForm();
         }
       } else {
         setNotice({
@@ -158,6 +219,16 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                 <span className="font-semibold">Alasan Penolakan: </span>
                 {document.rejectionReason}
               </div>
+            )}
+            {/* Dokumen yang ditolak ditampilkan terpisah supaya admin berikutnya
+                tahu berkas mana yang sedang menunggu perbaikan. */}
+            {currentStatus === "REJECTED" && (document?.rejectionTargets?.length ?? 0) > 0 && (
+              <p className="mt-1.5 text-micro text-ink-soft">
+                <span className="font-semibold text-danger">Perlu difoto ulang: </span>
+                {document!.rejectionTargets!
+                  .map((target) => TARGET_LABEL[target as DocumentTargetKey] ?? target)
+                  .join(", ")}
+              </p>
             )}
             {document?.verifiedBy && currentStatus === "VERIFIED" && (
               <p className="text-micro text-ink-soft">
@@ -276,13 +347,15 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
 
           {/* Unduhan template acuan dan aksi verifikasi admin */}
           <div className="flex flex-col gap-3 pt-2 border-t border-rule sm:flex-row sm:items-center sm:justify-between">
+            {/* Blanko kosong, bukan surat terisi otomatis: yang sah adalah hasil
+                pindaian bertanda tangan basah dari penyewa. */}
             <a
-              href={`http://localhost:4000/api/v1/bookings/${booking.id}/statement-pdf`}
+              href={`${API_BASE_URL}/documents/template/surat-pernyataan-lepas-kunci.pdf`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-micro font-medium text-navy hover:underline inline-flex items-center gap-1.5"
             >
-              Unduh Surat Pernyataan Terisi Otomatis (PDF)
+              Unduh Template Surat Pernyataan (PDF)
             </a>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -392,69 +465,114 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
               melalui aplikasi mobile.
             </p>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-4">
               <div>
                 <label className="block text-micro font-semibold text-ink-soft mb-1.5">
-                  1. Pilih Dokumen yang Bermasalah:
+                  1. Dokumen yang bermasalah{" "}
+                  <span className="font-normal text-ink-soft">(boleh lebih dari satu)</span>
                 </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {TARGET_PRESETS.map((t) => (
-                    <button
-                      key={t.tag}
-                      type="button"
-                      onClick={() => handleSelectTargetTag(t.tag)}
-                      className={`rounded px-2.5 py-1 text-micro font-medium border transition-colors ${
-                        rejectionReason.includes(t.tag)
-                          ? "bg-navy text-white border-navy"
-                          : "bg-surface text-ink-soft border-rule hover:border-navy hover:text-navy"
-                      }`}
-                    >
-                      {t.tag}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {TARGET_OPTIONS.map((option) => {
+                    const active = rejectionTargets.includes(option.key);
+                    return (
+                      <button
+                        key={option.key}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => toggleTarget(option.key)}
+                        className={`rounded border px-2 py-1.5 text-center transition-colors ${
+                          active
+                            ? "border-danger bg-danger/10 text-danger"
+                            : "border-rule bg-surface text-ink-soft hover:border-ink-soft hover:text-ink"
+                        }`}
+                      >
+                        <span className="block text-micro font-semibold">{option.label}</span>
+                        <span className="block text-[10px] text-ink-soft">{option.hint}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+                {rejectionTargets.length === 0 && (
+                  <p className="mt-1.5 text-micro text-ink-soft">
+                    Pelanggan hanya akan diminta memfoto ulang dokumen yang dipilih di sini.
+                  </p>
+                )}
               </div>
 
               <div>
                 <label className="block text-micro font-semibold text-ink-soft mb-1.5">
-                  2. Pilihan Catatan Cepat:
+                  2. Alasan cepat{" "}
+                  <span className="font-normal text-ink-soft">
+                    (klik untuk menambahkan ke catatan, klik lagi untuk membuang)
+                  </span>
                 </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {REASON_PRESETS.map((reason) => (
-                    <button
-                      key={reason}
-                      type="button"
-                      onClick={() => handleAppendReason(reason)}
-                      className="rounded bg-canvas border border-rule px-2 py-1 text-micro text-ink hover:bg-surface hover:border-ink-soft transition-colors"
-                    >
-                      + {reason}
-                    </button>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {QUICK_NOTES.map((section) => (
+                    <div key={section.group}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft">
+                        {section.group}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {section.notes.map((note) => {
+                          const used = rejectionReason.toLowerCase().includes(note.toLowerCase());
+                          return (
+                            <button
+                              key={note}
+                              type="button"
+                              aria-pressed={used}
+                              onClick={() =>
+                                used ? handleRemoveReason(note) : handleAppendReason(note)
+                              }
+                              className={`rounded border px-2 py-1 text-micro transition-colors ${
+                                used
+                                  ? "border-navy bg-navy text-white"
+                                  : "border-rule bg-canvas text-ink hover:border-ink-soft hover:bg-surface"
+                              }`}
+                            >
+                              {used ? "✓ " : "+ "}
+                              {note}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
 
               <div>
                 <label htmlFor="rejection-input" className="block text-micro font-semibold text-ink mb-1">
-                  Catatan Penolakan / Permintaan Revisi:
+                  3. Catatan untuk pelanggan
                 </label>
                 <textarea
                   id="rejection-input"
                   rows={3}
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="Contoh: [Foto SIM A]: Foto SIM buram pada bagian masa berlaku, mohon ambil foto ulang dengan pencahayaan jelas."
+                  placeholder="Tulis sendiri, atau susun dari alasan cepat di atas."
                   className="w-full rounded border border-rule bg-canvas p-2.5 text-meta text-ink focus:border-navy focus:outline-none"
                 />
+              </div>
+
+              <div className="rounded border border-rule bg-canvas p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft">
+                  Yang akan dilihat pelanggan
+                </p>
+                <p className="mt-1 text-meta font-medium text-ink">
+                  {rejectionTargets.length > 0
+                    ? rejectionTargets.map((key) => TARGET_LABEL[key]).join(", ")
+                    : "Belum ada dokumen dipilih"}
+                </p>
+                <p className="mt-0.5 text-meta text-ink-soft">
+                  Catatan Staf: &ldquo;{rejectionReason.trim() || "belum diisi"}&rdquo;
+                </p>
               </div>
             </div>
 
             <div className="mt-5 flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setIsRejectModalOpen(false);
-                  setRejectionReason("");
-                }}
+                onClick={resetRejectForm}
                 disabled={isPending}
                 className="rounded-sm border border-rule px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas"
               >
@@ -462,8 +580,12 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
               </button>
               <button
                 type="button"
-                disabled={isPending || !rejectionReason.trim()}
-                onClick={() => handleVerify("REJECT", rejectionReason.trim())}
+                disabled={
+                  isPending || !rejectionReason.trim() || rejectionTargets.length === 0
+                }
+                onClick={() =>
+                  handleVerify("REJECT", rejectionReason.trim(), rejectionTargets)
+                }
                 className="rounded-sm bg-danger px-4 py-1.5 text-meta font-medium text-white hover:bg-danger/90 disabled:opacity-50"
               >
                 {isPending ? "Mengirim..." : "Kirim Penolakan"}

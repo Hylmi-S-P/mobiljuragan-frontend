@@ -1310,6 +1310,7 @@ export async function apiAdminVerifyBookingDocuments(
   bookingId: string,
   action: "APPROVE" | "REJECT",
   rejectionReason?: string,
+  rejectionTargets?: string[],
 ): Promise<BookingDocument> {
   const token = await getSessionToken();
 
@@ -1319,7 +1320,7 @@ export async function apiAdminVerifyBookingDocuments(
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ action, rejectionReason }),
+    body: JSON.stringify({ action, rejectionReason, targets: rejectionTargets }),
   });
 
   const json = await res.json().catch(() => null);
