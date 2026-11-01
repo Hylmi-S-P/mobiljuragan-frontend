@@ -111,10 +111,17 @@ function mapVehicle(v: ApiVehicle): Vehicle {
     seats: v.seatingCapacity,
     pricePerDay: v.pricePerDay ?? 400000,
     imageUrl: v.imageUrl ?? null,
-    // `usage` dan `allowedModes` tidak dikirim backend. Dibiarkan null/kosong
-    // daripada diisi teks karangan.
+    /*
+     * `usage` tidak dikirim backend, jadi dibiarkan null daripada dikarang.
+     *
+     * `allowedModes` juga tidak dikirim, TETAPI tidak boleh dibiarkan kosong:
+     * form edit memakai array ini untuk mencentang kotak moda rental, dan array
+     * kosong membuat validasi menolak setiap penyimpanan unit lama. Karena
+     * backend memang tidak membatasi moda per unit, keduanya dianggap
+     * diizinkan sampai ada kolomnya sendiri.
+     */
     usage: null,
-    allowedModes: [] as BookingMode[],
+    allowedModes: ["lepas_kunci", "dengan_supir"] as BookingMode[],
   };
 }
 
@@ -308,13 +315,15 @@ function mapBooking(b: ApiBooking): Booking {
     status: resolveBookingStatus(b),
     rawStatus: b.status,
     tariffStatus: b.tariffStatus,
-    quotedAmount: b.quotedAmount !== null && b.quotedAmount !== undefined ? Number(b.quotedAmount) : null,
+    quotedAmount:
+      b.quotedAmount !== null && b.quotedAmount !== undefined ? Number(b.quotedAmount) : null,
     driverId: b.driverId,
     serviceType: isDriverService ? "Dengan Supir" : "Lepas Kunci",
     pickupRoute: b.pickupLocation,
     driverName: b.driver?.fullName ?? null,
     driverStatus: b.driver?.readiness ? (DRIVER_READINESS[b.driver.readiness] ?? null) : null,
-    whatsappIntent: (b as { whatsappIntent?: { message: string; url: string } }).whatsappIntent ?? null,
+    whatsappIntent:
+      (b as { whatsappIntent?: { message: string; url: string } }).whatsappIntent ?? null,
     lineItems,
     payment: b.payment
       ? {
@@ -533,7 +542,6 @@ export async function getTicketDetail(
   return { messages, handledBy: data?.handledBy };
 }
 
-
 /* Laporan Keuangan */
 
 export type FinanceSummary = {
@@ -673,7 +681,7 @@ export async function getKnowledgeCategories(): Promise<KnowledgeCategoryView[]>
 export type AiGatewayLog = {
   id: string;
   timestamp: string;
-  event: 'CHAT_COMPLETION' | 'HEALTH_CHECK' | 'GATEWAY_ROUTING' | 'DOC_PARSED';
+  event: "CHAT_COMPLETION" | "HEALTH_CHECK" | "GATEWAY_ROUTING" | "DOC_PARSED";
   model: string;
   status: number;
   latencyMs: number;
@@ -771,5 +779,3 @@ export async function getRentedVehicleIds(): Promise<Set<string>> {
     return new Set();
   }
 }
-
-
