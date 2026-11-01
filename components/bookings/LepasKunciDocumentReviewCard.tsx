@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/ui/useToast";
 import { useState, useTransition } from "react";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip, type ChipTone } from "@/components/ui/StatusChip";
@@ -61,7 +62,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
   const [previewModalTitle, setPreviewModalTitle] = useState<string>("");
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
+  const { show, dismiss, node } = useToast();
   const [isPending, startTransition] = useTransition();
 
   function handleSelectTargetTag(tag: string) {
@@ -98,22 +99,19 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
 
   function handleVerify(action: "APPROVE" | "REJECT", reason?: string) {
     startTransition(async () => {
-      setNotice(null);
+      dismiss();
       const res = await verifyBookingDocumentsAction(booking.id, action, reason);
 
       if (res.success && res.data) {
         setDocument(res.data);
         onDocumentUpdated?.(res.data);
-        setNotice({ text: res.message || "Status dokumen berhasil diperbarui." });
+        show(res.message || "Status dokumen berhasil diperbarui.");
         if (action === "REJECT") {
           setIsRejectModalOpen(false);
           setRejectionReason("");
         }
       } else {
-        setNotice({
-          text: res.message || "Gagal memproses verifikasi dokumen.",
-          isError: true,
-        });
+        show(res.message || "Gagal memproses verifikasi dokumen.", "error");
       }
     });
   }
@@ -125,22 +123,14 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
 
   return (
     <>
+      {node}
+
       <Panel
         title="Dokumen Persyaratan Lepas Kunci"
         action={<StatusChip tone={config.tone}>{config.label}</StatusChip>}
       >
         <div className="space-y-4">
-          {notice && (
-            <div
-              className={`rounded-md border p-3 text-meta ${
-                notice.isError
-                  ? "border-danger/40 bg-danger-soft/10 text-danger"
-                  : "border-teal/40 bg-teal/10 text-teal"
-              }`}
-            >
-              {notice.text}
-            </div>
-          )}
+
 
           {/* Deskripsi status dan catatan penolakan jika ada */}
           <div className="rounded-md border border-rule bg-canvas p-3.5 space-y-1.5">

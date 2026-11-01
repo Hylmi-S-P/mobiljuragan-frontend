@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/ui/useToast";
 import { useState } from "react";
 import { checkAiGatewayHealthAction } from "@/app/actions";
 import type { AiGatewayHealth } from "@/lib/operations";
@@ -38,23 +39,23 @@ const STATUS_MAP: Record<
 export function AiTelemetryCards({ initialHealth, latestTps = 48.2 }: Props) {
   const [health, setHealth] = useState<AiGatewayHealth>(initialHealth);
   const [isPinging, setIsPinging] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const { show, dismiss, node } = useToast();
 
   const statusInfo = STATUS_MAP[health.healthStatus] || STATUS_MAP.OFFLINE;
 
   const handlePing = async () => {
     setIsPinging(true);
-    setFeedback(null);
+    dismiss();
     try {
       const res = await checkAiGatewayHealthAction();
       if (res.success && res.data) {
         setHealth(res.data);
-        setFeedback(`Ping sukses (${res.data.latencyMs}ms): ${res.data.message}`);
+        show(`Ping sukses (${res.data.latencyMs}ms): ${res.data.message}`);
       } else {
-        setFeedback(res.message || "Gagal menghubungi AI Gateway.");
+        show(res.message || "Gagal menghubungi AI Gateway.", "error");
       }
     } catch {
-      setFeedback("Gagal menjalankan diagnostik gateway.");
+      show("Gagal menjalankan diagnostik gateway.", "error");
     } finally {
       setIsPinging(false);
     }
@@ -144,18 +145,7 @@ export function AiTelemetryCards({ initialHealth, latestTps = 48.2 }: Props) {
         </div>
       </div>
 
-      {feedback ? (
-        <div className="rounded-md border border-rule/80 bg-canvas/70 px-3.5 py-2 text-micro text-ink flex items-center justify-between">
-          <span>{feedback}</span>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="text-xs text-ink-soft hover:text-ink ml-2"
-          >
-            ✕
-          </button>
-        </div>
-      ) : null}
+      {node}
     </div>
   );
 }

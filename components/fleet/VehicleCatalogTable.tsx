@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { PlateBadge } from "@/components/ui/PlateBadge";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/components/ui/useToast";
 import { IconCar, IconPencil, IconPlus } from "@/components/ui/icons";
 import { formatRupiah } from "@/lib/format";
 import type { Vehicle } from "@/lib/types";
@@ -42,13 +42,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [formTarget, setFormTarget] = useState<{ vehicleId: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-    /* Notifikasi memakai toast, bukan paragraf di atas panel. Paragraf itu mudah
-     terlewat karena berada jauh dari tombol yang baru ditekan, dan tidak hilang
-     sendiri sehingga menumpuk dengan pesan berikutnya. */
-  const [notice, setNotice] = useState<{
-    text: string;
-    tone: "success" | "error" | "info";
-  } | null>(null);
+  const { show, node } = useToast();
   /* Nilai pending tidak ditampilkan; yang dipakai hanya startTransition. */
   const [, startTransition] = useTransition();
 
@@ -61,14 +55,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
 
   return (
     <>
-      {notice ? (
-        <Toast
-          message={notice.text}
-          tone={notice.tone}
-          durationMs={3500}
-          onClose={() => setNotice(null)}
-        />
-      ) : null}
+      {node}
 
       <div className="mt-3">
         <Panel
@@ -184,20 +171,20 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                 ? current.map((vehicle) => (vehicle.id === saved.id ? saved : vehicle))
                 : [...current, saved];
             });
-            setNotice({
-              text: editing
+            show(
+              editing
                 ? `Menyimpan perubahan unit ${saved.name}...`
                 : `Menambahkan unit ${saved.name}...`,
-              tone: "info",
-            });
+              "info",
+            );
             setFormTarget(null);
 
             startTransition(async () => {
               const res = await saveVehicleAction(saved);
               if (res.success) {
-                setNotice({ text: res.message ?? "Data armada berhasil disimpan ke database.", tone: "success" });
+                show(res.message ?? "Data armada berhasil disimpan ke database.", "success");
               } else {
-                setNotice({ text: res.message ?? "Gagal menyimpan ke server backend.", tone: "error" });
+                show(res.message ?? "Gagal menyimpan ke server backend.", "error");
               }
             });
           }}
@@ -212,15 +199,15 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
             const targetId = deleting.id;
             const targetName = deleting.name;
             setVehicles((current) => current.filter((vehicle) => vehicle.id !== targetId));
-            setNotice({ text: `Menghapus unit ${targetName}...`, tone: "info" });
+            show(`Menghapus unit ${targetName}...`, "info");
             setDeleteTarget(null);
 
             startTransition(async () => {
               const res = await deleteVehicleAction(targetId);
               if (res.success) {
-                setNotice({ text: res.message ?? `Unit ${targetName} dihapus.`, tone: "success" });
+                show(res.message ?? `Unit ${targetName} dihapus.`, "success");
               } else {
-                setNotice({ text: res.message ?? "Gagal menghapus armada.", tone: "error" });
+                show(res.message ?? "Gagal menghapus armada.", "error");
               }
             });
           }}

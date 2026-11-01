@@ -7,7 +7,7 @@ import { FaqDetailModal } from "@/components/faqs/FaqDetailModal";
 import { FaqCardGrid } from "@/components/faqs/FaqCardGrid";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
-import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/components/ui/useToast";
 import {
   IconPlus,
   IconSearch,
@@ -34,14 +34,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
   const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
   const [detailFaq, setDetailFaq] = useState<FaqItem | null>(null);
 
-  // Toast notification
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastTone, setToastTone] = useState<"success" | "error" | "info">("success");
-
-  const showToast = (msg: string, tone: "success" | "error" | "info" = "success") => {
-    setToastMessage(msg);
-    setToastTone(tone);
-  };
+  const { show, node } = useToast();
 
   // TanStack Query for caching and server state synchronization
   const { data: faqs = initialFaqs, isFetching } = useQuery<FaqItem[]>({
@@ -79,10 +72,10 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
       if (context?.previous) {
         queryClient.setQueryData(["adminFaqs"], context.previous);
       }
-      showToast("Gagal memperbarui status visibilitas FAQ.", "error");
+      show("Gagal memperbarui status visibilitas FAQ.", "error");
     },
     onSuccess: (data) => {
-      showToast(
+      show(
         `FAQ berhasil diubah menjadi ${data.isActive ? "Tampil di Mobile" : "Disembunyikan"}.`,
         "success",
       );
@@ -138,14 +131,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
 
   return (
     <>
-      {toastMessage ? (
-        <Toast
-          message={toastMessage}
-          tone={toastTone}
-          durationMs={3000}
-          onClose={() => setToastMessage(null)}
-        />
-      ) : null}
+      {node}
 
       <div className="flex flex-col gap-4">
         <Panel
@@ -222,7 +208,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
           onToggleActive={handleToggleVisibility}
           onDeleted={(_id) => {
             queryClient.invalidateQueries({ queryKey: ["adminFaqs"] });
-            showToast("FAQ berhasil dihapus permanen.", "info");
+            show("FAQ berhasil dihapus permanen.", "info");
           }}
         />
       ) : null}
@@ -238,7 +224,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
           }}
           onSave={(saved) => {
             queryClient.invalidateQueries({ queryKey: ["adminFaqs"] });
-            showToast(
+            show(
               editingFaq
                 ? `FAQ "${saved.question.slice(0, 30)}..." berhasil diperbarui.`
                 : "FAQ baru berhasil ditambahkan.",

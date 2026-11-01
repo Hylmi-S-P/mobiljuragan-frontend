@@ -1,10 +1,10 @@
 "use client";
 
+import { useToast } from "@/components/ui/useToast";
 import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/Button";
-import { Panel, PageLead } from "@/components/ui/PageLayout";
+import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import {
   Table,
@@ -24,11 +24,7 @@ import { formatRupiah, formatDateTimeWit } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
 import { useDebounce } from "@/lib/useDebounce";
-import type {
-  AdminPaymentItem,
-  AdminPaymentsResponse,
-  PaymentStatus,
-} from "@/lib/types";
+import type { AdminPaymentItem, AdminPaymentsResponse } from "@/lib/types";
 
 type Props = {
   initialResponse?: AdminPaymentsResponse;
@@ -62,19 +58,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
   const [selectedPayment, setSelectedPayment] = useState<AdminPaymentItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Notification Toast State
-  const [notice, setNotice] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
-
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => {
-      setNotice(null);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [notice]);
+  const { show, node } = useToast();
 
   // TanStack Query for dynamic caching & syncing with backend
   const { data: response = initialResponse, isFetching } = useQuery<AdminPaymentsResponse>({
@@ -156,44 +140,18 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
 
     const bookingCode = updated.booking?.bookingCode || "booking";
     if (action === "APPROVE") {
-      setNotice({
-        message: `Pembayaran ${bookingCode} berhasil disetujui. Status sewa kini tervalidasi lunas (PAID).`,
-        type: "success",
-      });
+      show(
+        `Pembayaran ${bookingCode} berhasil disetujui. Status sewa kini tervalidasi lunas (PAID).`,
+        "success",
+      );
     } else {
-      setNotice({
-        message: `Bukti pembayaran ${bookingCode} telah ditolak.`,
-        type: "error",
-      });
+      show(`Bukti pembayaran ${bookingCode} telah ditolak.`, "error");
     }
   }
 
   return (
     <div className="space-y-4">
-      {/* Toast Notice */}
-      {notice ? (
-        <div
-          className={`flex items-center justify-between rounded-sm border px-4 py-3 text-meta transition-all ${
-            notice.type === "success"
-              ? "border-teal/30 bg-teal/10 text-teal"
-              : "border-danger/30 bg-danger/10 text-danger"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">
-              {notice.type === "success" ? "Berhasil:" : "Perhatian:"}
-            </span>
-            <span>{notice.message}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setNotice(null)}
-            className="text-micro font-medium hover:underline"
-          >
-            Tutup
-          </button>
-        </div>
-      ) : null}
+      {node}
 
       <Panel>
         {/* Controls: Search and Segmented Tab Filter */}

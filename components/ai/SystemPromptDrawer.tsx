@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/ui/useToast";
 import { useState, useTransition } from "react";
 import { updateAiConfigAction } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +18,7 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
   const [isPending, startTransition] = useTransition();
   const [systemPrompt, setSystemPrompt] = useState(initialConfig.systemPrompt);
   const [enableRag, setEnableRag] = useState(initialConfig.enableRag);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const { show, dismiss, node } = useToast();
   /* Konfirmasi sebelum menyimpan. Ami meminta perubahan tidak langsung tersimpan
      begitu tombol ditekan. */
   const [konfirmasiSimpan, setKonfirmasiSimpan] = useState(false);
@@ -28,7 +29,7 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
     systemPrompt !== initialConfig.systemPrompt || enableRag !== initialConfig.enableRag;
 
   const handleSave = () => {
-    setFeedback(null);
+    dismiss();
     const formData = new FormData();
     formData.append("gatewayUrl", initialConfig.gatewayUrl);
     formData.append("apiKey", initialConfig.apiKey || "");
@@ -41,9 +42,9 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
     startTransition(async () => {
       const res = await updateAiConfigAction(null, formData);
       if (res.success) {
-        setFeedback("Persona & instruksi sistem berhasil disimpan.");
+        show("Persona & instruksi sistem berhasil disimpan.");
       } else {
-        setFeedback(res.message || "Gagal menyimpan persona.");
+        show(res.message || "Gagal menyimpan persona.", "error");
       }
     });
   };
@@ -79,11 +80,7 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
         </button>
       </div>
 
-      {feedback ? (
-        <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 text-meta text-emerald-800">
-          {feedback}
-        </div>
-      ) : null}
+      {node}
 
       <div className="mt-4 flex flex-col gap-4">
         {/* RAG Injection Toggle Bar */}

@@ -5,6 +5,7 @@ import { assignDriverAction, updateBookingStatusAction } from "@/app/actions";
 import { ManualSurchargeModal } from "@/components/modals/ManualSurchargeModal";
 import { Button } from "@/components/ui/Button";
 import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
+import { useToast } from "@/components/ui/useToast";
 import { BookingTimelineBar } from "./BookingTimelineBar";
 import { CustomerInfoCard } from "./CustomerInfoCard";
 import { VehicleUnitCard } from "./VehicleUnitCard";
@@ -75,10 +76,7 @@ export function BookingDetailClient({
   const [surchargeOpen, setSurchargeOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [notice, setNotice] = useState<{
-    text: string;
-    isError?: boolean;
-  } | null>(null);
+  const { show, node } = useToast();
   const [whatsappUrl, setWhatsappUrl] = useState<string | null>(
     booking.whatsappIntent?.url ?? null,
   );
@@ -147,17 +145,12 @@ export function BookingDetailClient({
       if (result.success) {
         const chosen = availableDrivers.find((d) => d.id === driverId);
         setAssignedDriverName(chosen ? chosen.label : "Supir Ditugaskan");
-        setNotice({
-          text: result.message ?? `Supir resmi ${chosen?.label ?? ""} berhasil ditugaskan.`,
-        });
+        show(result.message ?? `Supir resmi ${chosen?.label ?? ""} berhasil ditugaskan.`);
         if ((result as { data?: { whatsappIntent?: { url: string } } }).data?.whatsappIntent?.url) {
           setWhatsappUrl((result as { data?: { whatsappIntent?: { url: string } } }).data!.whatsappIntent!.url);
         }
       } else {
-        setNotice({
-          text: result.message ?? "Gagal menugaskan supir resmi.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal menugaskan supir resmi.", "error");
       }
     });
   }
@@ -169,18 +162,12 @@ export function BookingDetailClient({
   // Konfirmasi tarif dan persetujuan pesanan
   function handleConfirmBooking() {
     if (isDriverService && !hasAssignedDriver) {
-      setNotice({
-        text: "Wajib memilih dan menugaskan supir resmi terlebih dahulu sebelum mengonfirmasi pesanan.",
-        isError: true,
-      });
+      show("Wajib memilih dan menugaskan supir resmi terlebih dahulu sebelum mengonfirmasi pesanan.", "error");
       return;
     }
 
     if (totalCleanBill <= 0) {
-      setNotice({
-        text: "Nominal tarif sewa resmi harus lebih besar dari Rp 0.",
-        isError: true,
-      });
+      show("Nominal tarif sewa resmi harus lebih besar dari Rp 0.", "error");
       return;
     }
 
@@ -195,17 +182,12 @@ export function BookingDetailClient({
       if (result.success) {
         setRawStatus("CONFIRMED");
         setStatus("tarif_terkonfirmasi");
-        setNotice({
-          text: result.message ?? "Tarif sewa resmi berhasil dikonfirmasi.",
-        });
+        show(result.message ?? "Tarif sewa resmi berhasil dikonfirmasi.");
         if ((result as { data?: { whatsappIntent?: { url: string } } }).data?.whatsappIntent?.url) {
           setWhatsappUrl((result as { data?: { whatsappIntent?: { url: string } } }).data!.whatsappIntent!.url);
         }
       } else {
-        setNotice({
-          text: result.message ?? "Gagal mengonfirmasi pesanan.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal mengonfirmasi pesanan.", "error");
       }
     });
   }
@@ -213,10 +195,7 @@ export function BookingDetailClient({
   // Penolakan pesanan sewa
   function handleRejectBooking() {
     if (!rejectReason.trim()) {
-      setNotice({
-        text: "Tuliskan alasan penolakan rasional terlebih dahulu.",
-        isError: true,
-      });
+      show("Tuliskan alasan penolakan rasional terlebih dahulu.", "error");
       return;
     }
 
@@ -232,14 +211,9 @@ export function BookingDetailClient({
         setRawStatus("REJECTED");
         setStatus("ditolak");
         setShowRejectModal(false);
-        setNotice({
-          text: result.message ?? "Permintaan sewa berhasil ditolak.",
-        });
+        show(result.message ?? "Permintaan sewa berhasil ditolak.");
       } else {
-        setNotice({
-          text: result.message ?? "Gagal menolak pesanan.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal menolak pesanan.", "error");
       }
     });
   }
@@ -256,23 +230,20 @@ export function BookingDetailClient({
 
       if (result.success) {
         setRawStatus(nextStatus);
-        setNotice({
-          text: result.message ?? `Status berhasil diperbarui ke ${nextStatus}.`,
-        });
+        show(result.message ?? `Status berhasil diperbarui ke ${nextStatus}.`);
         if ((result as { data?: { whatsappIntent?: { url: string } } }).data?.whatsappIntent?.url) {
           setWhatsappUrl((result as { data?: { whatsappIntent?: { url: string } } }).data!.whatsappIntent!.url);
         }
       } else {
-        setNotice({
-          text: result.message ?? "Gagal memperbarui status sewa.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal memperbarui status sewa.", "error");
       }
     });
   }
 
   return (
     <>
+      {node}
+
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
         {/* Kolom Kiri: Main Content Stack (~65% / col-span-8) */}
         <div className="min-w-0 space-y-4 lg:col-span-8">
@@ -331,7 +302,6 @@ export function BookingDetailClient({
             hasAssignedDriver={hasAssignedDriver}
             isDriverService={isDriverService}
             isPending={isPending}
-            notice={notice}
             onConfirmBooking={handleConfirmBooking}
             onOpenRejectModal={() => setShowRejectModal(true)}
             onTransitionStatus={handleTransitionStatus}

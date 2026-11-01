@@ -18,7 +18,6 @@ type Props = {
   hasAssignedDriver: boolean;
   isDriverService: boolean;
   isPending: boolean;
-  notice: { text: string; isError?: boolean } | null;
   onConfirmBooking: () => void;
   onOpenRejectModal: () => void;
   onTransitionStatus: (status: CanonicalBookingStatus, note?: string) => void;
@@ -36,7 +35,6 @@ export function BookingActionSidebar({
   hasAssignedDriver,
   isDriverService,
   isPending,
-  notice,
   onConfirmBooking,
   onOpenRejectModal,
   onTransitionStatus,
@@ -70,21 +68,6 @@ export function BookingActionSidebar({
         </p>
       </div>
 
-      {/* Notice / Feedback Banner */}
-      {notice ? (
-        <div
-          className={`rounded-md border p-3 text-meta ${
-            notice.isError
-              ? "border-danger/40 bg-danger/10 text-danger"
-              : "border-teal/40 bg-teal/10 text-teal"
-          }`}
-        >
-          <div className="flex items-start gap-2">
-            <span className="font-bold">{notice.isError ? "!" : "&#10003;"}</span>
-            <p className="text-meta">{notice.text}</p>
-          </div>
-        </div>
-      ) : null}
 
       {/* Form Input Nominal Tarif Sewa Resmi */}
       {canDecide ? (
