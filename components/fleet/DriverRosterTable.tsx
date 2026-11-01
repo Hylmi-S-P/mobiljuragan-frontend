@@ -6,6 +6,7 @@ import {
   createDriverAction,
   deleteDriverAction,
   toggleDriverReadinessAction,
+  unggahFotoSimAction,
   updateDriverAction,
 } from "@/app/actions";
 import { DeleteDriverModal } from "@/components/modals/DeleteDriverModal";
@@ -73,7 +74,7 @@ export function DriverRosterTable({ initialDrivers }: Props) {
     });
   }
 
-  function handleSaveDriver(saved: Driver) {
+  function handleSaveDriver(saved: Driver, berkasFoto?: File | null, hapusFoto?: boolean) {
     const isEdit = Boolean(formTarget?.driverId);
     const formData = new FormData();
     if (isEdit && formTarget?.driverId) {
@@ -88,9 +89,11 @@ export function DriverRosterTable({ initialDrivers }: Props) {
        "tidak diubah" dari "dikosongkan". */
     formData.set("licenseType", saved.licenseType ?? "");
 
-    /* Foto SIM juga selalu dikirim. String kosong berarti fotonya dihapus —
-       itu yang membuat tombol Hapus foto berpengaruh. */
-    formData.set("licensePhotoUrl", saved.licensePhotoUrl ?? "");
+    /* Foto TIDAK ikut di sini. String kosong berarti foto lama dihapus; foto baru
+       diunggah terpisah lewat `unggahFotoSimAction` setelah supirnya tersimpan,
+       karena Base64 di dalam form membuat foto kamera HP menembus batas badan
+       permintaan dan selalu gagal. */
+    formData.set("licensePhotoUrl", hapusFoto ? "" : (saved.licensePhotoUrl ?? ""));
 
     formData.set("route", saved.route);
 
@@ -99,23 +102,76 @@ export function DriverRosterTable({ initialDrivers }: Props) {
         ? await updateDriverAction(null, formData)
         : await createDriverAction(null, formData);
 
-      if (res.success) {
-        setDrivers((current) => {
-          const exists = current.some((driver) => driver.id === saved.id);
-          return exists
-            ? current.map((driver) => (driver.id === saved.id ? saved : driver))
-            : [...current, saved];
-        });
-        show(
-          res.message ??
-            (isEdit
-              ? `Data ${saved.label} berhasil diperbarui di database.`
-              : `${saved.label} berhasil didaftarkan ke roster operasional.`),
+      if (!res.success) {
+        show(res.message ?? "Gagal menyimpan data supir ke database.", "error");
+        return;
+      }
+
+      /*
+       * ID sementara `d-<timestamp>` diganti ID asli dari backend.
+       *
+       * Modal memberi id sementara untuk supir baru karena saat itu backend belum
+       * memberi id apa pun. Sebelumnya id itu dibiarkan di state, sehingga
+       * menyunting supir yang baru ditambah mengirim PATCH ke id sementara dan
+       * ditolak 404.
+       */
+      const idTersimpan: string = res.data?.id ?? saved.id;
+
+      /* Foto diunggah setelah supirnya tersimpan, karena endpoint unggah
+         membutuhkan ID supir yang sudah ada. Kalau unggahan gagal, data supirnya
+         tetap tersimpan dan admin bisa mencoba lagi tanpa mengulang pengisian. */
+      if (berkasFoto) {
+        const formFoto = new FormData();
+        formFoto.append("berkas", berkasFoto);
+
+        const unggah = await unggahFotoSimAction(idTersimpan, formFoto);
+        if (!unggah.success) {
+          setDrivers((current) =>
+            current.some((driver) => driver.id === saved.id)
+              ? current.map((driver) =>
+                  driver.id === saved.id ? { ...saved, id: idTersimpan } : driver,
+                )
+              : [...current, { ...saved, id: idTersimpan }],
+          );
+          show(
+            `Data supir tersimpan, tetapi foto SIM gagal diunggah: ${unggah.message ?? "tidak diketahui"}`,
+            "error",
+          );
+          setFormTarget(null);
+          return;
+        }
+
+        show(res.message ?? "Data supir tersimpan.", "success");
+        setDrivers((current) =>
+          current.some((driver) => driver.id === saved.id)
+            ? current.map((driver) =>
+                driver.id === saved.id
+                  ? { ...saved, id: idTersimpan, licensePhotoUrl: unggah.licensePhotoUrl ?? null }
+                  : driver,
+              )
+            : [
+                ...current,
+                { ...saved, id: idTersimpan, licensePhotoUrl: unggah.licensePhotoUrl ?? null },
+              ],
         );
         setFormTarget(null);
-      } else {
-        show(res.message ?? "Gagal menyimpan data supir ke database.", "error");
+        return;
       }
+
+      setDrivers((current) =>
+        current.some((driver) => driver.id === saved.id)
+          ? current.map((driver) =>
+              driver.id === saved.id ? { ...saved, id: idTersimpan } : driver,
+            )
+          : [...current, { ...saved, id: idTersimpan }],
+      );
+      show(
+        res.message ??
+          (isEdit
+            ? `Data ${saved.label} berhasil diperbarui di database.`
+            : `${saved.label} berhasil didaftarkan ke roster operasional.`),
+      );
+      setFormTarget(null);
     });
   }
 

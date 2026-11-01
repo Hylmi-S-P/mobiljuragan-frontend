@@ -1,5 +1,6 @@
-﻿import "server-only";
+import "server-only";
 import { getSessionToken, ApiError } from "./api";
+import { normalisasiTransmisi } from "./labels";
 import type {
   AdminPaymentItem,
   AdminPaymentsResponse,
@@ -107,7 +108,9 @@ function mapVehicle(v: ApiVehicle): Vehicle {
     plate: v.licensePlate,
     status: statusTampil(v),
     category: v.category,
-    transmission: v.transmission,
+    /* Backend menyimpan MANUAL/AUTOMATIC; layar memakai Manual/Automatic.
+       Diseragamkan di sini supaya semua komponen menerima bentuk yang sama. */
+    transmission: normalisasiTransmisi(v.transmission),
     seats: v.seatingCapacity,
     pricePerDay: v.pricePerDay ?? 400000,
     imageUrl: v.imageUrl ?? null,
@@ -280,6 +283,16 @@ type ApiBooking = {
     createdAt: string;
     updatedAt: string;
   } | null;
+  /** Penyesuaian biaya manual. Baris yang dibatalkan tetap dikirim, ditandai. */
+  lineItems?: Array<{
+    id: string;
+    kategori: string;
+    deskripsi: string;
+    nominal: string | number;
+    arah: "TAMBAH" | "KURANG";
+    justifikasi: string;
+    dibatalkanPada: string | null;
+  }> | null;
 };
 
 function countDays(start: string, end: string): number {
@@ -294,6 +307,7 @@ function mapBooking(b: ApiBooking): Booking {
   const lineItems: LineItem[] = [
     {
       id: `${b.id}-sewa`,
+      kind: "sewa",
       label: isDriverService ? "Sewa unit dengan supir" : "Sewa unit lepas kunci",
       // Nominal hanya ditampilkan kalau tim sudah mengonfirmasi tarifnya.
       amount:
@@ -301,6 +315,33 @@ function mapBooking(b: ApiBooking): Booking {
       note: `${countDays(b.startDateTime, b.endDateTime)} hari`,
     },
   ];
+
+  /*
+   * Penyesuaian biaya manual yang tersimpan ikut ditampilkan.
+   *
+   * Sebelumnya rincian ini hanya hidup di state React dan hilang saat halaman
+   * dimuat ulang. Sekarang sumbernya database, jadi yang tampil selalu sama
+   * dengan yang tersimpan.
+   *
+   * Baris yang sudah dibatalkan sengaja dilewati: pembatalan berarti
+   * penyesuaian itu tidak lagi ditagihkan. Jejaknya tetap ada di database dan
+   * audit log untuk keperluan penelusuran, bukan untuk ditampilkan sebagai
+   * tagihan aktif.
+   */
+  for (const li of b.lineItems ?? []) {
+    if (li.dibatalkanPada) continue;
+
+    const nominal = Number(li.nominal);
+    lineItems.push({
+      id: li.id,
+      kind: "penyesuaian",
+      label: li.deskripsi,
+      /* Nominal dikirim bertanda supaya tabel tagihan bisa menampilkan
+         pengurangan apa adanya, sesuai bentuk yang sudah dipakai layar. */
+      amount: `${li.arah === "KURANG" ? "-" : "+"}${nominal}`,
+      note: `${li.kategori} — ${li.justifikasi}`,
+    });
+  }
 
   return {
     id: b.id,

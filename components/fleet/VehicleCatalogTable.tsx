@@ -186,10 +186,37 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
             setFormTarget(null);
 
             startTransition(async () => {
-              const res = await saveVehicleAction(saved);
+              /* `editing` menandai modal dibuka untuk unit yang sudah ada. */
+              const res = await saveVehicleAction(saved, editing ? "update" : "create");
               if (!res.success) {
                 show(res.message ?? "Gagal menyimpan ke server backend.", "error");
                 return;
+              }
+
+              /*
+               * ID sementara dari modal diganti ID asli dari backend.
+               *
+               * Modal memberi id `v-<timestamp>` untuk unit baru karena saat itu
+               * backend belum memberi id apa pun. Id itu hanya boleh hidup selama
+               * proses simpan.
+               *
+               * Sebelumnya id sementara dibiarkan di state. Akibatnya, ketika
+               * admin menyunting unit yang baru dibuat, `saveVehicleAction`
+               * melihat awalan `v-` lalu menyimpannya sebagai unit BARU lagi:
+               * datanya terduplikasi, atau permintaannya ditolak karena
+               * externalId yang terbentuk dari nama+plat sudah dipakai. Kalau
+               * id itu sempat dikirim ke endpoint ubah, backend menjawab 404.
+               *
+               * `res.data.id` ada untuk unit baru maupun unit lama, jadi
+               * penggantian ini aman untuk kedua jalur.
+               */
+              const idTersimpan: string = res.data?.id ?? saved.id;
+              if (idTersimpan !== saved.id) {
+                setVehicles((current) =>
+                  current.map((item) =>
+                    item.id === saved.id ? { ...item, id: idTersimpan } : item,
+                  ),
+                );
               }
 
               /*
@@ -204,7 +231,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                 const formData = new FormData();
                 formData.append("berkas", berkasFoto);
 
-                const unggah = await unggahFotoKendaraanAction(res.data?.id ?? saved.id, formData);
+                const unggah = await unggahFotoKendaraanAction(idTersimpan, formData);
                 if (unggah.success) {
                   /*
                    * Kartu diperbarui langsung dengan foto baru. Tanpa ini admin
@@ -215,9 +242,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                     const urlFoto = unggah.imageUrl;
                     setVehicles((current) =>
                       current.map((item) =>
-                        item.id === saved.id || item.id === res.data?.id
-                          ? { ...item, imageUrl: urlFoto }
-                          : item,
+                        item.id === idTersimpan ? { ...item, imageUrl: urlFoto } : item,
                       ),
                     );
                   }

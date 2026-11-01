@@ -17,18 +17,23 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 /**
- * Alamat dasar backend.
+ * Alamat tautan pratinjau berkas template.
  *
- * Dihitung di server karena berbeda antara pengembangan (port 4000) dan
- * produksi (satu domain dengan awalan /api). Menuliskan jalur relatif di
- * komponen klien akan salah di salah satunya.
+ * TIDAK diarahkan langsung ke backend. Endpoint backend
+ * `/admin/document-templates/:id/berkas` hanya menerima header
+ * `Authorization: Bearer ...`, sedangkan token admin ada di cookie `httpOnly`
+ * yang tidak bisa dikirim peramban sebagai header. Tautan langsung karena itu
+ * selalu ditolak 401.
+ *
+ * Yang dipakai adalah Route Handler di `/documents/berkas/[id]`, yang berjalan
+ * di server Next.js: ia membaca cookie, memanggil backend dengan header yang
+ * benar, lalu mengalirkan berkasnya ke peramban. Hasilnya bisa dibuka lewat
+ * `<a href>` maupun `<iframe>` seperti tautan biasa.
+ *
+ * `alamatApi()` tetap dipakai halaman lain, jadi fungsinya tidak dihapus.
  */
-function alamatApi(): string {
-  return (
-    process.env.API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:4000/api/v1"
-  ).replace(/\/$/, "");
+function tautanBerkas(id: string): string {
+  return `/documents/berkas/${id}`;
 }
 
 /**
@@ -48,9 +53,7 @@ export default async function DocumentsPage() {
     galat = error instanceof Error ? error.message : "Gagal memuat dokumen.";
   }
 
-  const tautanBerkasAktif = aktif
-    ? `${alamatApi()}/admin/document-templates/${aktif.id}/berkas`
-    : null;
+  const tautanBerkasAktif = aktif ? tautanBerkas(aktif.id) : null;
 
   return (
     <div className="flex flex-col gap-4">

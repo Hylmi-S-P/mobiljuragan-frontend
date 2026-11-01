@@ -32,6 +32,9 @@ import {
   apiClearAiGatewayLogs,
   apiParseKnowledgeFile,
   apiUnggahFotoKendaraan,
+  apiUnggahFotoSim,
+  apiCreateBookingLineItem,
+  apiCancelBookingLineItem,
   apiUnggahTemplate,
   apiAktifkanVersi,
   apiCreateFaq,
@@ -471,7 +474,7 @@ export async function assignDriverAction(
 export async function createDriverAction(
   _prevState: ActionState | null,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<ActionState & { data?: { id?: string } }> {
   const fullName = (formData.get("fullName") as string)?.trim() || "";
   const phoneNumber = (formData.get("phoneNumber") as string)?.trim() || undefined;
   const licenseNumber = (formData.get("licenseNumber") as string)?.trim() || undefined;
@@ -485,7 +488,10 @@ export async function createDriverAction(
     licenseTypeRaw === "SIM_C"
       ? licenseTypeRaw
       : null;
-  /* Foto SIM berupa data URL Base64. String kosong berarti fotonya dihapus. */
+  /* Foto SIM tidak lagi dikirim di sini. Base64-nya dulu ikut menumpang di JSON,
+     sehingga foto kamera HP selalu menembus batas badan permintaan. Sekarang foto
+     diunggah terpisah lewat `unggahFotoSimAction` setelah supirnya tersimpan,
+     karena endpoint unggah membutuhkan ID supir yang sudah ada. */
   const licensePhotoUrl = (formData.get("licensePhotoUrl") as string)?.trim() || null;
   const rawRoute = (formData.get("route") as string)?.trim() || "dalam_kota";
   const routeScope = rawRoute === "luar_kota" ? "LUAR_KOTA" : "DALAM_KOTA";
@@ -497,8 +503,9 @@ export async function createDriverAction(
     return { success: false, errors };
   }
 
+  let hasil: unknown;
   try {
-    await apiCreateDriver({
+    hasil = await apiCreateDriver({
       fullName,
       phoneNumber,
       licenseNumber,
@@ -514,7 +521,14 @@ export async function createDriverAction(
   }
 
   revalidatePath("/fleet/drivers");
-  return { success: true, message: `Supir ${fullName} berhasil didaftarkan ke roster.` };
+  return {
+    success: true,
+    message: `Supir ${fullName} berhasil didaftarkan ke roster.`,
+    /* ID asli dikembalikan supaya pemanggil bisa mengganti id sementara `d-...`
+       di layar. Tanpa ini, menyunting supir yang baru ditambah akan mengirim
+       PATCH ke id sementara dan ditolak 404. */
+    data: hasil as { id?: string },
+  };
 }
 
 /**
@@ -523,7 +537,7 @@ export async function createDriverAction(
 export async function updateDriverAction(
   _prevState: ActionState | null,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<ActionState & { data?: { id?: string } }> {
   const id = (formData.get("id") as string)?.trim() || "";
   const fullName = (formData.get("fullName") as string)?.trim() || undefined;
   const phoneNumber = (formData.get("phoneNumber") as string)?.trim() || undefined;
@@ -538,15 +552,17 @@ export async function updateDriverAction(
     licenseTypeRaw === "SIM_C"
       ? licenseTypeRaw
       : null;
-  /* Foto SIM berupa data URL Base64. String kosong berarti fotonya dihapus. */
+  /* String kosong berarti foto dihapus. Foto baru diunggah terpisah lewat
+     `unggahFotoSimAction`, bukan dikirim sebagai Base64 di sini. */
   const licensePhotoUrl = (formData.get("licensePhotoUrl") as string)?.trim() || null;
   const rawRoute = (formData.get("route") as string)?.trim() || "dalam_kota";
   const routeScope = rawRoute === "luar_kota" ? "LUAR_KOTA" : "DALAM_KOTA";
 
   if (!id) return { success: false, message: "ID supir tidak valid." };
 
+  let hasil: unknown;
   try {
-    await apiUpdateDriver(id, {
+    hasil = await apiUpdateDriver(id, {
       fullName,
       phoneNumber,
       licenseNumber,
@@ -562,7 +578,11 @@ export async function updateDriverAction(
   }
 
   revalidatePath("/fleet/drivers");
-  return { success: true, message: "Data supir berhasil diperbarui." };
+  return {
+    success: true,
+    message: "Data supir berhasil diperbarui.",
+    data: hasil as { id?: string },
+  };
 }
 
 /**
@@ -623,12 +643,27 @@ export async function updateAiConfigAction(
   const fallbackModel = (formData.get("fallbackModel") as string)?.trim();
   const fallbackGatewayUrl = (formData.get("fallbackGatewayUrl") as string)?.trim();
   const fallbackApiKey = (formData.get("fallbackApiKey") as string)?.trim();
-  const autoFallbackEnabled = formData.get("autoFallbackEnabled") === "on";
+  /*
+   * `autoFallbackEnabled` hanya dikirim kalau form-nya memang punya isian itu.
+   *
+   * Sebelumnya nilainya selalu dikirim, hasil dari
+   * `formData.get("autoFallbackEnabled") === "on"`. Karena tidak ada komponen
+   * yang pernah menyertakan isian itu, hasilnya selalu `false` — dan setiap
+   * kali admin menyimpan pengaturan AI, failover otomatis ikut dimatikan
+   * tanpa disadari, menimpa nilai yang mungkin sudah benar di database.
+   *
+   * `formData.has()` membedakan "isian tidak ada" dari "kotak tidak dicentang".
+   * Backend sudah memakai pola `!== undefined`, jadi cukup berhenti mengirim
+   * nilai yang memang tidak diketahui.
+   */
+  const autoFallbackEnabled = formData.has("autoFallbackEnabled")
+    ? formData.get("autoFallbackEnabled") === "on"
+    : undefined;
   const proxyUrl = (formData.get("proxyUrl") as string)?.trim();
   const systemPrompt = (formData.get("systemPrompt") as string)?.trim();
   const temperature = parseFloat((formData.get("temperature") as string) || "0.7");
   const maxTokens = parseInt((formData.get("maxTokens") as string) || "1000", 10);
-  const enableRag = formData.get("enableRag") === "on";
+  const enableRag = formData.has("enableRag") ? formData.get("enableRag") === "on" : undefined;
 
   try {
     await apiUpdateAiConfig({
@@ -996,9 +1031,25 @@ export async function updateFaqPriorityAction(
 /**
  * Server Action untuk menyimpan atau menambah armada mobil beserta tarif sewa harian.
  */
-export async function saveVehicleAction(vehicle: Vehicle): Promise<ActionState & { data?: any }> {
+/**
+ * Menyimpan unit armada: menambah baru atau memperbarui yang sudah ada.
+ *
+ * `mode` WAJIB disebut pemanggil, karena hanya pemanggil yang tahu apakah admin
+ * sedang membuka modal "Tambah Armada" atau "Edit Spesifikasi". Sebelumnya
+ * keputusan itu ditebak dari awalan id (`v-`), dan tebakan itu salah begitu id
+ * sementara tertinggal di state: unit yang baru dibuat lalu disunting akan
+ * dikirim sebagai unit BARU, sehingga datanya terduplikasi atau ditolak karena
+ * externalId sudah dipakai.
+ *
+ * Tebakan awalan `v-` masih dipertahankan sebagai cadangan untuk pemanggil lama,
+ * tetapi bukan lagi satu-satunya penentu.
+ */
+export async function saveVehicleAction(
+  vehicle: Vehicle,
+  mode?: "create" | "update",
+): Promise<ActionState & { data?: any }> {
   try {
-    const isNew = vehicle.id.startsWith("v-") || !vehicle.id;
+    const isNew = mode ? mode === "create" : vehicle.id.startsWith("v-") || !vehicle.id;
     const payload = {
       name: vehicle.name,
       licensePlate: vehicle.plate,
@@ -1280,5 +1331,125 @@ export async function unggahFotoKendaraanAction(
       success: false,
       message: error instanceof Error ? error.message : "Gagal mengunggah foto armada.",
     };
+  }
+}
+
+/**
+ * Mengunggah foto SIM supir sebagai berkas.
+ *
+ * Dipisah dari `createDriverAction` / `updateDriverAction` dengan alasan yang
+ * sama seperti foto armada: endpoint unggah membutuhkan ID supir yang sudah ada,
+ * dan untuk supir baru ID itu baru didapat setelah penyimpanan pertama berhasil.
+ *
+ * Jalur ini menggantikan pengiriman Base64. Base64 membengkak sepertiga dan
+ * seluruh teksnya ikut melewati batas badan permintaan Server Action, sehingga
+ * foto kamera HP yang wajar selalu tertolak walaupun layar menjanjikan 5 MB.
+ */
+export async function unggahFotoSimAction(
+  id: string,
+  formData: FormData,
+): Promise<ActionState & { licensePhotoUrl?: string }> {
+  const berkas = formData.get("berkas");
+
+  if (!(berkas instanceof File) || berkas.size === 0) {
+    return { success: false, message: "Pilih berkas foto SIM terlebih dahulu." };
+  }
+
+  try {
+    const hasil = await apiUnggahFotoSim(id, berkas);
+    revalidatePath("/fleet/drivers");
+    return {
+      success: true,
+      message: "Foto SIM tersimpan.",
+      licensePhotoUrl: hasil.licensePhotoUrl,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Gagal mengunggah foto SIM supir.",
+    };
+  }
+}
+
+/**
+ * Menyimpan penyesuaian biaya manual (surcharge) pada satu pesanan.
+ *
+ * Sebelumnya modal hanya memanggil `onApply` yang menambah baris ke state React.
+ * Deskripsi, nominal, dan justifikasi audit yang wajib diisi hilang begitu halaman
+ * dimuat ulang, dan tidak ada satu pun jejak yang tersisa — padahal modalnya
+ * menyatakan "Penyesuaian tercatat pada riwayat pesanan".
+ *
+ * Sekarang barisnya benar-benar tersimpan di `booking_line_items`, dan backend
+ * mencatatnya ke audit log.
+ */
+export async function createBookingLineItemAction(
+  bookingId: string,
+  data: {
+    kategori: string;
+    deskripsi: string;
+    nominal: number;
+    arah: "TAMBAH" | "KURANG";
+    justifikasi: string;
+  },
+): Promise<ActionState & { data?: unknown }> {
+  if (!bookingId) {
+    return { success: false, message: "Kode pemesanan tidak valid." };
+  }
+
+  if (!data.deskripsi?.trim()) {
+    return { success: false, message: "Deskripsi penyesuaian wajib diisi." };
+  }
+  if (!Number.isFinite(data.nominal) || data.nominal <= 0) {
+    return { success: false, message: "Nominal penyesuaian harus lebih dari 0." };
+  }
+  if (!data.justifikasi?.trim()) {
+    return { success: false, message: "Justifikasi wajib diisi untuk audit internal." };
+  }
+
+  try {
+    const hasil = await apiCreateBookingLineItem(bookingId, {
+      ...data,
+      deskripsi: data.deskripsi.trim(),
+      justifikasi: data.justifikasi.trim(),
+    });
+    revalidatePath("/bookings");
+    revalidatePath(`/bookings/${bookingId}`);
+    return {
+      success: true,
+      message: "Penyesuaian biaya tersimpan dan tercatat pada riwayat pesanan.",
+      data: hasil,
+    };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menyimpan penyesuaian biaya ke backend." };
+  }
+}
+
+/**
+ * Membatalkan penyesuaian biaya yang sudah tersimpan.
+ *
+ * Barisnya tidak dihapus di backend, hanya ditandai dibatalkan, supaya
+ * penyesuaian yang pernah menagih pelanggan tetap bisa ditelusuri.
+ */
+export async function cancelBookingLineItemAction(
+  bookingId: string,
+  lineItemId: string,
+): Promise<ActionState> {
+  if (!bookingId || !lineItemId) {
+    return { success: false, message: "Penyesuaian biaya tidak valid." };
+  }
+
+  try {
+    await apiCancelBookingLineItem(bookingId, lineItemId);
+    revalidatePath("/bookings");
+    revalidatePath(`/bookings/${bookingId}`);
+    return { success: true, message: "Penyesuaian biaya dibatalkan." };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal membatalkan penyesuaian biaya." };
   }
 }

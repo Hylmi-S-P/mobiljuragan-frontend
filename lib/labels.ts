@@ -131,6 +131,34 @@ export const VEHICLE_CATEGORY_OPTIONS = ["MPV", "SUV", "PICKUP", "COMMERCIAL"];
 
 export const VEHICLE_TRANSMISSION_OPTIONS = ["Manual", "Automatic"];
 
+/**
+ * Menyeragamkan nilai transmisi ke bentuk yang ditampilkan di layar.
+ *
+ * Database menyimpan `MANUAL` / `AUTOMATIC` (huruf besar semua), sedangkan
+ * daftar pilihan di form memakai `Manual` / `Automatic`. Tanpa penyeragaman,
+ * `<select>` tidak menemukan pilihan yang cocok dengan nilai dari database lalu
+ * menampilkan pilihan pertama, sehingga unit matic terbaca "Manual" saat
+ * disunting. Lebih dari sekadar salah baca: menyimpannya tanpa mengubah apa pun
+ * benar-benar mengubah nilainya menjadi MANUAL.
+ *
+ * Kasus yang sama pernah terjadi pada kategori armada dan sudah diperbaiki lewat
+ * `VEHICLE_CATEGORY_OPTIONS`. Di sini penyeragamannya dilakukan sekali di
+ * pembacaan data, bukan diulang di setiap komponen.
+ *
+ * Nilai yang tidak dikenali dikembalikan apa adanya supaya tidak ada informasi
+ * yang hilang.
+ */
+export function normalisasiTransmisi(nilai: string | null | undefined): string | null {
+  if (!nilai) return null;
+
+  const bersih = nilai.trim().toUpperCase();
+
+  if (bersih === "AUTOMATIC" || bersih === "MATIC" || bersih === "A/T") return "Automatic";
+  if (bersih === "MANUAL" || bersih === "M/T") return "Manual";
+
+  return nilai;
+}
+
 export const VEHICLE_SEAT_OPTIONS = [3, 5, 7, 9, 12];
 
 /* Preset kategori FAQ resmi yang selaras dengan aplikasi mobile MobilJuragan. */

@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { assignDriverAction, updateBookingStatusAction } from "@/app/actions";
+import { useRouter } from "next/navigation";
+import {
+  assignDriverAction,
+  cancelBookingLineItemAction,
+  updateBookingStatusAction,
+} from "@/app/actions";
 import { ManualSurchargeModal } from "@/components/modals/ManualSurchargeModal";
 import { Button } from "@/components/ui/Button";
 import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
@@ -35,20 +40,30 @@ export function BookingDetailClient({
   availableDrivers = [],
 }: Props) {
   const isDriverService = booking.mode === "dengan_supir";
+  const router = useRouter();
 
-  const [items, setItems] = useState<LineItem[]>(() => {
-    // Inisialisasi daftar item tagihan, sertakan breakdown supir jika Dengan Supir
+  /*
+   * Daftar item tagihan hanya DIBACA, tidak lagi diubah di sisi klien.
+   *
+   * Sebelumnya penyesuaian biaya ditambahkan ke state ini, sehingga barisnya
+   * hilang begitu halaman dimuat ulang dan tampilan bisa berbeda dari isi
+   * database. Sekarang sumbernya data server: setelah menyimpan atau
+   * membatalkan, tampilan disegarkan lewat `router.refresh()`.
+   */
+  const items = useMemo<LineItem[]>(() => {
+    // Sertakan breakdown supir jika pesanan memakai supir
     const initialItems = [...booking.lineItems];
-    if (isDriverService && !initialItems.some((i) => i.id.includes("supir-breakdown"))) {
+    if (isDriverService && !initialItems.some((i) => i.kind === "supir")) {
       initialItems.push({
         id: `${booking.id}-supir-breakdown`,
+        kind: "supir",
         label: "Layanan jasa supir resmi Merauke",
         amount: null,
         note: `Termasuk operasional supir (${booking.dayCount} hari)`,
       });
     }
     return initialItems;
-  });
+  }, [booking.lineItems, booking.id, booking.dayCount, isDriverService]);
 
   const [status, setStatus] = useState<BookingStatus>(booking.status);
   const [rawStatus, setRawStatus] = useState<CanonicalBookingStatus>(
@@ -112,7 +127,9 @@ export function BookingDetailClient({
   const totalCleanBill = useMemo(() => {
     let sum = quotedAmount;
     for (const item of items) {
-      if (item.id.startsWith("li-") && item.amount) {
+      /* Hanya penyesuaian manual yang mengubah total; baris sewa sudah terwakili
+         oleh `quotedAmount` di atas. Ditentukan dari `kind`, bukan awalan id. */
+      if (item.kind === "penyesuaian" && item.amount) {
         const raw = item.amount;
         const isNegative = raw.startsWith("-");
         const val = Number(raw.replace(/[^\d]/g, "")) || 0;
@@ -126,13 +143,28 @@ export function BookingDetailClient({
     return Math.max(0, sum);
   }, [quotedAmount, items]);
 
-  function applySurcharge(item: LineItem) {
-    setItems((current) => [...current, item]);
+  /**
+   * Dipanggil setelah penyesuaian biaya tersimpan di backend.
+   *
+   * Barisnya TIDAK lagi ditambahkan ke state lokal. Yang benar-benar tersimpan
+   * adalah baris di database, jadi tampilan disegarkan dari server lewat
+   * `router.refresh()`. Menambah baris secara lokal di sini justru berisiko
+   * menampilkan data yang tidak sama dengan isi database.
+   */
+  function handleSurchargeSaved() {
     setSurchargeOpen(false);
+    router.refresh();
+    show("Penyesuaian biaya tersimpan pada riwayat pesanan.");
   }
 
-  function handleRemoveSurcharge(itemId: string) {
-    setItems((current) => current.filter((i) => i.id !== itemId));
+  async function handleRemoveSurcharge(itemId: string) {
+    const res = await cancelBookingLineItemAction(booking.id, itemId);
+    if (res.success) {
+      router.refresh();
+      show(res.message ?? "Penyesuaian biaya dibatalkan.");
+    } else {
+      show(res.message ?? "Gagal membatalkan penyesuaian biaya.", "error");
+    }
   }
 
   // Penugasan supir otomatis saat dropdown diubah
@@ -374,7 +406,7 @@ export function BookingDetailClient({
       {surchargeOpen ? (
         <ManualSurchargeModal
           onClose={() => setSurchargeOpen(false)}
-          onApply={applySurcharge}
+          onSaved={handleSurchargeSaved}
           booking={booking}
         />
       ) : null}

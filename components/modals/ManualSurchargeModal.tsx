@@ -1,22 +1,31 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
+import { createBookingLineItemAction } from "@/app/actions";
 import { formatCurrencyInput, formatRupiah } from "@/lib/format";
 import { SURCHARGE_CATEGORIES } from "@/lib/uiText";
-import type { Booking, LineItem } from "@/lib/types";
+import type { Booking } from "@/lib/types";
 
 type Props = {
   onClose: () => void;
-  onApply: (item: LineItem) => void;
+  /**
+   * Dipanggil setelah penyesuaian biaya benar-benar tersimpan di backend.
+   *
+   * Dulu modal ini hanya menambah baris ke state React lewat `onApply`, sehingga
+   * deskripsi, nominal, dan justifikasi audit yang wajib diisi hilang begitu
+   * halaman dimuat ulang — tanpa jejak apa pun. Sekarang penyimpanannya terjadi
+   * di dalam modal, dan `onSaved` hanya dipakai untuk menyegarkan tampilan.
+   */
+  onSaved?: () => void;
   booking: Booking;
 };
 
 /* Komponen ini selalu di-mount ulang saat dibuka, jadi isian selalu mulai kosong. */
-export function ManualSurchargeModal({ onClose, onApply, booking }: Props) {
+export function ManualSurchargeModal({ onClose, onSaved, booking }: Props) {
   const fieldId = useId();
   const [category, setCategory] = useState(SURCHARGE_CATEGORIES[0]);
   const [description, setDescription] = useState("");
@@ -24,6 +33,8 @@ export function ManualSurchargeModal({ onClose, onApply, booking }: Props) {
   const [direction, setDirection] = useState<"tambah" | "kurang">("tambah");
   const [justification, setJustification] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pesanGagal, setPesanGagal] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   /* Tarif dasar yang sudah ditetapkan admin. Null berarti belum ada, dan itu
      dikatakan apa adanya, bukan diganti penanda "[nominal]". */
@@ -40,11 +51,32 @@ export function ManualSurchargeModal({ onClose, onApply, booking }: Props) {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    onApply({
-      id: `li-${Date.now()}`,
-      label: description.trim(),
-      amount: `${direction === "tambah" ? "+" : "-"}${amount.trim()}`,
-      note: justification.trim(),
+    /* Nominal di layar berformat "1.500.000"; yang dikirim harus angka murni. */
+    const nominal = Number(amount.replace(/[^\d]/g, ""));
+    if (!Number.isFinite(nominal) || nominal <= 0) {
+      setErrors({ amount: "Nominal penyesuaian harus lebih dari 0." });
+      return;
+    }
+
+    setPesanGagal(null);
+
+    startTransition(async () => {
+      const res = await createBookingLineItemAction(booking.id, {
+        kategori: category,
+        deskripsi: description.trim(),
+        nominal,
+        arah: direction === "tambah" ? "TAMBAH" : "KURANG",
+        justifikasi: justification.trim(),
+      });
+
+      if (!res.success) {
+        /* Modal tetap terbuka supaya isian tidak hilang saat penyimpanan gagal. */
+        setPesanGagal(res.message ?? "Gagal menyimpan penyesuaian biaya.");
+        return;
+      }
+
+      onSaved?.();
+      onClose();
     });
   }
 
@@ -56,11 +88,11 @@ export function ManualSurchargeModal({ onClose, onApply, booking }: Props) {
       description={`${category} • ID Booking #${booking.code}`}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
             Batal
           </Button>
-          <Button variant="confirm" onClick={handleApply}>
-            Terapkan Penyesuaian Biaya
+          <Button variant="confirm" onClick={handleApply} disabled={isPending}>
+            {isPending ? "Menyimpan..." : "Terapkan Penyesuaian Biaya"}
           </Button>
         </>
       }
@@ -181,7 +213,10 @@ export function ManualSurchargeModal({ onClose, onApply, booking }: Props) {
         </div>
 
         <div className="rounded-sm border border-rule bg-canvas px-3.5 py-2.5 text-micro text-ink-soft">
-          <p>Tarif dasar booking: {estimasiAwal != null ? formatRupiah(estimasiAwal) : "belum ditetapkan admin"}</p>
+          <p>
+            Tarif dasar booking:{" "}
+            {estimasiAwal != null ? formatRupiah(estimasiAwal) : "belum ditetapkan admin"}
+          </p>
           <p className="mt-1">
             Penyesuaian manual: {amount.trim().length > 0 ? amount.trim() : "belum diisi"}
           </p>
@@ -190,7 +225,15 @@ export function ManualSurchargeModal({ onClose, onApply, booking }: Props) {
           </p>
         </div>
 
-        <p className="text-micro text-ink-soft">Penyesuaian tercatat pada riwayat pesanan.</p>
+        {pesanGagal ? (
+          <p role="alert" className="text-meta text-danger">
+            {pesanGagal}
+          </p>
+        ) : null}
+
+        <p className="text-micro text-ink-soft">
+          Penyesuaian tersimpan di database dan tercatat pada audit log beserta alasannya.
+        </p>
       </div>
     </Modal>
   );
