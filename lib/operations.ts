@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 import { getSessionToken, ApiError } from "./api";
 import type {
   AdminPaymentItem,
@@ -115,9 +115,9 @@ function mapVehicle(v: ApiVehicle): Vehicle {
      * `usage` tidak dikirim backend, jadi dibiarkan null daripada dikarang.
      *
      * `allowedModes` juga tidak dikirim, TETAPI tidak boleh dibiarkan kosong:
-     * form edit memakai array ini untuk mencentang kotak moda rental, dan array
+     * form edit memakai array ini untuk mencentang kotak mode rental, dan array
      * kosong membuat validasi menolak setiap penyimpanan unit lama. Karena
-     * backend memang tidak membatasi moda per unit, keduanya dianggap
+     * backend memang tidak membatasi mode rental per unit, keduanya dianggap
      * diizinkan sampai ada kolomnya sendiri.
      */
     usage: null,
@@ -764,7 +764,7 @@ export async function verifyPayment(
  *
  * Katalog armada memakai ini untuk menampilkan badge "Disewa". Tanpa data ini,
  * katalog hanya membaca `operationalStatus`, yang menyimpan keadaan unit di
- * gudang dan tidak diperbarui saat ada sewa berjalan â€” sehingga unit yang
+ * gudang dan tidak diperbarui saat ada sewa berjalan Ã¢â‚¬â€ sehingga unit yang
  * sedang disewa tetap tampil "Tersedia".
  *
  * Kegagalan mengambil data tidak boleh menjatuhkan halaman katalog. Kalau gagal,

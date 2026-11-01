@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useId, useState } from "react";
 
@@ -54,11 +54,11 @@ export function VehicleFormModal({
   const [seatsInput, setSeatsInput] = useState<string>(String(vehicle?.seats ?? 7));
   const [status, setStatus] = useState<VehicleStatus>(vehicle?.status ?? "tersedia");
   /*
-   * Moda rental yang tercentang.
+   * Mode rental yang tercentang.
    *
    * Dulu memakai `vehicle?.allowedModes ?? [keduanya]`, yang hanya berlaku saat
    * nilainya null. Kalau array-nya kosong (seperti data dari backend yang tidak
-   * menyimpan moda), hasilnya kosong dan validasi menolak simpan. Sekarang array
+   * menyimpan mode rental), hasilnya kosong dan validasi menolak simpan. Sekarang array
    * kosong diperlakukan sama dengan tidak ada data.
    */
   const [modes, setModes] = useState<BookingMode[]>(
@@ -71,7 +71,7 @@ export function VehicleFormModal({
   /*
    * Foto yang sudah tersimpan di server, dipakai ulang saat unit disunting
    * tanpa mengganti fotonya. Untuk berkas baru, yang dikirim adalah `photoFile`
-   * lewat multipart — bukan isinya sebagai Base64.
+   * lewat multipart â€” bukan isinya sebagai Base64.
    */
   const [photoDataUrl] = useState<string | null>(vehicle?.imageUrl ?? null);
   /* Berkas asli disimpan supaya bisa dikirim lewat multipart, bukan Base64. */
@@ -158,7 +158,7 @@ export function VehicleFormModal({
     else if (existingPlates.some((item) => item.toUpperCase() === normalizedPlate)) {
       nextErrors.plate = "Plat ini sudah dipakai unit lain di katalog.";
     }
-    if (modes.length === 0) nextErrors.modes = "Pilih minimal satu moda rental yang diizinkan.";
+    if (modes.length === 0) nextErrors.modes = "Pilih minimal satu mode rental yang diizinkan.";
     const numericPrice = Number(priceInput.replace(/[^\d]/g, "")) || 0;
     if (numericPrice <= 0) {
       nextErrors.pricePerDay = "Tarif sewa harian harus bernilai lebih dari 0.";
@@ -393,7 +393,7 @@ export function VehicleFormModal({
 
         <fieldset>
           <legend className="text-meta font-medium text-ink">
-            Pilihan moda rental yang diizinkan
+            Pilihan mode rental yang diizinkan
           </legend>
           <div className="mt-1.5 flex flex-wrap gap-3">
             {(["lepas_kunci", "dengan_supir"] as BookingMode[]).map((mode) => (
