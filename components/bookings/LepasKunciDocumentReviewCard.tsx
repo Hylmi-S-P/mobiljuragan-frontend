@@ -256,17 +256,8 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
             </div>
           </div>
 
-          {/* Unduhan template acuan dan aksi verifikasi admin */}
-          <div className="flex flex-col gap-3 pt-2 border-t border-rule sm:flex-row sm:items-center sm:justify-between">
-            <a
-              href={`http://localhost:4000/api/v1/bookings/${booking.id}/statement-pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-micro font-medium text-navy hover:underline inline-flex items-center gap-1.5"
-            >
-              Unduh Surat Pernyataan Terisi Otomatis (PDF)
-            </a>
-
+          {/* Aksi verifikasi admin */}
+          <div className="flex flex-col gap-3 pt-2 border-t border-rule sm:flex-row sm:items-center sm:justify-end">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               {uploadedCount < 3 && currentStatus !== "VERIFIED" && currentStatus !== "REJECTED" && (
                 <span className="text-micro text-amber-800">
