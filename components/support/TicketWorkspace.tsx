@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/ui/useToast";
 import { useMemo, useRef, useState, useTransition } from "react";
 
 import {
@@ -17,13 +18,11 @@ import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import {
   TICKET_STAGE,
-  TICKET_STATUS,
   formatTicketCategory,
   ticketStageOf,
 } from "@/lib/labels";
 import { useDebounce } from "@/lib/useDebounce";
 import type { SupportTicketView, TicketMessageView } from "@/lib/operations";
-import type { SupportTicketStatus } from "@/lib/types";
 
 {/*
   Batas panjang balasan. Nilainya harus sama dengan MAKS_PANJANG_PESAN
@@ -51,7 +50,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   const [messages, setMessages] = useState<TicketMessageView[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [draftError, setDraftError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
+  const { show, node } = useToast();
   const [isSending, startTransition] = useTransition();
   const [isLoadingMessages, startLoadMessages] = useTransition();
   const [isTakingOver, startTakeOver] = useTransition();
@@ -82,7 +81,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           );
         }
         if (!hasil.success) {
-          setNotice({ text: hasil.message ?? "Percakapan gagal dimuat.", isError: true });
+          show(hasil.message ?? "Percakapan gagal dimuat.", "error");
         }
       }
     });
@@ -97,14 +96,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
         setTickets((current) =>
           current.map((t) => (t.id === targetTicketId ? { ...t, handledBy: "HUMAN" } : t)),
         );
-        setNotice({
-          text: result.message ?? "Tiket berhasil diambil alih dari AI. Sekarang Anda dapat membalas pesan pelanggan.",
-        });
+        show(result.message ?? "Tiket berhasil diambil alih dari AI. Sekarang Anda dapat membalas pesan pelanggan.");
       } else {
-        setNotice({
-          text: result.message ?? "Gagal mengambil alih tiket.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal mengambil alih tiket.", "error");
       }
     });
   }
@@ -161,14 +155,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
         setTickets((current) =>
           current.map((t) => (t.id === activeTicket.id ? { ...t, status: targetStatusMapped } : t)),
         );
-        setNotice({
-          text: result.message ?? `Status tiket berhasil diubah menjadi ${newStatus}.`,
-        });
+        show(result.message ?? `Status tiket berhasil diubah menjadi ${newStatus}.`);
       } else {
-        setNotice({
-          text: result.message ?? "Gagal mengubah status tiket.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal mengubah status tiket.", "error");
       }
     });
   }
@@ -194,7 +183,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           ),
         );
       }
-      setNotice({ text: result.message ?? "Tiket diambil.", isError: !result.success });
+      show(result.message ?? "Tiket diambil.", result.success ? "success" : "error");
     });
   }
 
@@ -214,7 +203,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           ),
         );
       }
-      setNotice({ text: result.message ?? "Tiket dilepas.", isError: !result.success });
+      show(result.message ?? "Tiket dilepas.", result.success ? "success" : "error");
     });
   }
 
@@ -234,10 +223,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           ),
         );
       }
-      setNotice({
-        text: result.message ?? "Tiket diambil alih.",
-        isError: !result.success,
-      });
+      show(result.message ?? "Tiket diambil alih.", result.success ? "success" : "error");
     });
   }
 
@@ -266,7 +252,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
       const result = await replyToTicketAction(activeTicket.id, text);
       if (result.success) {
-        setNotice({ text: result.message ?? "Balasan terkirim." });
+        show(result.message ?? "Balasan terkirim.");
         setTickets((current) =>
           current.map((t) =>
             t.id === activeTicket.id
@@ -279,24 +265,14 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
         setMessages((current) => current.filter((message) => message.id !== optimisticMessage.id));
         setDraft(text);
         setDraftError(result.message ?? "Balasan gagal dikirim.");
-        setNotice({ text: result.message ?? "Gagal mengirim balasan.", isError: true });
+        show(result.message ?? "Gagal mengirim balasan.", "error");
       }
     });
   }
 
   return (
     <>
-      {notice ? (
-        <p
-          className={`mt-3 rounded-sm border px-3 py-2 text-meta ${
-            notice.isError
-              ? "border-danger bg-danger/10 text-danger"
-              : "border-teal/40 bg-surface text-ink"
-          }`}
-        >
-          {notice.text}
-        </p>
-      ) : null}
+      {node}
 
       <div className="mt-3 grid gap-3 lg:h-[calc(100vh-13rem)] lg:grid-cols-[300px_minmax(0,1fr)]">
         <div className="flex min-h-0 min-w-0 flex-col">
