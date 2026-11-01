@@ -151,7 +151,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
                 state?.errors?.phoneNumber ? `${fieldId}-username-error` : undefined
               }
               className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-              placeholder="admin atau 081234567890"
+              placeholder="Nomor telepon atau nama pengguna"
               required
             />
             {state?.errors?.phoneNumber ? (
