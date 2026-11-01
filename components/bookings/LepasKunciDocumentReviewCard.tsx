@@ -165,7 +165,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                   />
                 </div>
                 <p className="mt-1 text-meta font-medium text-ink">
-                  Bebas Narkoba &amp; Anti Penggelapan
+                  Form Kesanggupan
                 </p>
                 <p className="mt-0.5 text-micro text-ink-soft">Wajib tanda tangan basah penyewa</p>
               </div>
