@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { saveVehicleAction, deleteVehicleAction } from "@/app/actions";
+import { saveVehicleAction, deleteVehicleAction, unggahFotoKendaraanAction } from "@/app/actions";
 import { DeleteVehicleModal } from "@/components/modals/DeleteVehicleModal";
 import { VehicleFormModal } from "@/components/modals/VehicleFormModal";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +12,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/useToast";
 import { IconCar, IconPencil, IconPlus } from "@/components/ui/icons";
 import { formatRupiah } from "@/lib/format";
+import { tautanMedia } from "@/lib/media";
 import type { Vehicle } from "@/lib/types";
 import { VEHICLE_STATUS } from "@/lib/labels";
 
@@ -30,10 +31,7 @@ type Props = {
  * sama seperti aturan di kalender armada. Selain itu, status gudang dipakai apa
  * adanya.
  */
-function statusKatalog(
-  vehicle: Vehicle,
-  sedangTersewa: boolean,
-): Vehicle["status"] {
+function statusKatalog(vehicle: Vehicle, sedangTersewa: boolean): Vehicle["status"] {
   if (sedangTersewa) return "disewa";
   return vehicle.status;
 }
@@ -62,11 +60,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
           title="Katalog &amp; Spesifikasi Armada"
           icon={<IconCar />}
           action={
-            <Button
-              variant="confirm"
-              size="md"
-              onClick={() => setFormTarget({ vehicleId: null })}
-            >
+            <Button variant="confirm" size="md" onClick={() => setFormTarget({ vehicleId: null })}>
               <IconPlus className="h-4 w-4" />
               Tambah Armada
             </Button>
@@ -76,13 +70,10 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
               terbaca di kartu, dan dua mode tampilan hanya menambah tombol tanpa
               menambah informasi. */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {vehicles.map((vehicle) => {
-                const statusTampil = statusKatalog(
-                  vehicle,
-                  rentedVehicleIds.includes(vehicle.id),
-                );
+            {vehicles.map((vehicle) => {
+              const statusTampil = statusKatalog(vehicle, rentedVehicleIds.includes(vehicle.id));
 
-                return (
+              return (
                 <div
                   key={vehicle.id}
                   className="flex flex-col justify-between rounded-lg border border-rule bg-surface p-4 shadow-card hover:border-navy/40 transition-all"
@@ -105,7 +96,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                       <div className="mt-3 overflow-hidden rounded-sm border border-rule">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={vehicle.imageUrl}
+                          src={tautanMedia(vehicle.imageUrl) ?? ""}
                           alt={`Foto ${vehicle.name}`}
                           className="h-32 w-full object-cover"
                         />
@@ -122,7 +113,9 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                       </div>
                       <div className="flex justify-between">
                         <span>Transmisi</span>
-                        <span className="font-medium text-ink">{vehicle.transmission ?? "Manual"}</span>
+                        <span className="font-medium text-ink">
+                          {vehicle.transmission ?? "Manual"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -147,8 +140,8 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                   </div>
                 </div>
               );
-              })}
-            </div>
+            })}
+          </div>
         </Panel>
       </div>
 
@@ -163,7 +156,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
             setFormTarget(null);
             setDeleteTarget(vehicleId);
           }}
-          onSave={(saved) => {
+          onSave={(saved, berkasFoto) => {
             // Optimistic UI update
             setVehicles((current) => {
               const exists = current.some((vehicle) => vehicle.id === saved.id);
@@ -181,11 +174,36 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
 
             startTransition(async () => {
               const res = await saveVehicleAction(saved);
-              if (res.success) {
-                show(res.message ?? "Data armada berhasil disimpan ke database.", "success");
-              } else {
+              if (!res.success) {
                 show(res.message ?? "Gagal menyimpan ke server backend.", "error");
+                return;
               }
+
+              /*
+               * Foto diunggah setelah data unitnya tersimpan.
+               *
+               * Endpoint unggah membutuhkan ID unit yang sudah ada, dan untuk
+               * unit baru ID itu baru didapat dari hasil penyimpanan. Kalau
+               * unggahan gagal, data unitnya tetap tersimpan — admin bisa
+               * mencoba unggah lagi tanpa mengulang pengisian form.
+               */
+              if (berkasFoto) {
+                const formData = new FormData();
+                formData.append("berkas", berkasFoto);
+
+                const unggah = await unggahFotoKendaraanAction(res.data?.id ?? saved.id, formData);
+                if (unggah.success) {
+                  show(res.message ?? "Data armada tersimpan.", "success");
+                } else {
+                  show(
+                    `Data unit tersimpan, tetapi foto gagal diunggah: ${unggah.message ?? "tidak diketahui"}`,
+                    "error",
+                  );
+                }
+                return;
+              }
+
+              show(res.message ?? "Data armada berhasil disimpan ke database.", "success");
             });
           }}
         />

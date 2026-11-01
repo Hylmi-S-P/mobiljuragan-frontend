@@ -32,7 +32,7 @@ const STATUS_CONFIG: Record<
     label: "Terverifikasi & Disetujui",
     tone: "available",
     description:
-      "Seluruh dokumen persyaratan telah diperiksa dan dinyatakan memenuhi standar sewa lepas kunci PT MobilJuragan Trans Merauke.",
+      "Seluruh dokumen persyaratan telah diperiksa dan dinyatakan memenuhi standar sewa lepas kunci CV. Mobil Juragan Express Transport.",
   },
   REJECTED: {
     label: "Ditolak (Perlu Perbaikan)",
@@ -130,8 +130,6 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
         action={<StatusChip tone={config.tone}>{config.label}</StatusChip>}
       >
         <div className="space-y-4">
-
-
           {/* Deskripsi status dan catatan penolakan jika ada */}
           <div className="rounded-md border border-rule bg-canvas p-3.5 space-y-1.5">
             <p className="text-meta font-medium text-ink">{config.description}</p>
@@ -143,8 +141,11 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
             )}
             {document?.verifiedBy && currentStatus === "VERIFIED" && (
               <p className="text-micro text-ink-soft">
-                Diverifikasi oleh: <span className="font-medium text-ink">{document.verifiedBy}</span>
-                {document.verifiedAt ? ` pada ${new Date(document.verifiedAt).toLocaleString("id-ID")}` : ""}
+                Diverifikasi oleh:{" "}
+                <span className="font-medium text-ink">{document.verifiedBy}</span>
+                {document.verifiedAt
+                  ? ` pada ${new Date(document.verifiedAt).toLocaleString("id-ID")}`
+                  : ""}
               </p>
             )}
           </div>
@@ -164,9 +165,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                     }`}
                   />
                 </div>
-                <p className="mt-1 text-meta font-medium text-ink">
-                  Form Kesanggupan
-                </p>
+                <p className="mt-1 text-meta font-medium text-ink">Form Kesanggupan</p>
                 <p className="mt-0.5 text-micro text-ink-soft">Wajib tanda tangan basah penyewa</p>
               </div>
 
@@ -174,7 +173,9 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                 {hasStatement ? (
                   <button
                     type="button"
-                    onClick={() => openPreview(document!.statementLetterUrl!, "Surat Pernyataan TTD Basah")}
+                    onClick={() =>
+                      openPreview(document!.statementLetterUrl!, "Surat Pernyataan TTD Basah")
+                    }
                     className="flex-1 rounded border border-navy bg-navy/5 py-1.5 text-center text-micro font-medium text-navy hover:bg-navy/10"
                   >
                     Lihat Berkas
@@ -259,11 +260,13 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
           {/* Aksi verifikasi admin */}
           <div className="flex flex-col gap-3 pt-2 border-t border-rule sm:flex-row sm:items-center sm:justify-end">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              {uploadedCount < 3 && currentStatus !== "VERIFIED" && currentStatus !== "REJECTED" && (
-                <span className="text-micro text-amber-800">
-                  Menunggu pelanggan mengunggah seluruh dokumen ({uploadedCount}/3).
-                </span>
-              )}
+              {uploadedCount < 3 &&
+                currentStatus !== "VERIFIED" &&
+                currentStatus !== "REJECTED" && (
+                  <span className="text-micro text-amber-800">
+                    Menunggu pelanggan mengunggah seluruh dokumen ({uploadedCount}/3).
+                  </span>
+                )}
               {currentStatus === "REJECTED" && (
                 <span className="text-micro text-danger font-medium">
                   Dokumen ditolak. Menunggu revisi pelanggan ({uploadedCount}/3 berkas).
@@ -355,8 +358,8 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
           <div className="w-full max-w-md rounded-md border border-rule bg-surface p-5 shadow-lg">
             <h3 className="text-subtitle font-bold text-ink">Alasan Penolakan Dokumen</h3>
             <p className="mt-1.5 text-meta text-ink-soft">
-              Berikan penjelasan spesifik agar pelanggan dapat segera memperbaiki dokumen yang diunggah
-              melalui aplikasi mobile.
+              Berikan penjelasan spesifik agar pelanggan dapat segera memperbaiki dokumen yang
+              diunggah melalui aplikasi mobile.
             </p>
 
             <div className="mt-4 space-y-3">
@@ -401,7 +404,10 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
               </div>
 
               <div>
-                <label htmlFor="rejection-input" className="block text-micro font-semibold text-ink mb-1">
+                <label
+                  htmlFor="rejection-input"
+                  className="block text-micro font-semibold text-ink mb-1"
+                >
                   Catatan Penolakan / Permintaan Revisi:
                 </label>
                 <textarea

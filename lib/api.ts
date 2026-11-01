@@ -321,8 +321,6 @@ export async function apiUpdateBookingStatus(
   return json.data;
 }
 
-
-
 // Menugaskan supir resmi ke pesanan sewa bertipe WITH_DRIVER.
 export async function apiAssignDriverToBooking(id: string, driverId: string, note?: string) {
   const token = await getSessionToken();
@@ -352,8 +350,6 @@ export async function apiAssignDriverToBooking(id: string, driverId: string, not
 
   return json.data;
 }
-
-
 
 // Menambah pengemudi resmi baru ke roster supir.
 
@@ -393,8 +389,6 @@ export async function apiCreateDriver(data: {
   return json.data;
 }
 
-
-
 // Memperbarui data supir dan wilayah rute tugas.
 export async function apiUpdateDriver(
   id: string,
@@ -432,8 +426,6 @@ export async function apiUpdateDriver(
   return json.data;
 }
 
-
-
 /**
  * Mengambil tiket yang belum dipegang siapa pun.
  *
@@ -442,13 +434,10 @@ export async function apiUpdateDriver(
  */
 export async function apiClaimTicket(ticketId: string) {
   const token = await getSessionToken();
-  const res = await fetch(
-    `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`,
-    {
-      method: "POST",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    },
-  );
+  const res = await fetch(`${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
   const json = await res.json().catch(() => null);
   if (!res.ok) {
     throw new ApiError(
@@ -486,13 +475,10 @@ export async function apiTakeoverTicket(ticketId: string) {
 /** Melepas tiket supaya bisa diambil admin lain. */
 export async function apiReleaseTicket(ticketId: string) {
   const token = await getSessionToken();
-  const res = await fetch(
-    `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`,
-    {
-      method: "DELETE",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    },
-  );
+  const res = await fetch(`${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`, {
+    method: "DELETE",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
   const json = await res.json().catch(() => null);
   if (!res.ok) {
     throw new ApiError(
@@ -539,8 +525,6 @@ export async function apiUpdateDriverReadiness(
   return json.data;
 }
 
-
-
 // Menonaktifkan / menghapus supir dari roster operasional.
 export async function apiDeleteDriver(id: string) {
   const token = await getSessionToken();
@@ -565,8 +549,6 @@ export async function apiDeleteDriver(id: string) {
 
   return json.data;
 }
-
-
 
 // Memperbarui status tiket bantuan (RESOLVED / CLOSED / IN_PROGRESS / OPEN).
 export async function apiUpdateTicketStatus(
@@ -767,7 +749,7 @@ export async function apiFetchGatewayModels(gatewayUrl?: string, apiKey?: string
 export type AiGatewayLog = {
   id: string;
   timestamp: string;
-  event: 'CHAT_COMPLETION' | 'HEALTH_CHECK' | 'GATEWAY_ROUTING' | 'DOC_PARSED';
+  event: "CHAT_COMPLETION" | "HEALTH_CHECK" | "GATEWAY_ROUTING" | "DOC_PARSED";
   model: string;
   status: number;
   latencyMs: number;
@@ -807,7 +789,10 @@ export async function apiClearAiGatewayLogs(): Promise<void> {
   if (!res.ok) throw new ApiError(res.status, "CLEAR_LOGS_FAILED", "Gagal membersihkan log.");
 }
 
-export async function apiParseKnowledgeFile(filename: string, contentBase64: string): Promise<{
+export async function apiParseKnowledgeFile(
+  filename: string,
+  contentBase64: string,
+): Promise<{
   title: string;
   content: string;
   format: string;
@@ -837,7 +822,7 @@ export async function apiParseKnowledgeFile(filename: string, contentBase64: str
 export async function apiTestAiChat(
   prompt: string,
   history?: Array<{ role: string; content: string }>,
-  options?: { temperature?: number; maxTokens?: number; systemPrompt?: string }
+  options?: { temperature?: number; maxTokens?: number; systemPrompt?: string },
 ) {
   const token = await getSessionToken();
 
@@ -1139,6 +1124,41 @@ export async function apiCreateVehicle(payload: VehiclePayload) {
   return json.data;
 }
 
+/**
+ * Mengunggah foto armada lewat multipart.
+ *
+ * Berkas dikirim apa adanya, bukan sebagai Base64 di dalam JSON. Untuk foto
+ * 5 MB, Base64 membengkak menjadi sekitar 6,7 MB teks yang harus ditampung di
+ * memori peramban sekaligus. Dengan multipart, yang dikirim adalah byte asli
+ * dan server yang menormalkannya lewat sharp.
+ *
+ * Mengembalikan tautan media yang siap dipakai sebagai `imageUrl`.
+ */
+export async function apiUnggahFotoKendaraan(id: string, berkas: File): Promise<string> {
+  const token = await getSessionToken();
+
+  const form = new FormData();
+  form.append("file", berkas, berkas.name);
+
+  const res = await fetch(`${API_BASE_URL}/admin/vehicles/${id}/photo`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: form,
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPLOAD_VEHICLE_PHOTO_FAILED",
+      json?.error?.message || "Gagal mengunggah foto armada.",
+      json?.error?.details,
+    );
+  }
+
+  /* Balasan endpoint foto berbentuk { vehicle, media: { id, url, ... } }. */
+  return json?.data?.media?.url ?? "";
+}
 export async function apiUpdateVehicle(id: string, payload: Partial<VehiclePayload>) {
   const token = await getSessionToken();
 
@@ -1240,7 +1260,10 @@ export async function apiCreateKnowledgeCategory(label: string) {
   return json.data as KnowledgeCategoryApi;
 }
 
-export async function apiUpdateKnowledgeCategory(id: string, payload: { label?: string; orderIndex?: number }) {
+export async function apiUpdateKnowledgeCategory(
+  id: string,
+  payload: { label?: string; orderIndex?: number },
+) {
   const token = await getSessionToken();
 
   const res = await fetch(`${API_BASE_URL}/admin/ai/categories/${encodeURIComponent(id)}`, {
@@ -1313,14 +1336,17 @@ export async function apiAdminVerifyBookingDocuments(
 ): Promise<BookingDocument> {
   const token = await getSessionToken();
 
-  const res = await fetch(`${API_BASE_URL}/admin/bookings/${encodeURIComponent(bookingId)}/documents/verify`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  const res = await fetch(
+    `${API_BASE_URL}/admin/bookings/${encodeURIComponent(bookingId)}/documents/verify`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ action, rejectionReason }),
     },
-    body: JSON.stringify({ action, rejectionReason }),
-  });
+  );
 
   const json = await res.json().catch(() => null);
   if (!res.ok) {
@@ -1332,7 +1358,6 @@ export async function apiAdminVerifyBookingDocuments(
   }
   return json.data as BookingDocument;
 }
-
 
 // ==========================================
 // Template Dokumen Resmi (Form Kesanggupan)
