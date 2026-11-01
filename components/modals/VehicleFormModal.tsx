@@ -51,9 +51,20 @@ export function VehicleFormModal({
     const p = vehicle?.pricePerDay ?? 400000;
     return p > 0 ? p.toLocaleString("id-ID") : "400.000";
   });
+  const [seatsInput, setSeatsInput] = useState<string>(String(vehicle?.seats ?? 7));
   const [status, setStatus] = useState<VehicleStatus>(vehicle?.status ?? "tersedia");
+  /*
+   * Moda rental yang tercentang.
+   *
+   * Dulu memakai `vehicle?.allowedModes ?? [keduanya]`, yang hanya berlaku saat
+   * nilainya null. Kalau array-nya kosong (seperti data dari backend yang tidak
+   * menyimpan moda), hasilnya kosong dan validasi menolak simpan. Sekarang array
+   * kosong diperlakukan sama dengan tidak ada data.
+   */
   const [modes, setModes] = useState<BookingMode[]>(
-    vehicle?.allowedModes ?? ["lepas_kunci", "dengan_supir"],
+    vehicle?.allowedModes && vehicle.allowedModes.length > 0
+      ? vehicle.allowedModes
+      : ["lepas_kunci", "dengan_supir"],
   );
   const [photoName, setPhotoName] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -152,6 +163,10 @@ export function VehicleFormModal({
     if (numericPrice <= 0) {
       nextErrors.pricePerDay = "Tarif sewa harian harus bernilai lebih dari 0.";
     }
+    const numericSeats = Number(seatsInput.replace(/[^\d]/g, "")) || 0;
+    if (numericSeats <= 0) {
+      nextErrors.seats = "Jumlah kursi harus lebih dari 0.";
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -163,7 +178,7 @@ export function VehicleFormModal({
         status,
         category,
         transmission,
-        seats: vehicle?.seats ?? 7,
+        seats: numericSeats,
         pricePerDay: numericPrice,
         imageUrl: photoDataUrl,
         /* Karakteristik penggunaan sengaja tidak lagi diisi dari form. Field-nya
@@ -296,6 +311,31 @@ export function VehicleFormModal({
               ))}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label htmlFor={`${fieldId}-seats`} className="block text-meta font-medium text-ink">
+            Kapasitas kursi
+          </label>
+          <input
+            id={`${fieldId}-seats`}
+            type="text"
+            inputMode="numeric"
+            value={seatsInput}
+            onChange={(e) => setSeatsInput(e.target.value.replace(/[^\d]/g, ""))}
+            aria-invalid={Boolean(errors.seats)}
+            aria-describedby={errors.seats ? `${fieldId}-seats-error` : undefined}
+            className="tabular-nums mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
+            placeholder="Contoh: 7"
+          />
+          <p className="mt-1 text-micro text-ink-soft">
+            Jumlah penumpang yang tampil di katalog. Pickup biasanya 3, MPV dan SUV 7.
+          </p>
+          {errors.seats ? (
+            <p id={`${fieldId}-seats-error`} className="mt-1 text-meta text-danger">
+              {errors.seats}
+            </p>
+          ) : null}
         </div>
 
         <div>
