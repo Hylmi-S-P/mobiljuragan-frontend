@@ -69,79 +69,92 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
           {/* Tampilan kartu saja. Pilihan tabel dilepas karena isi yang sama sudah
               terbaca di kartu, dan dua mode tampilan hanya menambah tombol tanpa
               menambah informasi. */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {vehicles.map((vehicle) => {
-              const statusTampil = statusKatalog(vehicle, rentedVehicleIds.includes(vehicle.id));
+          {vehicles.length === 0 ? (
+            /* Keadaan kosong. Sebelumnya bagian ini selalu terisi karena ada
+               sembilan unit contoh di kode, jadi tidak pernah kelihatan bahwa
+               katalog bisa kosong. */
+            <div className="rounded-lg border border-dashed border-rule bg-canvas px-6 py-10 text-center">
+              <p className="text-body font-semibold text-ink">Belum ada armada terdaftar</p>
+              <p className="mx-auto mt-1 max-w-md text-meta text-ink-soft">
+                Katalog masih kosong. Tekan <span className="font-semibold">Tambah Armada</span>{" "}
+                untuk mendaftarkan unit pertama beserta foto, tarif, dan statusnya.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {vehicles.map((vehicle) => {
+                const statusTampil = statusKatalog(vehicle, rentedVehicleIds.includes(vehicle.id));
 
-              return (
-                <div
-                  key={vehicle.id}
-                  className="flex flex-col justify-between rounded-lg border border-rule bg-surface p-4 shadow-card hover:border-navy/40 transition-all"
-                >
-                  <div>
-                    {/* Header Kartu: Nama & Status */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="text-body font-bold text-ink">{vehicle.name}</h3>
-                        <PlateBadge plate={vehicle.plate} className="mt-1" />
-                      </div>
-                      <StatusChip tone={VEHICLE_STATUS[statusTampil].tone}>
-                        {VEHICLE_STATUS[statusTampil].label}
-                      </StatusChip>
-                    </div>
-
-                    {/* Foto unit kalau ada. Kalau belum diunggah, bagian ini tidak
-                        dirender sama sekali supaya kartu tidak menyisakan ruang kosong. */}
-                    {vehicle.imageUrl ? (
-                      <div className="mt-3 overflow-hidden rounded-sm border border-rule">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={tautanMedia(vehicle.imageUrl) ?? ""}
-                          alt={`Foto ${vehicle.name}`}
-                          className="h-32 w-full object-cover"
-                        />
-                      </div>
-                    ) : null}
-
-                    {/* Spesifikasi Ringkas */}
-                    <div className="mt-3.5 space-y-1.5 border-t border-rule/60 pt-3 text-meta text-ink-soft">
-                      <div className="flex justify-between">
-                        <span>Kategori &amp; Rute</span>
-                        <span className="font-medium text-ink">
-                          {vehicle.category ?? "Standar"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Transmisi</span>
-                        <span className="font-medium text-ink">
-                          {vehicle.transmission ?? "Manual"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer Kartu: Tarif & Tombol Kelola */}
-                  <div className="mt-4 flex items-center justify-between border-t border-rule/60 pt-3">
+                return (
+                  <div
+                    key={vehicle.id}
+                    className="flex flex-col justify-between rounded-lg border border-rule bg-surface p-4 shadow-card hover:border-navy/40 transition-all"
+                  >
                     <div>
-                      <span className="block text-micro text-ink-soft">Tarif Dasar / Hari</span>
-                      <span className="text-body font-bold tabular-nums text-ink">
-                        {formatRupiah(vehicle.pricePerDay ?? 400000)}
-                      </span>
+                      {/* Header Kartu: Nama & Status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="text-body font-bold text-ink">{vehicle.name}</h3>
+                          <PlateBadge plate={vehicle.plate} className="mt-1" />
+                        </div>
+                        <StatusChip tone={VEHICLE_STATUS[statusTampil].tone}>
+                          {VEHICLE_STATUS[statusTampil].label}
+                        </StatusChip>
+                      </div>
+
+                      {/* Foto unit kalau ada. Kalau belum diunggah, bagian ini tidak
+                        dirender sama sekali supaya kartu tidak menyisakan ruang kosong. */}
+                      {vehicle.imageUrl ? (
+                        <div className="mt-3 overflow-hidden rounded-sm border border-rule">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={tautanMedia(vehicle.imageUrl) ?? ""}
+                            alt={`Foto ${vehicle.name}`}
+                            className="h-32 w-full object-cover"
+                          />
+                        </div>
+                      ) : null}
+
+                      {/* Spesifikasi Ringkas */}
+                      <div className="mt-3.5 space-y-1.5 border-t border-rule/60 pt-3 text-meta text-ink-soft">
+                        <div className="flex justify-between">
+                          <span>Kategori &amp; Rute</span>
+                          <span className="font-medium text-ink">
+                            {vehicle.category ?? "Standar"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Transmisi</span>
+                          <span className="font-medium text-ink">
+                            {vehicle.transmission ?? "Manual"}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setFormTarget({ vehicleId: vehicle.id })}
-                      className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
-                    >
-                      <IconPencil className="h-3.5 w-3.5" />
-                      Kelola
-                    </button>
+                    {/* Footer Kartu: Tarif & Tombol Kelola */}
+                    <div className="mt-4 flex items-center justify-between border-t border-rule/60 pt-3">
+                      <div>
+                        <span className="block text-micro text-ink-soft">Tarif Dasar / Hari</span>
+                        <span className="text-body font-bold tabular-nums text-ink">
+                          {formatRupiah(vehicle.pricePerDay ?? 400000)}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setFormTarget({ vehicleId: vehicle.id })}
+                        className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
+                      >
+                        <IconPencil className="h-3.5 w-3.5" />
+                        Kelola
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </Panel>
       </div>
 
