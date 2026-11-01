@@ -200,6 +200,7 @@ export type AdminPaymentItem = {
   id: string;
   bookingId: string;
   baseAmount: number;
+  /** USANG: server selalu mengirim 0. Jangan dipakai menghitung nominal. */
   uniqueCode: number;
   totalAmount: number;
   method: PaymentMethod;

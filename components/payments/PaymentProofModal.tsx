@@ -266,7 +266,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
           <div className="flex flex-col gap-3.5">
             <div className="rounded-md border border-rule bg-canvas p-3.5">
               <p className="text-micro font-semibold uppercase text-ink-soft">
-                Rincian Tagihan & Kode Unik
+                Rincian Tagihan
               </p>
 
               <div className="mt-2 space-y-1.5">
@@ -276,21 +276,16 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
                     {formatRupiah(payment.baseAmount)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-meta">
-                  <span className="text-ink-soft">Kode Unik 3-Digit:</span>
-                  <span className="rounded-xs bg-gold/30 px-1.5 py-0.5 font-semibold text-ink tabular-nums">
-                    +{formatRupiah(payment.uniqueCode)}
-                  </span>
-                </div>
                 <div className="border-t border-rule pt-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-body font-semibold text-ink">Total Nominal Pas:</span>
+                    <span className="text-body font-semibold text-ink">Nominal Tagihan:</span>
                     <span className="text-subtitle font-bold text-navy tabular-nums">
                       {formatRupiah(payment.totalAmount)}
                     </span>
                   </div>
                   <p className="mt-1 text-micro text-ink-soft">
-                    *Nominal mutasi rekening harus sama persis hingga 3 digit terakhir.
+                    *Tanpa kode unik. Cocokkan nominal dan bukti transfer, lalu setujui
+                    secara manual.
                   </p>
                 </div>
               </div>

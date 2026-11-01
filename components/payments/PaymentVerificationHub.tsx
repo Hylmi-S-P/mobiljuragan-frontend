@@ -346,14 +346,14 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                     </TableCell>
 
 
-                    {/* Nominal Pas (Dengan Kode Unik) */}
+                    {/* Nominal tagihan (tanpa kode unik) */}
                     <TableCell className="text-right">
                       <div className="flex flex-col items-end">
                         <span className="font-semibold text-ink tabular-nums">
                           {formatRupiah(payment.totalAmount)}
                         </span>
                         <span className="text-micro text-ink-soft tabular-nums">
-                          {PAYMENT_METHOD_LABEL[payment.method] || payment.method} · Tarif: {formatRupiah(payment.baseAmount)} (+{payment.uniqueCode})
+                          {PAYMENT_METHOD_LABEL[payment.method] || payment.method} · Tarif: {formatRupiah(payment.baseAmount)}
                         </span>
                       </div>
                     </TableCell>
