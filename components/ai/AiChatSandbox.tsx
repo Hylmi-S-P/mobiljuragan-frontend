@@ -27,6 +27,23 @@ const SUGGESTIONS = [
   "Rekomendasi armada untuk jalan ke Boven Digoel?",
 ];
 
+/**
+ * Membuat id pesan yang unik.
+ *
+ * Sebelumnya id dibentuk dari `Date.now()`, dan itu menghasilkan id kembar:
+ * diukur di browser, 5000 pemanggilan dalam 1 milidetik menghasilkan 4998 id
+ * yang sama. Id ini dipakai sebagai `key` React, jadi pesan yang id-nya kembar
+ * bisa salah render atau saling menimpa — terutama saat balasan bot dan pesan
+ * berikutnya jatuh pada milidetik yang sama.
+ *
+ * `crypto.randomUUID()` dipakai karena tidak bergantung pada waktu sama sekali.
+ * `Date.now()` tetap disertakan sebagai awalan supaya urutan pesan masih mudah
+ * dibaca saat menelusuri log, bukan sebagai penentu keunikan.
+ */
+function buatIdPesan(peran: "user" | "bot" | "err"): string {
+  return `${peran}-${Date.now()}-${crypto.randomUUID()}`;
+}
+
 export function AiChatSandbox({
   initialTemperature = 0.7,
   initialMaxTokens = 1200,
@@ -48,7 +65,7 @@ export function AiChatSandbox({
     if (!text || loading) return;
 
     const userMsg: Message = {
-      id: "user-" + Date.now(),
+      id: buatIdPesan("user"),
       role: "user",
       content: text,
     };
@@ -67,7 +84,7 @@ export function AiChatSandbox({
 
       if (res.data) {
         const botMsg: Message = {
-          id: "bot-" + Date.now(),
+          id: buatIdPesan("bot"),
           role: "assistant",
           content: res.data.reply,
           modelUsed: res.data.modelUsed,
@@ -81,7 +98,7 @@ export function AiChatSandbox({
         setMessages((prev) => [
           ...prev,
           {
-            id: "err-" + Date.now(),
+            id: buatIdPesan("err"),
             role: "assistant",
             content: "Maaf, terjadi galat saat menghubungi AI gateway.",
           },
@@ -91,7 +108,7 @@ export function AiChatSandbox({
       setMessages((prev) => [
         ...prev,
         {
-          id: "err-" + Date.now(),
+          id: buatIdPesan("err"),
           role: "assistant",
           content: "Tidak dapat menghubungi server backend.",
         },

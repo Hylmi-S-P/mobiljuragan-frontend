@@ -12,6 +12,7 @@ import {
   IconTrendingUp,
 } from "@/components/ui/icons";
 import { BOOKING_STATUS, VEHICLE_STATUS } from "@/lib/labels";
+import { LABEL_TOTAL_PEMASUKAN } from "@/lib/uiText";
 import { formatDateRange, formatDateSingle, formatRupiah } from "@/lib/format";
 import {
   getAllVehicles,
@@ -104,9 +105,9 @@ export default async function OverviewPage() {
           iconBgColor="bg-navy/10 text-navy"
         />
 
-        {/* 4. Total Omzet Terverifikasi dengan Sparkline Tren Omzet */}
+        {/* 4. Total Pemasukan dengan Sparkline Tren Omzet */}
         <ComparisonMetricCard
-          title="Total Omzet Terverifikasi"
+          title={LABEL_TOTAL_PEMASUKAN}
           value={
             finance?.summary.totalRevenue
               ? formatRupiah(finance.summary.totalRevenue)

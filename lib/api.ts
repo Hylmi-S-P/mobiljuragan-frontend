@@ -351,6 +351,82 @@ export async function apiAssignDriverToBooking(id: string, driverId: string, not
   return json.data;
 }
 
+/**
+ * Menambah penyesuaian biaya manual (surcharge) pada satu pesanan.
+ *
+ * `nominal` dikirim sebagai angka POSITIF; arahnya ditentukan `arah`. Backend
+ * menyimpannya apa adanya ditambah `arah`, jadi laporan bisa menjumlahkan
+ * penambahan dan pengurangan secara terpisah.
+ */
+export async function apiCreateBookingLineItem(
+  bookingId: string,
+  data: {
+    kategori: string;
+    deskripsi: string;
+    nominal: number;
+    arah: "TAMBAH" | "KURANG";
+    justifikasi: string;
+  },
+) {
+  const token = await getSessionToken();
+
+  const res = await fetch(
+    `${API_BASE_URL}/admin/bookings/${encodeURIComponent(bookingId)}/line-items`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CREATE_LINE_ITEM_FAILED",
+      json?.error?.message || "Gagal menyimpan penyesuaian biaya.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+/**
+ * Membatalkan penyesuaian biaya.
+ *
+ * Barisnya tidak dihapus di backend, hanya ditandai dibatalkan, supaya
+ * penyesuaian yang sudah pernah menagih pelanggan tetap bisa ditelusuri.
+ */
+export async function apiCancelBookingLineItem(bookingId: string, lineItemId: string) {
+  const token = await getSessionToken();
+
+  const res = await fetch(
+    `${API_BASE_URL}/admin/bookings/${encodeURIComponent(bookingId)}/line-items/${encodeURIComponent(lineItemId)}`,
+    {
+      method: "DELETE",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    },
+  );
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CANCEL_LINE_ITEM_FAILED",
+      json?.error?.message || "Gagal membatalkan penyesuaian biaya.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
 // Menambah pengemudi resmi baru ke roster supir.
 
 /** Golongan SIM yang diterima backend. Harus sama dengan enum DriverLicenseType. */
@@ -721,30 +797,6 @@ export async function apiDeleteKnowledgeDocument(id: string) {
   return json.data;
 }
 
-export async function apiFetchGatewayModels(gatewayUrl?: string, apiKey?: string) {
-  const token = await getSessionToken();
-
-  const params = new URLSearchParams();
-  if (gatewayUrl) params.append("gatewayUrl", gatewayUrl);
-  if (apiKey) params.append("apiKey", apiKey);
-
-  const res = await fetch(`${API_BASE_URL}/admin/ai/models?${params.toString()}`, {
-    method: "GET",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new ApiError(
-      res.status,
-      json?.error?.code || "FETCH_MODELS_FAILED",
-      json?.error?.message || "Gagal mengambil daftar model.",
-    );
-  }
-  return json.data as { models: string[]; source: string; count: number };
-}
 
 export type AiGatewayLog = {
   id: string;
@@ -1356,7 +1408,18 @@ export async function apiAdminVerifyBookingDocuments(
       json?.error?.message || "Gagal memverifikasi dokumen pemesanan.",
     );
   }
-  return json.data as BookingDocument;
+
+  /*
+   * Backend membalas `{ bookingId, bookingCode, document }`, bukan dokumennya
+   * langsung. Sebelumnya yang dikembalikan adalah objek pembungkus itu, sehingga
+   * pemanggil membaca `.status` dari objek yang tidak punya `status` dan kartu
+   * verifikasi tidak pernah tahu status terbarunya.
+   *
+   * Bentuk `document` diambil apa adanya; kalau karena satu dan lain hal tidak
+   * ada, yang dikembalikan objek aslinya supaya pemanggil tidak menerima
+   * `undefined` tanpa penjelasan.
+   */
+  return (json?.data?.document ?? json?.data) as BookingDocument;
 }
 
 // ==========================================

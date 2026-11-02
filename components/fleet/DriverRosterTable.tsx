@@ -88,10 +88,6 @@ export function DriverRosterTable({ initialDrivers }: Props) {
        "tidak diubah" dari "dikosongkan". */
     formData.set("licenseType", saved.licenseType ?? "");
 
-    /* Foto SIM juga selalu dikirim. String kosong berarti fotonya dihapus —
-       itu yang membuat tombol Hapus foto berpengaruh. */
-    formData.set("licensePhotoUrl", saved.licensePhotoUrl ?? "");
-
     formData.set("route", saved.route);
 
     startTransition(async () => {
@@ -99,23 +95,35 @@ export function DriverRosterTable({ initialDrivers }: Props) {
         ? await updateDriverAction(null, formData)
         : await createDriverAction(null, formData);
 
-      if (res.success) {
-        setDrivers((current) => {
-          const exists = current.some((driver) => driver.id === saved.id);
-          return exists
-            ? current.map((driver) => (driver.id === saved.id ? saved : driver))
-            : [...current, saved];
-        });
-        show(
-          res.message ??
-            (isEdit
-              ? `Data ${saved.label} berhasil diperbarui di database.`
-              : `${saved.label} berhasil didaftarkan ke roster operasional.`),
-        );
-        setFormTarget(null);
-      } else {
+      if (!res.success) {
         show(res.message ?? "Gagal menyimpan data supir ke database.", "error");
+        return;
       }
+
+      /*
+       * ID sementara `d-<timestamp>` diganti ID asli dari backend.
+       *
+       * Modal memberi id sementara untuk supir baru karena saat itu backend belum
+       * memberi id apa pun. Sebelumnya id itu dibiarkan di state, sehingga
+       * menyunting supir yang baru ditambah mengirim PATCH ke id sementara dan
+       * ditolak 404.
+       */
+      const idTersimpan: string = res.data?.id ?? saved.id;
+
+      setDrivers((current) =>
+        current.some((driver) => driver.id === saved.id)
+          ? current.map((driver) =>
+              driver.id === saved.id ? { ...saved, id: idTersimpan } : driver,
+            )
+          : [...current, { ...saved, id: idTersimpan }],
+      );
+      show(
+        res.message ??
+          (isEdit
+            ? `Data ${saved.label} berhasil diperbarui di database.`
+            : `${saved.label} berhasil didaftarkan ke roster operasional.`),
+      );
+      setFormTarget(null);
     });
   }
 
