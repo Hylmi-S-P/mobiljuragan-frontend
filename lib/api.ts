@@ -835,30 +835,6 @@ export async function apiDeleteKnowledgeDocument(id: string) {
   return json.data;
 }
 
-export async function apiFetchGatewayModels(gatewayUrl?: string, apiKey?: string) {
-  const token = await getSessionToken();
-
-  const params = new URLSearchParams();
-  if (gatewayUrl) params.append("gatewayUrl", gatewayUrl);
-  if (apiKey) params.append("apiKey", apiKey);
-
-  const res = await fetch(`${API_BASE_URL}/admin/ai/models?${params.toString()}`, {
-    method: "GET",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new ApiError(
-      res.status,
-      json?.error?.code || "FETCH_MODELS_FAILED",
-      json?.error?.message || "Gagal mengambil daftar model.",
-    );
-  }
-  return json.data as { models: string[]; source: string; count: number };
-}
 
 export type AiGatewayLog = {
   id: string;

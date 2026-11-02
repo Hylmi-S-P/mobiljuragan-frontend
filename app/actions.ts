@@ -26,7 +26,6 @@ import {
   apiCreateKnowledgeCategory,
   apiUpdateKnowledgeCategory,
   apiDeleteKnowledgeCategory,
-  apiFetchGatewayModels,
   apiTestAiChat,
   apiGetAiGatewayLogs,
   apiClearAiGatewayLogs,
@@ -763,25 +762,6 @@ export async function deleteKnowledgeDocumentAction(id: string): Promise<ActionS
   return { success: true, message: "Dokumen pengetahuan berhasil dihapus." };
 }
 
-/**
- * Server Action untuk menarik live models dari gateway.
- */
-export async function fetchGatewayModelsAction(gatewayUrl?: string, apiKey?: string) {
-  try {
-    const data = await apiFetchGatewayModels(gatewayUrl, apiKey);
-    return { success: true, data };
-  } catch (err) {
-    return {
-      success: false,
-      message: err instanceof Error ? err.message : "Gagal mengambil daftar model.",
-      data: {
-        models: ["gemini-2.5-flash", "claude-3-5-sonnet", "deepseek-chat", "gpt-4o-mini"],
-        source: "fallback",
-        count: 4,
-      },
-    };
-  }
-}
 
 /**
  * Server Action untuk mengambil live log aktivitas 9Router Gateway.
