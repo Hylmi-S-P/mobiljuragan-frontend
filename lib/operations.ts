@@ -1,6 +1,7 @@
 import "server-only";
 import { getSessionToken, ApiError } from "./api";
 import { normalisasiTransmisi } from "./labels";
+import type { JumlahBulanOmzet } from "./financePeriod";
 import type {
   AdminPaymentItem,
   AdminPaymentsResponse,
@@ -586,6 +587,10 @@ export async function getTicketDetail(
 /* Laporan Keuangan */
 
 export type FinanceSummary = {
+  /* Rentang bulan yang dipakai backend untuk grafik omzet. Dikirim balik supaya
+     tampilan tidak perlu menebak nilai default mana yang sedang berlaku. */
+  bulan?: number;
+
   summary: {
     totalRevenue: number;
     completedBookingsCount: number;
@@ -632,8 +637,20 @@ export type FinanceSummary = {
   }>;
 };
 
-export async function getFinanceSummary(range: string = "all"): Promise<FinanceSummary> {
-  return await apiGet<FinanceSummary>(`/admin/finance/summary?range=${encodeURIComponent(range)}`);
+/* Daftar rentang bulan tinggal di `lib/financePeriod.ts` supaya komponen klien
+   bisa memakainya tanpa ikut menyeret modul server ini ke bundel browser.
+ *
+ * Default di sini 12 bulan, bukan 1 seperti default API. Alasannya: pemanggil
+ * yang tidak menyebut rentang (dashboard) memakai `monthlyTrends` sebagai tren
+ * setahun untuk sparkline. Kalau ikut default API yang 1 bulan, sparkline-nya
+ * menciut jadi satu titik. Halaman laporan keuangan menyebut rentangnya sendiri,
+ * jadi tidak ada pemanggil yang bergantung pada nilai bawaan ini secara diam. */
+export async function getFinanceSummary(
+  range: string = "all",
+  bulan: JumlahBulanOmzet = 12,
+): Promise<FinanceSummary> {
+  const params = new URLSearchParams({ range, bulan: String(bulan) });
+  return await apiGet<FinanceSummary>(`/admin/finance/summary?${params.toString()}`);
 }
 
 /* Konfigurasi AI & Knowledge Base */

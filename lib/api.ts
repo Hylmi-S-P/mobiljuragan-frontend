@@ -503,44 +503,6 @@ export async function apiUpdateDriver(
 }
 
 /**
- * Mengunggah foto SIM supir sebagai berkas (multipart).
- *
- * Dipakai sebagai jalur utama, menggantikan pengiriman Base64 di dalam JSON.
- * Dengan multipart, berkas tidak membengkak sepertiga dan tidak ikut melewati
- * batas badan permintaan Server Action, sehingga foto kamera HP yang wajar
- * (beberapa megabita) bisa tersimpan. Backend menerima field `file`, menampung
- * berkas di memori lewat multer, lalu menormalkannya dengan sharp.
- */
-export async function apiUnggahFotoSim(
-  id: string,
-  berkas: File,
-): Promise<{ licensePhotoUrl: string }> {
-  const token = await getSessionToken();
-
-  const form = new FormData();
-  form.append("file", berkas, berkas.name);
-
-  const res = await fetch(`${API_BASE_URL}/admin/drivers/${encodeURIComponent(id)}/photo`, {
-    method: "POST",
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: form,
-  });
-
-  const json = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    throw new ApiError(
-      res.status,
-      json?.error?.code || "UPLOAD_DRIVER_PHOTO_FAILED",
-      json?.error?.message || "Gagal mengunggah foto SIM supir.",
-      json?.error?.details,
-    );
-  }
-
-  return { licensePhotoUrl: json?.data?.licensePhotoUrl ?? "" };
-}
-
-/**
  * Mengambil tiket yang belum dipegang siapa pun.
  *
  * Ditolak 409 kalau ternyata sudah dipegang admin lain — bukan ditimpa diam-diam,

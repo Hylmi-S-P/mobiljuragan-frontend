@@ -2,15 +2,18 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   assignDriverAction,
   cancelBookingLineItemAction,
   updateBookingStatusAction,
 } from "@/app/actions";
 import { ManualSurchargeModal } from "@/components/modals/ManualSurchargeModal";
+import { PaymentProofModal } from "@/components/payments/PaymentProofModal";
 import { Button } from "@/components/ui/Button";
 import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import { useToast } from "@/components/ui/useToast";
+import { apiClient } from "@/lib/axios";
 import { BookingTimelineBar } from "./BookingTimelineBar";
 import { CustomerInfoCard } from "./CustomerInfoCard";
 import { VehicleUnitCard } from "./VehicleUnitCard";
@@ -19,6 +22,7 @@ import { LepasKunciDocumentReviewCard } from "./LepasKunciDocumentReviewCard";
 import { BillingLineItemsCard } from "./BillingLineItemsCard";
 import { BookingActionSidebar } from "./BookingActionSidebar";
 import type {
+  AdminPaymentItem,
   Booking,
   BookingDocument,
   BookingStatus,
@@ -97,6 +101,34 @@ export function BookingDetailClient({
   );
 
   const [isPending, startTransition] = useTransition();
+
+  /* Panel verifikasi pembayaran dibuka dari sidebar, tanpa pindah halaman.
+     Sebelumnya admin harus kembali ke tab "Verifikasi Pembayaran", mencari
+     pesanan yang sama, lalu kembali lagi ke detail untuk menyerahkan armada.
+
+     `PaymentProofModal` sudah menangani unggahan bukti, dua tahap konfirmasi,
+     dan pemanggilan PATCH /admin/payments/:id/verify. Yang perlu disiapkan di
+     sini hanya bentuk `AdminPaymentItem` yang dimintanya: diambil dari endpoint
+     pembayaran per pesanan, bukan dari daftar antrean. */
+  const [verifikasiTerbuka, setVerifikasiTerbuka] = useState(false);
+
+  const { data: dataPembayaran } = useQuery({
+    queryKey: ["paymentByBooking", booking.id],
+    queryFn: async (): Promise<AdminPaymentItem | null> => {
+      try {
+        const res = await apiClient.get(`/payments/booking/${encodeURIComponent(booking.id)}`);
+        return (res.data?.data || res.data) as AdminPaymentItem;
+      } catch {
+        /* Pesanan yang belum punya tagihan memang menjawab 404. Itu bukan
+           kegagalan yang perlu ditampilkan; modalnya hanya tidak bisa dibuka. */
+        return null;
+      }
+    },
+    /* Sengaja tidak ditahan sampai modal dibuka: sidebar perlu tahu lebih dulu
+       apakah pesanan ini punya tagihan, karena tombolnya hanya berguna kalau
+       ada yang bisa diverifikasi. */
+    staleTime: 0,
+  });
 
   const canDecide = rawStatus === "CREATED" || rawStatus === "PENDING_CONFIRMATION";
   const isCompleted = rawStatus === "COMPLETED";
@@ -272,6 +304,24 @@ export function BookingDetailClient({
     });
   }
 
+  /** Dipanggil setelah `PaymentProofModal` berhasil menyetujui atau menolak bukti. */
+  function handlePembayaranDiverifikasi(
+    _updated: AdminPaymentItem,
+    action: "APPROVE" | "REJECT",
+  ) {
+    setVerifikasiTerbuka(false);
+    /* `router.refresh()` mengambil ulang `booking.payment` dari server, sehingga
+       sidebar langsung berubah dari "Verifikasi Pembayaran" menjadi tombol
+       "Serahkan Armada" tanpa perlu memuat ulang halaman. */
+    router.refresh();
+    show(
+      action === "APPROVE"
+        ? "Pembayaran terverifikasi lunas. Armada sekarang bisa diserahkan."
+        : "Bukti pembayaran ditolak. Armada tetap belum bisa diserahkan.",
+      action === "APPROVE" ? "success" : "error",
+    );
+  }
+
   return (
     <>
       {node}
@@ -338,6 +388,9 @@ export function BookingDetailClient({
             onOpenRejectModal={() => setShowRejectModal(true)}
             onTransitionStatus={handleTransitionStatus}
             whatsappUrl={whatsappUrl}
+            onOpenPaymentVerification={
+              dataPembayaran ? () => setVerifikasiTerbuka(true) : undefined
+            }
           />
         </div>
       </div>
@@ -401,6 +454,17 @@ export function BookingDetailClient({
           </div>
         </div>
       ) : null}
+
+      {/* Verifikasi Pembayaran dari halaman detail. `key` mengikat state modal
+          ke pembayaran yang sedang dibuka, sama seperti di antrean pembayaran,
+          supaya centang "Terbayar" tidak terbawa ke pesanan lain. */}
+      <PaymentProofModal
+        key={dataPembayaran?.id ?? "tanpa-pembayaran"}
+        open={verifikasiTerbuka && Boolean(dataPembayaran)}
+        payment={dataPembayaran ?? null}
+        onClose={() => setVerifikasiTerbuka(false)}
+        onSuccess={handlePembayaranDiverifikasi}
+      />
 
       {/* Modal Surcharge Manual */}
       {surchargeOpen ? (

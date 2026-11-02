@@ -22,6 +22,9 @@ type Props = {
   onOpenRejectModal: () => void;
   onTransitionStatus: (status: CanonicalBookingStatus, note?: string) => void;
   whatsappUrl: string | null;
+  /* Membuka modal verifikasi pembayaran dari halaman ini. Tanpa ini admin harus
+     kembali ke tab "Verifikasi Pembayaran" lalu mencari pesanan yang sama. */
+  onOpenPaymentVerification?: () => void;
 };
 
 export function BookingActionSidebar({
@@ -39,6 +42,7 @@ export function BookingActionSidebar({
   onOpenRejectModal,
   onTransitionStatus,
   whatsappUrl,
+  onOpenPaymentVerification,
 }: Props) {
   const canDecide = rawStatus === "CREATED" || rawStatus === "PENDING_CONFIRMATION";
   const isConfirmed = rawStatus === "CONFIRMED";
@@ -54,6 +58,13 @@ export function BookingActionSidebar({
   // Validasi tombol setujui
   const isDriverBlocked = isDriverService && !hasAssignedDriver;
   const isDocumentBlocked = !isDriverService && (document?.status ?? booking.document?.status) !== "VERIFIED";
+
+  /* Penyewa tidak boleh membawa unit keluar sebelum uangnya masuk.
+     Pemeriksaan yang sama juga dipasang di backend (`updateStatusWithHistoryAndAudit`),
+     jadi tombol yang lolos di sini tetap akan ditolak server; status ini hanya
+     supaya alasannya terlihat sebelum admin menekan apa pun. */
+  const statusPembayaran = booking.payment?.status ?? null;
+  const isPaymentBlocked = statusPembayaran !== "PAID";
 
   return (
     <aside className="rounded-lg border border-rule bg-surface p-4 shadow-card space-y-4">
@@ -157,20 +168,47 @@ export function BookingActionSidebar({
       {isConfirmed ? (
         <div className="rounded-md border border-rule bg-canvas p-3 space-y-2.5">
           <p className="text-meta font-semibold text-ink">Serah Terima Armada</p>
-          <p className="text-micro text-ink-soft">
-            Pembayaran telah diverifikasi atau COD disepakati. Serahkan kunci dan unit armada untuk memulai masa sewa berjalan.
-          </p>
-          <Button
-            variant="confirm"
-            size="md"
-            className="w-full"
-            disabled={isPending}
-            onClick={() =>
-              onTransitionStatus("IN_PROGRESS", "Unit diserahkan kepada penyewa. Sewa berjalan.")
-            }
-          >
-            {isPending ? "Memproses..." : "Serahkan Armada (Mulai Sewa Berjalan)"}
-          </Button>
+
+          {isPaymentBlocked ? (
+            <>
+              <p className="text-micro text-amber-800 bg-amber-50 border border-amber-300 rounded-sm p-2">
+                Pembayaran pesanan ini belum diverifikasi
+                {statusPembayaran === "PENDING_VERIFICATION"
+                  ? " (bukti transfer sudah diunggah, menunggu pemeriksaan admin)"
+                  : statusPembayaran === "FAILED"
+                    ? " (bukti transfer ditolak)"
+                    : ""}
+                . Verifikasi dulu sebelum menyerahkan armada.
+              </p>
+              <Button
+                variant="outline"
+                size="md"
+                className="w-full border-navy font-semibold text-navy hover:bg-navy/5"
+                disabled={isPending || !onOpenPaymentVerification}
+                onClick={onOpenPaymentVerification}
+              >
+                Verifikasi Pembayaran
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-micro text-ink-soft">
+                Pembayaran sudah terverifikasi lunas. Serahkan kunci dan unit armada untuk
+                memulai masa sewa berjalan.
+              </p>
+              <Button
+                variant="confirm"
+                size="md"
+                className="w-full"
+                disabled={isPending}
+                onClick={() =>
+                  onTransitionStatus("IN_PROGRESS", "Unit diserahkan kepada penyewa. Sewa berjalan.")
+                }
+              >
+                {isPending ? "Memproses..." : "Serahkan Armada (Mulai Sewa Berjalan)"}
+              </Button>
+            </>
+          )}
         </div>
       ) : null}
 

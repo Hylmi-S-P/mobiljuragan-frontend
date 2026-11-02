@@ -1,30 +1,20 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { IconTrash } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { DRIVER_LICENSE, DRIVER_ROUTE } from "@/lib/labels";
-import { tautanMedia } from "@/lib/media";
 import type { Driver, DriverLicenseType, DriverRoute } from "@/lib/types";
 
 type Props = {
   driver?: Driver;
   onClose: () => void;
-  /**
-   * `berkasFoto` berisi berkas yang dipilih admin, bukan Base64.
-   *
-   * Berkasnya diteruskan apa adanya supaya pemanggil bisa mengirimnya lewat
-   * multipart. Sebelumnya modal ini mengubah foto menjadi data URL Base64, dan
-   * seluruh teksnya ikut melewati batas badan permintaan Server Action — foto
-   * kamera HP yang wajar (beberapa megabita) selalu tertolak walaupun layar
-   * menjanjikan 5 MB.
-   *
-   * `hapusFoto` menandai admin menekan "Hapus foto", supaya foto lama benar-benar
-   * dihapus di server dan tidak muncul lagi setelah disimpan.
-   */
-  onSave: (driver: Driver, berkasFoto?: File | null, hapusFoto?: boolean) => void;
+  /* Foto SIM tidak lagi diunggah dari form ini. Kelayakan mengemudi diperiksa
+     saat wawancara dengan melihat dokumen fisik, jadi yang disimpan hanya
+     golongan SIM-nya. */
+  onSave: (driver: Driver) => void;
   /** Dipanggil saat admin meminta penghapusan dari dalam modal kelola. */
   onRequestDelete?: (driverId: string) => void;
 };
@@ -38,65 +28,7 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
   const [licenseType, setLicenseType] = useState<DriverLicenseType | "">(
     driver?.licenseType ?? "",
   );
-  const [licensePhotoUrl, setLicensePhotoUrl] = useState<string | null>(
-    driver?.licensePhotoUrl ?? null,
-  );
-  const [berkasFoto, setBerkasFoto] = useState<File | null>(null);
-  const [hapusFoto, setHapusFoto] = useState(false);
-  const [fotoError, setFotoError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  /**
-   * Menerima foto SIM yang dipilih admin.
-   *
-   * Ukuran dan jenis diperiksa SEBELUM apa pun dikirim, supaya berkas 40 MB
-   * tidak sempat melewati jaringan hanya untuk ditolak. Batasnya 5 MB, sama
-   * dengan yang dipakai backend sebelum pipeline gambar mengecilkannya.
-   *
-   * Pratinjau memakai object URL, bukan Base64. Object URL menunjuk ke berkas
-   * yang sama tanpa menyalin isinya menjadi teks, jadi memilih foto 5 MB tidak
-   * membebani memori sebanyak Base64. URL-nya dilepas kembali lewat cleanup di
-   * bawah supaya tidak menumpuk.
-   */
-  function handlePilihFoto(file: File | null) {
-    setFotoError(null);
-
-    if (!file) {
-      setBerkasFoto(null);
-      return;
-    }
-
-    const BATAS = 5 * 1024 * 1024;
-    if (!["image/png", "image/jpeg"].includes(file.type)) {
-      setFotoError("Foto SIM harus berformat PNG atau JPG.");
-      return;
-    }
-    if (file.size > BATAS) {
-      setFotoError(
-        `Foto SIM ${(file.size / 1024 / 1024).toFixed(1)} MB, melebihi batas 5 MB.`,
-      );
-      return;
-    }
-
-    setBerkasFoto(file);
-    setHapusFoto(false);
-    setLicensePhotoUrl(URL.createObjectURL(file));
-  }
-
-  /** Melepas object URL pratinjau saat modal ditutup atau foto diganti. */
-  useEffect(() => {
-    return () => {
-      if (licensePhotoUrl?.startsWith("blob:")) URL.revokeObjectURL(licensePhotoUrl);
-    };
-  }, [licensePhotoUrl]);
-
-  function handleHapusFoto() {
-    if (licensePhotoUrl?.startsWith("blob:")) URL.revokeObjectURL(licensePhotoUrl);
-    setBerkasFoto(null);
-    setLicensePhotoUrl(null);
-    setFotoError(null);
-    setHapusFoto(true);
-  }
 
   function handleSave() {
     const nextErrors: Record<string, string> = {};
@@ -114,25 +46,21 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    onSave(
-      {
-        id: driver?.id ?? `d-${Date.now()}`,
-        label: label.trim(),
-        route,
-        contact: trimmedContact.length > 0 ? trimmedContact : null,
-        /* Nomor SIM tidak lagi diisi dari form. Kelayakan mengemudi diperiksa saat
-           wawancara dengan melihat dokumen fisik, jadi kolom ini hanya dipertahankan
-           agar data lama tidak terhapus saat profil supir disunting. */
-        licenseNumber: driver?.licenseNumber ?? null,
-        licenseType: licenseType === "" ? null : licenseType,
-        /* Base64 tidak lagi dibuat di sini. Nilai ini hanya dipakai untuk pratinjau;
-           berkas aslinya dikirim terpisah lewat `berkasFoto`. */
-        licensePhotoUrl: hapusFoto ? null : (driver?.licensePhotoUrl ?? null),
-        status: driver?.status ?? "siaga",
-      },
-      berkasFoto,
-      hapusFoto,
-    );
+    onSave({
+      id: driver?.id ?? `d-${Date.now()}`,
+      label: label.trim(),
+      route,
+      contact: trimmedContact.length > 0 ? trimmedContact : null,
+      /* Nomor SIM tidak lagi diisi dari form. Kelayakan mengemudi diperiksa saat
+         wawancara dengan melihat dokumen fisik, jadi kolom ini hanya dipertahankan
+         agar data lama tidak terhapus saat profil supir disunting. */
+      licenseNumber: driver?.licenseNumber ?? null,
+      licenseType: licenseType === "" ? null : licenseType,
+      /* Foto SIM tidak lagi diubah dari form. Nilai lama dibiarkan apa adanya
+         supaya data yang sudah ada tidak terhapus saat profil disunting. */
+      licensePhotoUrl: driver?.licensePhotoUrl ?? null,
+      status: driver?.status ?? "siaga",
+    });
   }
 
   return (
@@ -264,43 +192,6 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
             Nomor SIM tidak diisi di sini: kelayakan mengemudi diperiksa saat wawancara
             dengan melihat dokumen fisik.
           </p>
-        </div>
-
-        <div>
-          <label htmlFor={`${fieldId}-license-photo`} className="block text-meta font-medium text-ink">
-            Foto SIM
-          </label>
-          <input
-            id={`${fieldId}-license-photo`}
-            type="file"
-            accept="image/png,image/jpeg"
-            onChange={(event) => handlePilihFoto(event.target.files?.[0] ?? null)}
-            className="mt-1 block w-full text-meta text-ink file:mr-3 file:rounded-sm file:border file:border-rule-strong file:bg-canvas file:px-3 file:py-1.5 file:text-meta file:font-medium file:text-ink hover:file:border-navy"
-          />
-          <p className="mt-1 text-micro text-ink-soft">
-            PNG atau JPG, maksimal 5 MB.
-          </p>
-          {fotoError ? (
-            <p className="mt-1 text-meta text-danger">{fotoError}</p>
-          ) : null}
-          {licensePhotoUrl ? (
-            <div className="mt-2 flex items-start gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element -- pratinjau lokal (object URL)
-                  atau tautan media bertanda tangan, bukan aset statis yang bisa dioptimalkan Next. */}
-              <img
-                src={tautanMedia(licensePhotoUrl) ?? ""}
-                alt="Pratinjau foto SIM supir"
-                className="h-20 w-32 rounded-sm border border-rule object-cover"
-              />
-              <button
-                type="button"
-                onClick={handleHapusFoto}
-                className="rounded-sm border border-rule px-2.5 py-1 text-meta font-medium text-danger hover:bg-danger/10"
-              >
-                Hapus foto
-              </button>
-            </div>
-          ) : null}
         </div>
 
         {driver ? null : (

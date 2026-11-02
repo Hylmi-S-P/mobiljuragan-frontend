@@ -31,7 +31,6 @@ import {
   apiClearAiGatewayLogs,
   apiParseKnowledgeFile,
   apiUnggahFotoKendaraan,
-  apiUnggahFotoSim,
   apiCreateBookingLineItem,
   apiCancelBookingLineItem,
   apiUnggahTemplate,
@@ -50,7 +49,14 @@ import {
   apiGetBookingDocuments,
   apiAdminVerifyBookingDocuments,
 } from "@/lib/api";
-import { getTicketDetail, getTicketMessages, type TicketMessageView } from "@/lib/operations";
+import {
+  getTicketDetail,
+  getTicketMessages,
+  getFinanceSummary,
+  type FinanceSummary,
+  type TicketMessageView,
+} from "@/lib/operations";
+import { PILIHAN_BULAN_OMZET, type JumlahBulanOmzet } from "@/lib/financePeriod";
 import type {
   AdminRole,
   CanonicalBookingStatus,
@@ -487,11 +493,6 @@ export async function createDriverAction(
     licenseTypeRaw === "SIM_C"
       ? licenseTypeRaw
       : null;
-  /* Foto SIM tidak lagi dikirim di sini. Base64-nya dulu ikut menumpang di JSON,
-     sehingga foto kamera HP selalu menembus batas badan permintaan. Sekarang foto
-     diunggah terpisah lewat `unggahFotoSimAction` setelah supirnya tersimpan,
-     karena endpoint unggah membutuhkan ID supir yang sudah ada. */
-  const licensePhotoUrl = (formData.get("licensePhotoUrl") as string)?.trim() || null;
   const rawRoute = (formData.get("route") as string)?.trim() || "dalam_kota";
   const routeScope = rawRoute === "luar_kota" ? "LUAR_KOTA" : "DALAM_KOTA";
 
@@ -509,7 +510,6 @@ export async function createDriverAction(
       phoneNumber,
       licenseNumber,
       licenseType,
-      licensePhotoUrl,
       routeScope,
     });
   } catch (err) {
@@ -551,9 +551,11 @@ export async function updateDriverAction(
     licenseTypeRaw === "SIM_C"
       ? licenseTypeRaw
       : null;
-  /* String kosong berarti foto dihapus. Foto baru diunggah terpisah lewat
-     `unggahFotoSimAction`, bukan dikirim sebagai Base64 di sini. */
-  const licensePhotoUrl = (formData.get("licensePhotoUrl") as string)?.trim() || null;
+  /* Foto SIM tidak lagi diunggah dari form supir: kelayakan mengemudi diperiksa
+     saat wawancara dengan melihat dokumen fisik. Kolomnya sengaja TIDAK dikirim
+     sama sekali, bukan dikirim sebagai null. Backend membedakan "tidak diubah"
+     (undefined) dari "dikosongkan" (null); kalau null yang dikirim, foto lama
+     pada data yang sudah ada akan terhapus setiap kali profil disunting. */
   const rawRoute = (formData.get("route") as string)?.trim() || "dalam_kota";
   const routeScope = rawRoute === "luar_kota" ? "LUAR_KOTA" : "DALAM_KOTA";
 
@@ -566,7 +568,6 @@ export async function updateDriverAction(
       phoneNumber,
       licenseNumber,
       licenseType,
-      licensePhotoUrl,
       routeScope,
     });
   } catch (err) {
@@ -1300,43 +1301,6 @@ export async function unggahFotoKendaraanAction(
 }
 
 /**
- * Mengunggah foto SIM supir sebagai berkas.
- *
- * Dipisah dari `createDriverAction` / `updateDriverAction` dengan alasan yang
- * sama seperti foto armada: endpoint unggah membutuhkan ID supir yang sudah ada,
- * dan untuk supir baru ID itu baru didapat setelah penyimpanan pertama berhasil.
- *
- * Jalur ini menggantikan pengiriman Base64. Base64 membengkak sepertiga dan
- * seluruh teksnya ikut melewati batas badan permintaan Server Action, sehingga
- * foto kamera HP yang wajar selalu tertolak walaupun layar menjanjikan 5 MB.
- */
-export async function unggahFotoSimAction(
-  id: string,
-  formData: FormData,
-): Promise<ActionState & { licensePhotoUrl?: string }> {
-  const berkas = formData.get("berkas");
-
-  if (!(berkas instanceof File) || berkas.size === 0) {
-    return { success: false, message: "Pilih berkas foto SIM terlebih dahulu." };
-  }
-
-  try {
-    const hasil = await apiUnggahFotoSim(id, berkas);
-    revalidatePath("/fleet/drivers");
-    return {
-      success: true,
-      message: "Foto SIM tersimpan.",
-      licensePhotoUrl: hasil.licensePhotoUrl,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Gagal mengunggah foto SIM supir.",
-    };
-  }
-}
-
-/**
  * Menyimpan penyesuaian biaya manual (surcharge) pada satu pesanan.
  *
  * Sebelumnya modal hanya memanggil `onApply` yang menambah baris ke state React.
@@ -1416,5 +1380,31 @@ export async function cancelBookingLineItemAction(
       return { success: false, message: err.message };
     }
     return { success: false, message: "Gagal membatalkan penyesuaian biaya." };
+  }
+}
+
+/**
+ * Memuat ulang ringkasan keuangan dengan rentang bulan tertentu.
+ *
+ * Dipakai pemilih periode di tab Omzet. Datanya diambil di server, bukan di
+ * browser, karena token sesi hanya ada di cookie HttpOnly dan endpoint finance
+ * dijaga peran ADMIN/STAFF. Hanya grafik yang ikut berubah — kartu ringkasan
+ * dan tabel armada tetap memakai rentang `range` seperti sebelumnya.
+ */
+export async function muatUlangGrafikKeuanganAction(
+  bulan: JumlahBulanOmzet,
+): Promise<ActionState & { data?: FinanceSummary }> {
+  if (!PILIHAN_BULAN_OMZET.includes(bulan)) {
+    return { success: false, message: "Rentang bulan tidak dikenali." };
+  }
+
+  try {
+    const data = await getFinanceSummary("all", bulan);
+    return { success: true, data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Grafik keuangan gagal dimuat ulang." };
   }
 }

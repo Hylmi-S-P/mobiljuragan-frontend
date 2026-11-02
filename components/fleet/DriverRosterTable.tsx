@@ -6,7 +6,6 @@ import {
   createDriverAction,
   deleteDriverAction,
   toggleDriverReadinessAction,
-  unggahFotoSimAction,
   updateDriverAction,
 } from "@/app/actions";
 import { DeleteDriverModal } from "@/components/modals/DeleteDriverModal";
@@ -74,7 +73,7 @@ export function DriverRosterTable({ initialDrivers }: Props) {
     });
   }
 
-  function handleSaveDriver(saved: Driver, berkasFoto?: File | null, hapusFoto?: boolean) {
+  function handleSaveDriver(saved: Driver) {
     const isEdit = Boolean(formTarget?.driverId);
     const formData = new FormData();
     if (isEdit && formTarget?.driverId) {
@@ -88,12 +87,6 @@ export function DriverRosterTable({ initialDrivers }: Props) {
        "Belum ditetapkan". Kalau dilewati, server tidak bisa membedakan
        "tidak diubah" dari "dikosongkan". */
     formData.set("licenseType", saved.licenseType ?? "");
-
-    /* Foto TIDAK ikut di sini. String kosong berarti foto lama dihapus; foto baru
-       diunggah terpisah lewat `unggahFotoSimAction` setelah supirnya tersimpan,
-       karena Base64 di dalam form membuat foto kamera HP menembus batas badan
-       permintaan dan selalu gagal. */
-    formData.set("licensePhotoUrl", hapusFoto ? "" : (saved.licensePhotoUrl ?? ""));
 
     formData.set("route", saved.route);
 
@@ -116,47 +109,6 @@ export function DriverRosterTable({ initialDrivers }: Props) {
        * ditolak 404.
        */
       const idTersimpan: string = res.data?.id ?? saved.id;
-
-      /* Foto diunggah setelah supirnya tersimpan, karena endpoint unggah
-         membutuhkan ID supir yang sudah ada. Kalau unggahan gagal, data supirnya
-         tetap tersimpan dan admin bisa mencoba lagi tanpa mengulang pengisian. */
-      if (berkasFoto) {
-        const formFoto = new FormData();
-        formFoto.append("berkas", berkasFoto);
-
-        const unggah = await unggahFotoSimAction(idTersimpan, formFoto);
-        if (!unggah.success) {
-          setDrivers((current) =>
-            current.some((driver) => driver.id === saved.id)
-              ? current.map((driver) =>
-                  driver.id === saved.id ? { ...saved, id: idTersimpan } : driver,
-                )
-              : [...current, { ...saved, id: idTersimpan }],
-          );
-          show(
-            `Data supir tersimpan, tetapi foto SIM gagal diunggah: ${unggah.message ?? "tidak diketahui"}`,
-            "error",
-          );
-          setFormTarget(null);
-          return;
-        }
-
-        show(res.message ?? "Data supir tersimpan.", "success");
-        setDrivers((current) =>
-          current.some((driver) => driver.id === saved.id)
-            ? current.map((driver) =>
-                driver.id === saved.id
-                  ? { ...saved, id: idTersimpan, licensePhotoUrl: unggah.licensePhotoUrl ?? null }
-                  : driver,
-              )
-            : [
-                ...current,
-                { ...saved, id: idTersimpan, licensePhotoUrl: unggah.licensePhotoUrl ?? null },
-              ],
-        );
-        setFormTarget(null);
-        return;
-      }
 
       setDrivers((current) =>
         current.some((driver) => driver.id === saved.id)

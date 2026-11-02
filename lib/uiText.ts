@@ -12,6 +12,12 @@
 export const TARIFF_PENDING_NOTE = "Tarif dikonfirmasi tim MobilJuragan";
 export const PRIVATE_FIELD_PLACEHOLDER = "[data belum diverifikasi]";
 
+/* Nama kartu omzet. Dulu tertulis "Total Omzet Bersih" di laporan keuangan dan
+   "Total Omzet Terverifikasi" di dashboard, padahal angkanya berasal dari satu
+   sumber yang sama (pembayaran lunas). Satu konstanta dipakai di kedua tempat
+   supaya tidak menyimpang lagi. */
+export const LABEL_TOTAL_PEMASUKAN = "Total Pemasukan";
+
 /* Kategori biaya tambahan yang dikenali tim operasional saat menyesuaikan tarif.
    Daftarnya tetap karena merupakan pilihan tetap, bukan data pelanggan. */
 export const SURCHARGE_CATEGORIES = [
