@@ -38,6 +38,18 @@ export type LineItem = {
   /* null berarti nominal belum dikonfirmasi, dirender sebagai placeholder bertanda. */
   amount: string | null;
   note?: string | null;
+  /**
+   * Asal baris ini.
+   *
+   * Sebelumnya komponen menebak dari awalan id (`li-`): baris baru dianggap
+   * penyesuaian manual, baris lain dianggap sewa. Tebakan itu langsung salah
+   * begitu penyesuaian disimpan ke database, karena id-nya menjadi uuid, dan
+   * nominal penyesuaian lalu ditampilkan sebesar tarif sewa.
+   *
+   * `sewa` = baris tarif dasar, `supir` = rincian jasa supir,
+   * `penyesuaian` = surcharge manual yang bisa dibatalkan.
+   */
+  kind?: "sewa" | "supir" | "penyesuaian";
 };
 
 export type Booking = {

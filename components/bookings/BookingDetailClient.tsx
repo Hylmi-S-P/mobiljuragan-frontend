@@ -1,10 +1,19 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { assignDriverAction, updateBookingStatusAction } from "@/app/actions";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import {
+  assignDriverAction,
+  cancelBookingLineItemAction,
+  updateBookingStatusAction,
+} from "@/app/actions";
 import { ManualSurchargeModal } from "@/components/modals/ManualSurchargeModal";
+import { PaymentProofModal } from "@/components/payments/PaymentProofModal";
 import { Button } from "@/components/ui/Button";
 import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
+import { useToast } from "@/components/ui/useToast";
+import { apiClient } from "@/lib/axios";
 import { BookingTimelineBar } from "./BookingTimelineBar";
 import { CustomerInfoCard } from "./CustomerInfoCard";
 import { VehicleUnitCard } from "./VehicleUnitCard";
@@ -13,6 +22,7 @@ import { LepasKunciDocumentReviewCard } from "./LepasKunciDocumentReviewCard";
 import { BillingLineItemsCard } from "./BillingLineItemsCard";
 import { BookingActionSidebar } from "./BookingActionSidebar";
 import type {
+  AdminPaymentItem,
   Booking,
   BookingDocument,
   BookingStatus,
@@ -34,20 +44,30 @@ export function BookingDetailClient({
   availableDrivers = [],
 }: Props) {
   const isDriverService = booking.mode === "dengan_supir";
+  const router = useRouter();
 
-  const [items, setItems] = useState<LineItem[]>(() => {
-    // Inisialisasi daftar item tagihan, sertakan breakdown supir jika Dengan Supir
+  /*
+   * Daftar item tagihan hanya DIBACA, tidak lagi diubah di sisi klien.
+   *
+   * Sebelumnya penyesuaian biaya ditambahkan ke state ini, sehingga barisnya
+   * hilang begitu halaman dimuat ulang dan tampilan bisa berbeda dari isi
+   * database. Sekarang sumbernya data server: setelah menyimpan atau
+   * membatalkan, tampilan disegarkan lewat `router.refresh()`.
+   */
+  const items = useMemo<LineItem[]>(() => {
+    // Sertakan breakdown supir jika pesanan memakai supir
     const initialItems = [...booking.lineItems];
-    if (isDriverService && !initialItems.some((i) => i.id.includes("supir-breakdown"))) {
+    if (isDriverService && !initialItems.some((i) => i.kind === "supir")) {
       initialItems.push({
         id: `${booking.id}-supir-breakdown`,
+        kind: "supir",
         label: "Layanan jasa supir resmi Merauke",
         amount: null,
         note: `Termasuk operasional supir (${booking.dayCount} hari)`,
       });
     }
     return initialItems;
-  });
+  }, [booking.lineItems, booking.id, booking.dayCount, isDriverService]);
 
   const [status, setStatus] = useState<BookingStatus>(booking.status);
   const [rawStatus, setRawStatus] = useState<CanonicalBookingStatus>(
@@ -75,15 +95,40 @@ export function BookingDetailClient({
   const [surchargeOpen, setSurchargeOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [notice, setNotice] = useState<{
-    text: string;
-    isError?: boolean;
-  } | null>(null);
+  const { show, node } = useToast();
   const [whatsappUrl, setWhatsappUrl] = useState<string | null>(
     booking.whatsappIntent?.url ?? null,
   );
 
   const [isPending, startTransition] = useTransition();
+
+  /* Panel verifikasi pembayaran dibuka dari sidebar, tanpa pindah halaman.
+     Sebelumnya admin harus kembali ke tab "Verifikasi Pembayaran", mencari
+     pesanan yang sama, lalu kembali lagi ke detail untuk menyerahkan armada.
+
+     `PaymentProofModal` sudah menangani unggahan bukti, dua tahap konfirmasi,
+     dan pemanggilan PATCH /admin/payments/:id/verify. Yang perlu disiapkan di
+     sini hanya bentuk `AdminPaymentItem` yang dimintanya: diambil dari endpoint
+     pembayaran per pesanan, bukan dari daftar antrean. */
+  const [verifikasiTerbuka, setVerifikasiTerbuka] = useState(false);
+
+  const { data: dataPembayaran } = useQuery({
+    queryKey: ["paymentByBooking", booking.id],
+    queryFn: async (): Promise<AdminPaymentItem | null> => {
+      try {
+        const res = await apiClient.get(`/payments/booking/${encodeURIComponent(booking.id)}`);
+        return (res.data?.data || res.data) as AdminPaymentItem;
+      } catch {
+        /* Pesanan yang belum punya tagihan memang menjawab 404. Itu bukan
+           kegagalan yang perlu ditampilkan; modalnya hanya tidak bisa dibuka. */
+        return null;
+      }
+    },
+    /* Sengaja tidak ditahan sampai modal dibuka: sidebar perlu tahu lebih dulu
+       apakah pesanan ini punya tagihan, karena tombolnya hanya berguna kalau
+       ada yang bisa diverifikasi. */
+    staleTime: 0,
+  });
 
   const canDecide = rawStatus === "CREATED" || rawStatus === "PENDING_CONFIRMATION";
   const isCompleted = rawStatus === "COMPLETED";
@@ -114,7 +159,9 @@ export function BookingDetailClient({
   const totalCleanBill = useMemo(() => {
     let sum = quotedAmount;
     for (const item of items) {
-      if (item.id.startsWith("li-") && item.amount) {
+      /* Hanya penyesuaian manual yang mengubah total; baris sewa sudah terwakili
+         oleh `quotedAmount` di atas. Ditentukan dari `kind`, bukan awalan id. */
+      if (item.kind === "penyesuaian" && item.amount) {
         const raw = item.amount;
         const isNegative = raw.startsWith("-");
         const val = Number(raw.replace(/[^\d]/g, "")) || 0;
@@ -128,13 +175,28 @@ export function BookingDetailClient({
     return Math.max(0, sum);
   }, [quotedAmount, items]);
 
-  function applySurcharge(item: LineItem) {
-    setItems((current) => [...current, item]);
+  /**
+   * Dipanggil setelah penyesuaian biaya tersimpan di backend.
+   *
+   * Barisnya TIDAK lagi ditambahkan ke state lokal. Yang benar-benar tersimpan
+   * adalah baris di database, jadi tampilan disegarkan dari server lewat
+   * `router.refresh()`. Menambah baris secara lokal di sini justru berisiko
+   * menampilkan data yang tidak sama dengan isi database.
+   */
+  function handleSurchargeSaved() {
     setSurchargeOpen(false);
+    router.refresh();
+    show("Penyesuaian biaya tersimpan pada riwayat pesanan.");
   }
 
-  function handleRemoveSurcharge(itemId: string) {
-    setItems((current) => current.filter((i) => i.id !== itemId));
+  async function handleRemoveSurcharge(itemId: string) {
+    const res = await cancelBookingLineItemAction(booking.id, itemId);
+    if (res.success) {
+      router.refresh();
+      show(res.message ?? "Penyesuaian biaya dibatalkan.");
+    } else {
+      show(res.message ?? "Gagal membatalkan penyesuaian biaya.", "error");
+    }
   }
 
   // Penugasan supir otomatis saat dropdown diubah
@@ -147,17 +209,12 @@ export function BookingDetailClient({
       if (result.success) {
         const chosen = availableDrivers.find((d) => d.id === driverId);
         setAssignedDriverName(chosen ? chosen.label : "Supir Ditugaskan");
-        setNotice({
-          text: result.message ?? `Supir resmi ${chosen?.label ?? ""} berhasil ditugaskan.`,
-        });
+        show(result.message ?? `Supir resmi ${chosen?.label ?? ""} berhasil ditugaskan.`);
         if ((result as { data?: { whatsappIntent?: { url: string } } }).data?.whatsappIntent?.url) {
           setWhatsappUrl((result as { data?: { whatsappIntent?: { url: string } } }).data!.whatsappIntent!.url);
         }
       } else {
-        setNotice({
-          text: result.message ?? "Gagal menugaskan supir resmi.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal menugaskan supir resmi.", "error");
       }
     });
   }
@@ -169,18 +226,12 @@ export function BookingDetailClient({
   // Konfirmasi tarif dan persetujuan pesanan
   function handleConfirmBooking() {
     if (isDriverService && !hasAssignedDriver) {
-      setNotice({
-        text: "Wajib memilih dan menugaskan supir resmi terlebih dahulu sebelum mengonfirmasi pesanan.",
-        isError: true,
-      });
+      show("Wajib memilih dan menugaskan supir resmi terlebih dahulu sebelum mengonfirmasi pesanan.", "error");
       return;
     }
 
     if (totalCleanBill <= 0) {
-      setNotice({
-        text: "Nominal tarif sewa resmi harus lebih besar dari Rp 0.",
-        isError: true,
-      });
+      show("Nominal tarif sewa resmi harus lebih besar dari Rp 0.", "error");
       return;
     }
 
@@ -195,17 +246,12 @@ export function BookingDetailClient({
       if (result.success) {
         setRawStatus("CONFIRMED");
         setStatus("tarif_terkonfirmasi");
-        setNotice({
-          text: result.message ?? "Tarif sewa resmi berhasil dikonfirmasi.",
-        });
+        show(result.message ?? "Tarif sewa resmi berhasil dikonfirmasi.");
         if ((result as { data?: { whatsappIntent?: { url: string } } }).data?.whatsappIntent?.url) {
           setWhatsappUrl((result as { data?: { whatsappIntent?: { url: string } } }).data!.whatsappIntent!.url);
         }
       } else {
-        setNotice({
-          text: result.message ?? "Gagal mengonfirmasi pesanan.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal mengonfirmasi pesanan.", "error");
       }
     });
   }
@@ -213,10 +259,7 @@ export function BookingDetailClient({
   // Penolakan pesanan sewa
   function handleRejectBooking() {
     if (!rejectReason.trim()) {
-      setNotice({
-        text: "Tuliskan alasan penolakan rasional terlebih dahulu.",
-        isError: true,
-      });
+      show("Tuliskan alasan penolakan rasional terlebih dahulu.", "error");
       return;
     }
 
@@ -232,14 +275,9 @@ export function BookingDetailClient({
         setRawStatus("REJECTED");
         setStatus("ditolak");
         setShowRejectModal(false);
-        setNotice({
-          text: result.message ?? "Permintaan sewa berhasil ditolak.",
-        });
+        show(result.message ?? "Permintaan sewa berhasil ditolak.");
       } else {
-        setNotice({
-          text: result.message ?? "Gagal menolak pesanan.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal menolak pesanan.", "error");
       }
     });
   }
@@ -256,23 +294,38 @@ export function BookingDetailClient({
 
       if (result.success) {
         setRawStatus(nextStatus);
-        setNotice({
-          text: result.message ?? `Status berhasil diperbarui ke ${nextStatus}.`,
-        });
+        show(result.message ?? `Status berhasil diperbarui ke ${nextStatus}.`);
         if ((result as { data?: { whatsappIntent?: { url: string } } }).data?.whatsappIntent?.url) {
           setWhatsappUrl((result as { data?: { whatsappIntent?: { url: string } } }).data!.whatsappIntent!.url);
         }
       } else {
-        setNotice({
-          text: result.message ?? "Gagal memperbarui status sewa.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal memperbarui status sewa.", "error");
       }
     });
   }
 
+  /** Dipanggil setelah `PaymentProofModal` berhasil menyetujui atau menolak bukti. */
+  function handlePembayaranDiverifikasi(
+    _updated: AdminPaymentItem,
+    action: "APPROVE" | "REJECT",
+  ) {
+    setVerifikasiTerbuka(false);
+    /* `router.refresh()` mengambil ulang `booking.payment` dari server, sehingga
+       sidebar langsung berubah dari "Verifikasi Pembayaran" menjadi tombol
+       "Serahkan Armada" tanpa perlu memuat ulang halaman. */
+    router.refresh();
+    show(
+      action === "APPROVE"
+        ? "Pembayaran terverifikasi lunas. Armada sekarang bisa diserahkan."
+        : "Bukti pembayaran ditolak. Armada tetap belum bisa diserahkan.",
+      action === "APPROVE" ? "success" : "error",
+    );
+  }
+
   return (
     <>
+      {node}
+
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
         {/* Kolom Kiri: Main Content Stack (~65% / col-span-8) */}
         <div className="min-w-0 space-y-4 lg:col-span-8">
@@ -331,11 +384,13 @@ export function BookingDetailClient({
             hasAssignedDriver={hasAssignedDriver}
             isDriverService={isDriverService}
             isPending={isPending}
-            notice={notice}
             onConfirmBooking={handleConfirmBooking}
             onOpenRejectModal={() => setShowRejectModal(true)}
             onTransitionStatus={handleTransitionStatus}
             whatsappUrl={whatsappUrl}
+            onOpenPaymentVerification={
+              dataPembayaran ? () => setVerifikasiTerbuka(true) : undefined
+            }
           />
         </div>
       </div>
@@ -400,11 +455,22 @@ export function BookingDetailClient({
         </div>
       ) : null}
 
+      {/* Verifikasi Pembayaran dari halaman detail. `key` mengikat state modal
+          ke pembayaran yang sedang dibuka, sama seperti di antrean pembayaran,
+          supaya centang "Terbayar" tidak terbawa ke pesanan lain. */}
+      <PaymentProofModal
+        key={dataPembayaran?.id ?? "tanpa-pembayaran"}
+        open={verifikasiTerbuka && Boolean(dataPembayaran)}
+        payment={dataPembayaran ?? null}
+        onClose={() => setVerifikasiTerbuka(false)}
+        onSuccess={handlePembayaranDiverifikasi}
+      />
+
       {/* Modal Surcharge Manual */}
       {surchargeOpen ? (
         <ManualSurchargeModal
           onClose={() => setSurchargeOpen(false)}
-          onApply={applySurcharge}
+          onSaved={handleSurchargeSaved}
           booking={booking}
         />
       ) : null}

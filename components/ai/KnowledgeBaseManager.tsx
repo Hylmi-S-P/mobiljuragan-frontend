@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/ui/useToast";
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -41,21 +42,6 @@ type Props = {
   initialCategories?: KnowledgeCategory[];
 };
 
-/* Warna hanya untuk membedakan kategori di layar. Ditentukan dari urutan, supaya
-   kategori baru otomatis mendapat warna tanpa perlu didaftarkan. */
-const TONE_KATEGORI = [
-  "bg-blue-50 text-blue-700 border-blue-200",
-  "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "bg-amber-50 text-amber-700 border-amber-200",
-  "bg-rose-50 text-rose-700 border-rose-200",
-  "bg-violet-50 text-violet-700 border-violet-200",
-  "bg-canvas text-ink-soft border-rule",
-];
-
-function toneKategori(index: number): string {
-  return TONE_KATEGORI[index % TONE_KATEGORI.length];
-}
-
 export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] }: Props) {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>(initialDocuments);
   const [categories, setCategories] = useState<KnowledgeCategory[]>(initialCategories);
@@ -88,7 +74,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
   const [extractError, setExtractError] = useState<string | null>(null);
   const [uploadSuccessNote, setUploadSuccessNote] = useState<string | null>(null);
 
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const { show, dismiss, node } = useToast();
 
   const openCreateModal = () => {
     setEditingDoc(null);
@@ -100,7 +86,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
     setExtractError(null);
     setUploadSuccessNote(null);
     setModalMode("create");
-    setMessage(null);
+    dismiss();
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,7 +135,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
     setFormContent(doc.content);
     setFormActive(doc.isActive);
     setModalMode("edit");
-    setMessage(null);
+    dismiss();
   };
 
   const handleToggleStatus = (doc: KnowledgeDocument) => {
@@ -178,7 +164,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
 
         const res = await createKnowledgeDocumentAction(null, formData);
         if (res.success) {
-          setMessage({ type: "success", text: "Dokumen pengetahuan berhasil ditambahkan." });
+          show("Dokumen pengetahuan berhasil ditambahkan.", "success");
           setModalMode(null);
           // Tambahkan optimis
           setDocuments((prev) => [
@@ -194,7 +180,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
             ...prev,
           ]);
         } else {
-          setMessage({ type: "error", text: res.message || "Gagal menyimpan dokumen." });
+          show(res.message || "Gagal menyimpan dokumen.", "error");
         }
       } else if (modalMode === "edit" && editingDoc) {
         const res = await updateKnowledgeDocumentAction(editingDoc.id, {
@@ -204,7 +190,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
           isActive: formActive,
         });
         if (res.success) {
-          setMessage({ type: "success", text: "Dokumen pengetahuan berhasil diperbarui." });
+          show("Dokumen pengetahuan berhasil diperbarui.", "success");
           setModalMode(null);
           setDocuments((prev) =>
             prev.map((d) =>
@@ -220,7 +206,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
             ),
           );
         } else {
-          setMessage({ type: "error", text: res.message || "Gagal memperbarui dokumen." });
+          show(res.message || "Gagal memperbarui dokumen.", "error");
         }
       }
     });
@@ -233,9 +219,9 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
       if (res.success) {
         setDocuments((prev) => prev.filter((d) => d.id !== deletingDocId));
         setDeletingDocId(null);
-        setMessage({ type: "success", text: "Dokumen pengetahuan berhasil dihapus." });
+        show("Dokumen pengetahuan berhasil dihapus.", "success");
       } else {
-        setMessage({ type: "error", text: res.message || "Gagal menghapus dokumen." });
+        show(res.message || "Gagal menghapus dokumen.", "error");
       }
     });
   };
@@ -337,17 +323,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
         </button>
       </div>
 
-      {message ? (
-        <div
-          className={`mt-4 rounded-md p-3 text-meta ${
-            message.type === "success"
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border border-red-200 bg-red-50 text-red-800"
-          }`}
-        >
-          {message.text}
-        </div>
-      ) : null}
+      {node}
 
       <div className="mt-4">
         {documents.length === 0 ? (
@@ -376,7 +352,6 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
                 indeksKategori >= 0
                   ? categories[indeksKategori].label
                   : doc.category || "Tanpa kategori",
-              tone: toneKategori(indeksKategori >= 0 ? indeksKategori : categories.length),
             };
                 /* ---- Pengelola kategori ---- */
   return (
@@ -385,9 +360,10 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
                       <span className="block text-body font-semibold text-ink">{doc.title}</span>
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-block rounded-badge px-2.5 py-0.5 text-micro font-semibold border ${cat.tone}`}
-                      >
+                      {/* Kategori ditampilkan netral tanpa warna. Warna per
+                          kategori membuat daftar terlihat ramai padahal
+                          labelnya sudah cukup membedakan. */}
+                      <span className="inline-block rounded-badge border border-rule bg-canvas px-2.5 py-0.5 text-micro font-semibold text-ink-soft">
                         {cat.label}
                       </span>
                     </TableCell>

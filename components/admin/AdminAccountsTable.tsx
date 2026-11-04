@@ -7,7 +7,7 @@ import { AdminManageModal } from "@/components/admin/AdminManageModal";
 import { AdminCardGrid } from "@/components/admin/AdminCardGrid";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
-import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/components/ui/useToast";
 import { IconPlus, IconSearch } from "@/components/ui/icons";
 import { ADMIN_ROLE } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
@@ -46,14 +46,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [managingAccount, setManagingAccount] = useState<AdminAccount | null>(null);
 
-  // Toast feedback
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastTone, setToastTone] = useState<"success" | "error" | "info">("success");
-
-  const showToast = (msg: string, tone: "success" | "error" | "info" = "success") => {
-    setToastMessage(msg);
-    setToastTone(tone);
-  };
+  const { show, node } = useToast();
 
   // Mengambil akun yang sedang login untuk proteksi sesi aktif
   const { data: currentUser } = useQuery<{ id: string; fullName: string; role: string }>({
@@ -101,10 +94,10 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
       if (context?.previous) {
         queryClient.setQueryData(["adminAccounts"], context.previous);
       }
-      showToast("Gagal memperbarui status akun staf.", "error");
+      show("Gagal memperbarui status akun staf.", "error");
     },
     onSuccess: (_data, variables) => {
-      showToast(
+      show(
         `Status akun berhasil diubah menjadi ${variables.active ? "Aktif" : "Nonaktif"}.`,
         "success",
       );
@@ -133,7 +126,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
   const handleToggleStatus = (account: AdminAccount) => {
     // Proteksi akun login sendiri
     if (currentUser && currentUser.id === account.id) {
-      showToast("Anda tidak dapat menonaktifkan akun sendiri yang sedang aktif login.", "error");
+      show("Anda tidak dapat menonaktifkan akun sendiri yang sedang aktif login.", "error");
       return;
     }
 
@@ -153,14 +146,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
 
   return (
     <>
-      {toastMessage ? (
-        <Toast
-          message={toastMessage}
-          tone={toastTone}
-          durationMs={3000}
-          onClose={() => setToastMessage(null)}
-        />
-      ) : null}
+      {node}
 
       <div className="flex flex-col gap-4">
         <Panel
@@ -213,7 +199,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
           onClose={() => setIsCreateOpen(false)}
           onSave={(saved) => {
             queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
-            showToast(`Akun ${saved.username} berhasil didaftarkan.`, "success");
+            show(`Akun ${saved.username} berhasil didaftarkan.`, "success");
             setIsCreateOpen(false);
           }}
         />
@@ -227,11 +213,11 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
           onClose={() => setManagingAccount(null)}
           onSave={(saved) => {
             queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
-            showToast(`Profil akun ${saved.name} berhasil diperbarui.`, "success");
+            show(`Profil akun ${saved.name} berhasil diperbarui.`, "success");
           }}
           onDeleted={(_id) => {
             queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
-            showToast("Akun staf berhasil dihapus.", "info");
+            show("Akun staf berhasil dihapus.", "info");
           }}
         />
       ) : null}

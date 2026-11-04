@@ -2,16 +2,17 @@
 
 import { useState, useTransition } from "react";
 
-import { saveVehicleAction, deleteVehicleAction } from "@/app/actions";
+import { saveVehicleAction, deleteVehicleAction, unggahFotoKendaraanAction } from "@/app/actions";
 import { DeleteVehicleModal } from "@/components/modals/DeleteVehicleModal";
 import { VehicleFormModal } from "@/components/modals/VehicleFormModal";
 import { Button } from "@/components/ui/Button";
 import { PlateBadge } from "@/components/ui/PlateBadge";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/components/ui/useToast";
 import { IconCar, IconPencil, IconPlus } from "@/components/ui/icons";
 import { formatRupiah } from "@/lib/format";
+import { tautanMedia } from "@/lib/media";
 import type { Vehicle } from "@/lib/types";
 import { VEHICLE_STATUS } from "@/lib/labels";
 
@@ -30,10 +31,7 @@ type Props = {
  * sama seperti aturan di kalender armada. Selain itu, status gudang dipakai apa
  * adanya.
  */
-function statusKatalog(
-  vehicle: Vehicle,
-  sedangTersewa: boolean,
-): Vehicle["status"] {
+function statusKatalog(vehicle: Vehicle, sedangTersewa: boolean): Vehicle["status"] {
   if (sedangTersewa) return "disewa";
   return vehicle.status;
 }
@@ -42,13 +40,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [formTarget, setFormTarget] = useState<{ vehicleId: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-    /* Notifikasi memakai toast, bukan paragraf di atas panel. Paragraf itu mudah
-     terlewat karena berada jauh dari tombol yang baru ditekan, dan tidak hilang
-     sendiri sehingga menumpuk dengan pesan berikutnya. */
-  const [notice, setNotice] = useState<{
-    text: string;
-    tone: "success" | "error" | "info";
-  } | null>(null);
+  const { show, node } = useToast();
   /* Nilai pending tidak ditampilkan; yang dipakai hanya startTransition. */
   const [, startTransition] = useTransition();
 
@@ -61,25 +53,14 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
 
   return (
     <>
-      {notice ? (
-        <Toast
-          message={notice.text}
-          tone={notice.tone}
-          durationMs={3500}
-          onClose={() => setNotice(null)}
-        />
-      ) : null}
+      {node}
 
       <div className="mt-3">
         <Panel
           title="Katalog &amp; Spesifikasi Armada"
           icon={<IconCar />}
           action={
-            <Button
-              variant="confirm"
-              size="md"
-              onClick={() => setFormTarget({ vehicleId: null })}
-            >
+            <Button variant="confirm" size="md" onClick={() => setFormTarget({ vehicleId: null })}>
               <IconPlus className="h-4 w-4" />
               Tambah Armada
             </Button>
@@ -88,80 +69,92 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
           {/* Tampilan kartu saja. Pilihan tabel dilepas karena isi yang sama sudah
               terbaca di kartu, dan dua mode tampilan hanya menambah tombol tanpa
               menambah informasi. */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {vehicles.length === 0 ? (
+            /* Keadaan kosong. Sebelumnya bagian ini selalu terisi karena ada
+               sembilan unit contoh di kode, jadi tidak pernah kelihatan bahwa
+               katalog bisa kosong. */
+            <div className="rounded-lg border border-dashed border-rule bg-canvas px-6 py-10 text-center">
+              <p className="text-body font-semibold text-ink">Belum ada armada terdaftar</p>
+              <p className="mx-auto mt-1 max-w-md text-meta text-ink-soft">
+                Katalog masih kosong. Tekan <span className="font-semibold">Tambah Armada</span>{" "}
+                untuk mendaftarkan unit pertama beserta foto, tarif, dan statusnya.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {vehicles.map((vehicle) => {
-                const statusTampil = statusKatalog(
-                  vehicle,
-                  rentedVehicleIds.includes(vehicle.id),
-                );
+                const statusTampil = statusKatalog(vehicle, rentedVehicleIds.includes(vehicle.id));
 
                 return (
-                <div
-                  key={vehicle.id}
-                  className="flex flex-col justify-between rounded-lg border border-rule bg-surface p-4 shadow-card hover:border-navy/40 transition-all"
-                >
-                  <div>
-                    {/* Header Kartu: Nama & Status */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="text-body font-bold text-ink">{vehicle.name}</h3>
-                        <PlateBadge plate={vehicle.plate} className="mt-1" />
+                  <div
+                    key={vehicle.id}
+                    className="flex flex-col justify-between rounded-lg border border-rule bg-surface p-4 shadow-card hover:border-navy/40 transition-all"
+                  >
+                    <div>
+                      {/* Header Kartu: Nama & Status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="text-body font-bold text-ink">{vehicle.name}</h3>
+                          <PlateBadge plate={vehicle.plate} className="mt-1" />
+                        </div>
+                        <StatusChip tone={VEHICLE_STATUS[statusTampil].tone}>
+                          {VEHICLE_STATUS[statusTampil].label}
+                        </StatusChip>
                       </div>
-                      <StatusChip tone={VEHICLE_STATUS[statusTampil].tone}>
-                        {VEHICLE_STATUS[statusTampil].label}
-                      </StatusChip>
+
+                      {/* Foto unit kalau ada. Kalau belum diunggah, bagian ini tidak
+                        dirender sama sekali supaya kartu tidak menyisakan ruang kosong. */}
+                      {vehicle.imageUrl ? (
+                        <div className="mt-3 overflow-hidden rounded-sm border border-rule">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={tautanMedia(vehicle.imageUrl) ?? ""}
+                            alt={`Foto ${vehicle.name}`}
+                            className="h-32 w-full object-cover"
+                          />
+                        </div>
+                      ) : null}
+
+                      {/* Spesifikasi Ringkas */}
+                      <div className="mt-3.5 space-y-1.5 border-t border-rule/60 pt-3 text-meta text-ink-soft">
+                        <div className="flex justify-between">
+                          <span>Kategori &amp; Rute</span>
+                          <span className="font-medium text-ink">
+                            {vehicle.category ?? "Standar"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Transmisi</span>
+                          <span className="font-medium text-ink">
+                            {vehicle.transmission ?? "Manual"}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Foto unit kalau ada. Kalau belum diunggah, bagian ini tidak
-                        dirender sama sekali supaya kartu tidak menyisakan ruang kosong. */}
-                    {vehicle.imageUrl ? (
-                      <div className="mt-3 overflow-hidden rounded-sm border border-rule">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={vehicle.imageUrl}
-                          alt={`Foto ${vehicle.name}`}
-                          className="h-32 w-full object-cover"
-                        />
-                      </div>
-                    ) : null}
-
-                    {/* Spesifikasi Ringkas */}
-                    <div className="mt-3.5 space-y-1.5 border-t border-rule/60 pt-3 text-meta text-ink-soft">
-                      <div className="flex justify-between">
-                        <span>Kategori &amp; Rute</span>
-                        <span className="font-medium text-ink">
-                          {vehicle.category ?? "Standar"}
+                    {/* Footer Kartu: Tarif & Tombol Kelola */}
+                    <div className="mt-4 flex items-center justify-between border-t border-rule/60 pt-3">
+                      <div>
+                        <span className="block text-micro text-ink-soft">Tarif Dasar / Hari</span>
+                        <span className="text-body font-bold tabular-nums text-ink">
+                          {formatRupiah(vehicle.pricePerDay ?? 400000)}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Transmisi</span>
-                        <span className="font-medium text-ink">{vehicle.transmission ?? "Manual"}</span>
-                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setFormTarget({ vehicleId: vehicle.id })}
+                        className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
+                      >
+                        <IconPencil className="h-3.5 w-3.5" />
+                        Kelola
+                      </button>
                     </div>
                   </div>
-
-                  {/* Footer Kartu: Tarif & Tombol Kelola */}
-                  <div className="mt-4 flex items-center justify-between border-t border-rule/60 pt-3">
-                    <div>
-                      <span className="block text-micro text-ink-soft">Tarif Dasar / Hari</span>
-                      <span className="text-body font-bold tabular-nums text-ink">
-                        {formatRupiah(vehicle.pricePerDay ?? 400000)}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setFormTarget({ vehicleId: vehicle.id })}
-                      className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
-                    >
-                      <IconPencil className="h-3.5 w-3.5" />
-                      Kelola
-                    </button>
-                  </div>
-                </div>
-              );
+                );
               })}
             </div>
+          )}
         </Panel>
       </div>
 
@@ -176,7 +169,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
             setFormTarget(null);
             setDeleteTarget(vehicleId);
           }}
-          onSave={(saved) => {
+          onSave={(saved, berkasFoto) => {
             // Optimistic UI update
             setVehicles((current) => {
               const exists = current.some((vehicle) => vehicle.id === saved.id);
@@ -184,21 +177,86 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                 ? current.map((vehicle) => (vehicle.id === saved.id ? saved : vehicle))
                 : [...current, saved];
             });
-            setNotice({
-              text: editing
+            show(
+              editing
                 ? `Menyimpan perubahan unit ${saved.name}...`
                 : `Menambahkan unit ${saved.name}...`,
-              tone: "info",
-            });
+              "info",
+            );
             setFormTarget(null);
 
             startTransition(async () => {
-              const res = await saveVehicleAction(saved);
-              if (res.success) {
-                setNotice({ text: res.message ?? "Data armada berhasil disimpan ke database.", tone: "success" });
-              } else {
-                setNotice({ text: res.message ?? "Gagal menyimpan ke server backend.", tone: "error" });
+              /* `editing` menandai modal dibuka untuk unit yang sudah ada. */
+              const res = await saveVehicleAction(saved, editing ? "update" : "create");
+              if (!res.success) {
+                show(res.message ?? "Gagal menyimpan ke server backend.", "error");
+                return;
               }
+
+              /*
+               * ID sementara dari modal diganti ID asli dari backend.
+               *
+               * Modal memberi id `v-<timestamp>` untuk unit baru karena saat itu
+               * backend belum memberi id apa pun. Id itu hanya boleh hidup selama
+               * proses simpan.
+               *
+               * Sebelumnya id sementara dibiarkan di state. Akibatnya, ketika
+               * admin menyunting unit yang baru dibuat, `saveVehicleAction`
+               * melihat awalan `v-` lalu menyimpannya sebagai unit BARU lagi:
+               * datanya terduplikasi, atau permintaannya ditolak karena
+               * externalId yang terbentuk dari nama+plat sudah dipakai. Kalau
+               * id itu sempat dikirim ke endpoint ubah, backend menjawab 404.
+               *
+               * `res.data.id` ada untuk unit baru maupun unit lama, jadi
+               * penggantian ini aman untuk kedua jalur.
+               */
+              const idTersimpan: string = res.data?.id ?? saved.id;
+              if (idTersimpan !== saved.id) {
+                setVehicles((current) =>
+                  current.map((item) =>
+                    item.id === saved.id ? { ...item, id: idTersimpan } : item,
+                  ),
+                );
+              }
+
+              /*
+               * Foto diunggah setelah data unitnya tersimpan.
+               *
+               * Endpoint unggah membutuhkan ID unit yang sudah ada, dan untuk
+               * unit baru ID itu baru didapat dari hasil penyimpanan. Kalau
+               * unggahan gagal, data unitnya tetap tersimpan — admin bisa
+               * mencoba unggah lagi tanpa mengulang pengisian form.
+               */
+              if (berkasFoto) {
+                const formData = new FormData();
+                formData.append("berkas", berkasFoto);
+
+                const unggah = await unggahFotoKendaraanAction(idTersimpan, formData);
+                if (unggah.success) {
+                  /*
+                   * Kartu diperbarui langsung dengan foto baru. Tanpa ini admin
+                   * melihat kartu tanpa foto sampai halaman dimuat ulang, dan
+                   * mengira unggahannya gagal.
+                   */
+                  if (unggah.imageUrl) {
+                    const urlFoto = unggah.imageUrl;
+                    setVehicles((current) =>
+                      current.map((item) =>
+                        item.id === idTersimpan ? { ...item, imageUrl: urlFoto } : item,
+                      ),
+                    );
+                  }
+                  show(res.message ?? "Data armada tersimpan.", "success");
+                } else {
+                  show(
+                    `Data unit tersimpan, tetapi foto gagal diunggah: ${unggah.message ?? "tidak diketahui"}`,
+                    "error",
+                  );
+                }
+                return;
+              }
+
+              show(res.message ?? "Data armada berhasil disimpan ke database.", "success");
             });
           }}
         />
@@ -212,15 +270,15 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
             const targetId = deleting.id;
             const targetName = deleting.name;
             setVehicles((current) => current.filter((vehicle) => vehicle.id !== targetId));
-            setNotice({ text: `Menghapus unit ${targetName}...`, tone: "info" });
+            show(`Menghapus unit ${targetName}...`, "info");
             setDeleteTarget(null);
 
             startTransition(async () => {
               const res = await deleteVehicleAction(targetId);
               if (res.success) {
-                setNotice({ text: res.message ?? `Unit ${targetName} dihapus.`, tone: "success" });
+                show(res.message ?? `Unit ${targetName} dihapus.`, "success");
               } else {
-                setNotice({ text: res.message ?? "Gagal menghapus armada.", tone: "error" });
+                show(res.message ?? "Gagal menghapus armada.", "error");
               }
             });
           }}

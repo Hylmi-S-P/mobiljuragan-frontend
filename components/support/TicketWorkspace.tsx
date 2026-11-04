@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/ui/useToast";
 import { useMemo, useRef, useState, useTransition } from "react";
 
 import {
@@ -15,21 +16,17 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import {
-  TICKET_STAGE,
-  TICKET_STATUS,
-  formatTicketCategory,
-  ticketStageOf,
-} from "@/lib/labels";
+import { TICKET_STAGE, formatTicketCategory, ticketStageOf } from "@/lib/labels";
 import { useDebounce } from "@/lib/useDebounce";
 import type { SupportTicketView, TicketMessageView } from "@/lib/operations";
-import type { SupportTicketStatus } from "@/lib/types";
 
-{/*
+{
+  /*
   Batas panjang balasan. Nilainya harus sama dengan MAKS_PANJANG_PESAN
   di backend; kalau berbeda, pengguna bisa lolos di kotak isian tetapi
   ditolak server, atau sebaliknya.
-*/}
+*/
+}
 const MAKS_PANJANG_PESAN = 2000;
 
 type Props = {
@@ -51,16 +48,18 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   const [messages, setMessages] = useState<TicketMessageView[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [draftError, setDraftError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
+  const { show, node } = useToast();
   const [isSending, startTransition] = useTransition();
   const [isLoadingMessages, startLoadMessages] = useTransition();
   const [isTakingOver, startTakeOver] = useTransition();
 
-  {/*
+  {
+    /*
     Berpindah tiket harus memuat percakapan tiket itu, bukan mempertahankan
     percakapan tiket sebelumnya. Tanpa ini, pesan pelanggan tertukar antar tiket
     dan balasan bisa terkirim ke tiket yang salah.
-  */}
+  */
+  }
   function pilihTiket(ticketId: string) {
     if (ticketId === activeId) return;
 
@@ -82,7 +81,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           );
         }
         if (!hasil.success) {
-          setNotice({ text: hasil.message ?? "Percakapan gagal dimuat.", isError: true });
+          show(hasil.message ?? "Percakapan gagal dimuat.", "error");
         }
       }
     });
@@ -97,30 +96,32 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
         setTickets((current) =>
           current.map((t) => (t.id === targetTicketId ? { ...t, handledBy: "HUMAN" } : t)),
         );
-        setNotice({
-          text: result.message ?? "Tiket berhasil diambil alih dari AI. Sekarang Anda dapat membalas pesan pelanggan.",
-        });
+        show(
+          result.message ??
+            "Tiket berhasil diambil alih dari AI. Sekarang Anda dapat membalas pesan pelanggan.",
+        );
       } else {
-        setNotice({
-          text: result.message ?? "Gagal mengambil alih tiket.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal mengambil alih tiket.", "error");
       }
     });
   }
 
-  {/*
+  {
+    /*
     Tiket selesai dipindahkan ke tab Arsip supaya daftar utama hanya berisi
     pekerjaan yang masih perlu ditangani. Sebelumnya tiket selesai menumpuk di
     daftar yang sama dan mendorong tiket baru ke bawah.
-  */}
-    const [tabDaftar, setTabDaftar] = useState<"aktif" | "arsip">("aktif");
+  */
+  }
+  const [tabDaftar, setTabDaftar] = useState<"aktif" | "arsip">("aktif");
 
-  {/*
+  {
+    /*
     Menutup tiket tidak bisa dibatalkan dari layar admin, jadi tombolnya meminta
     penegasan sekali lagi. Tanpa ini, satu klik tak sengaja langsung memindahkan
     tiket ke arsip dan pelanggan berhenti mendapat balasan.
-  */}
+  */
+  }
   const [konfirmasiTutup, setKonfirmasiTutup] = useState(false);
 
   const tiketAktif = useMemo(() => tickets.filter((t) => t.status !== "selesai"), [tickets]);
@@ -131,9 +132,12 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
     const keyword = debouncedQuery.trim().toLowerCase();
     if (keyword.length === 0) return sumber;
     return sumber.filter((ticket) =>
-      [ticket.customerLabel, ticket.title, ticket.category, formatTicketCategory(ticket.category)].some((field) =>
-        field.toLowerCase().includes(keyword),
-      ),
+      [
+        ticket.customerLabel,
+        ticket.title,
+        ticket.category,
+        formatTicketCategory(ticket.category),
+      ].some((field) => field.toLowerCase().includes(keyword)),
     );
   }, [debouncedQuery, tabDaftar, tiketAktif, tiketArsip]);
 
@@ -141,10 +145,12 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   const isResolvedOrClosed = activeTicket?.status === "selesai";
   const isHandledByAi = activeTicket?.handledBy === "AI";
 
-  {/*
+  {
+    /*
     A15.1 - kepemilikan tiket.
     isMine dihitung server, karena klien tidak menyimpan identitas admin.
-  */}
+  */
+  }
   const dipegangOrangLain = Boolean(activeTicket?.assignedAdminId) && !activeTicket?.isMine;
   const dipegangSendiri = Boolean(activeTicket?.assignedAdminId) && Boolean(activeTicket?.isMine);
   const tahapAktif = TICKET_STAGE[ticketStageOf(activeTicket?.status ?? "baru")];
@@ -153,7 +159,8 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
     newStatus: "OPEN" | "IN_PROGRESS" | "WAITING_CUSTOMER" | "RESOLVED" | "CLOSED",
   ) {
     if (!activeTicket) return;
-    const targetStatusMapped = newStatus === "RESOLVED" || newStatus === "CLOSED" ? "selesai" : "baru";
+    const targetStatusMapped =
+      newStatus === "RESOLVED" || newStatus === "CLOSED" ? "selesai" : "baru";
 
     startTransition(async () => {
       const result = await updateTicketStatusAction(activeTicket.id, newStatus);
@@ -161,26 +168,23 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
         setTickets((current) =>
           current.map((t) => (t.id === activeTicket.id ? { ...t, status: targetStatusMapped } : t)),
         );
-        setNotice({
-          text: result.message ?? `Status tiket berhasil diubah menjadi ${newStatus}.`,
-        });
+        show(result.message ?? `Status tiket berhasil diubah menjadi ${newStatus}.`);
       } else {
-        setNotice({
-          text: result.message ?? "Gagal mengubah status tiket.",
-          isError: true,
-        });
+        show(result.message ?? "Gagal mengubah status tiket.", "error");
       }
     });
   }
 
-  {/*
-    *
-    * A15.1 - mengambil tiket supaya terkunci ke admin ini.
-    *
-    * Kalau tiket ternyata sudah dipegang orang lain, server menolak dan pesannya
-    * ditampilkan apa adanya. Menebak di sisi klien akan salah ketika dua admin
-    * membuka halaman yang sama pada saat bersamaan.
-  */}
+  {
+    /*
+     *
+     * A15.1 - mengambil tiket supaya terkunci ke admin ini.
+     *
+     * Kalau tiket ternyata sudah dipegang orang lain, server menolak dan pesannya
+     * ditampilkan apa adanya. Menebak di sisi klien akan salah ketika dua admin
+     * membuka halaman yang sama pada saat bersamaan.
+     */
+  }
   function handleClaim() {
     if (!activeTicket) return;
     startTransition(async () => {
@@ -194,13 +198,15 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           ),
         );
       }
-      setNotice({ text: result.message ?? "Tiket diambil.", isError: !result.success });
+      show(result.message ?? "Tiket diambil.", result.success ? "success" : "error");
     });
   }
 
-  {/*
-    * A15.1 - melepas tiket supaya bisa diambil admin lain.
-  */}
+  {
+    /*
+     * A15.1 - melepas tiket supaya bisa diambil admin lain.
+     */
+  }
   function handleRelease() {
     if (!activeTicket) return;
     startTransition(async () => {
@@ -214,13 +220,15 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           ),
         );
       }
-      setNotice({ text: result.message ?? "Tiket dilepas.", isError: !result.success });
+      show(result.message ?? "Tiket dilepas.", result.success ? "success" : "error");
     });
   }
 
-  {/*
-    * A15.1 - mengambil alih tiket dari admin lain. Khusus ADMIN.
-  */}
+  {
+    /*
+     * A15.1 - mengambil alih tiket dari admin lain. Khusus ADMIN.
+     */
+  }
   function handleTakeoverAssigned() {
     if (!activeTicket) return;
     startTransition(async () => {
@@ -234,13 +242,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           ),
         );
       }
-      setNotice({
-        text: result.message ?? "Tiket diambil alih.",
-        isError: !result.success,
-      });
+      show(result.message ?? "Tiket diambil alih.", result.success ? "success" : "error");
     });
   }
-
 
   function sendReply() {
     if (!activeTicket || isHandledByAi) return;
@@ -266,7 +270,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
       const result = await replyToTicketAction(activeTicket.id, text);
       if (result.success) {
-        setNotice({ text: result.message ?? "Balasan terkirim." });
+        show(result.message ?? "Balasan terkirim.");
         setTickets((current) =>
           current.map((t) =>
             t.id === activeTicket.id
@@ -279,24 +283,14 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
         setMessages((current) => current.filter((message) => message.id !== optimisticMessage.id));
         setDraft(text);
         setDraftError(result.message ?? "Balasan gagal dikirim.");
-        setNotice({ text: result.message ?? "Gagal mengirim balasan.", isError: true });
+        show(result.message ?? "Gagal mengirim balasan.", "error");
       }
     });
   }
 
   return (
     <>
-      {notice ? (
-        <p
-          className={`mt-3 rounded-sm border px-3 py-2 text-meta ${
-            notice.isError
-              ? "border-danger bg-danger/10 text-danger"
-              : "border-teal/40 bg-surface text-ink"
-          }`}
-        >
-          {notice.text}
-        </p>
-      ) : null}
+      {node}
 
       <div className="mt-3 grid gap-3 lg:h-[calc(100vh-13rem)] lg:grid-cols-[300px_minmax(0,1fr)]">
         <div className="flex min-h-0 min-w-0 flex-col">
@@ -308,12 +302,10 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
               aria-label="Kelompok tiket"
               className="mb-2 flex gap-1 border-b border-rule pb-2"
             >
-              {(
-                [
-                  { id: "aktif" as const, label: "Aktif", jumlah: tiketAktif.length },
-                  { id: "arsip" as const, label: "Arsip", jumlah: tiketArsip.length },
-                ]
-              ).map((tab) => (
+              {[
+                { id: "aktif" as const, label: "Aktif", jumlah: tiketAktif.length },
+                { id: "arsip" as const, label: "Arsip", jumlah: tiketArsip.length },
+              ].map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
@@ -350,7 +342,10 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                   <li key={ticket.id}>
                     <button
                       type="button"
-                      onClick={() => { setKonfirmasiTutup(false); pilihTiket(ticket.id); }}
+                      onClick={() => {
+                        setKonfirmasiTutup(false);
+                        pilihTiket(ticket.id);
+                      }}
                       aria-current={active ? "true" : undefined}
                       className={`flex w-full items-start gap-2.5 rounded-sm border px-2.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
                         active ? "border-teal bg-canvas" : "border-rule hover:bg-canvas"
@@ -361,7 +356,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy text-body font-semibold text-white"
                       >
                         {initialOf(ticket.customerLabel)}
-                        </span>
+                      </span>
                       <span className="min-w-0">
                         <span className="flex flex-wrap items-center gap-2">
                           <span className="text-body font-semibold text-ink">
@@ -383,7 +378,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           {ticket.title}
                         </span>
                         <span className="mt-1 block text-meta text-ink-soft">
-                        {formatTicketCategory(ticket.category)}{" \u00B7 "}{ticket.messageCount} pesan
+                          {formatTicketCategory(ticket.category)}
+                          {" \u00B7 "}
+                          {ticket.messageCount} pesan
                         </span>
                       </span>
                     </button>
@@ -521,7 +518,8 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                 <div className="border-t border-rule px-4 py-3">
                   {isResolvedOrClosed ? (
                     <div className="rounded-sm border border-rule bg-canvas p-2.5 text-center text-meta text-ink-soft">
-                  Tiket ini sudah ditutup dan tidak menerima pesan baru. Kalau pelanggan masih perlu dibantu, minta mereka membuat tiket baru.
+                      Tiket ini sudah ditutup dan tidak menerima pesan baru. Kalau pelanggan masih
+                      perlu dibantu, minta mereka membuat tiket baru.
                     </div>
                   ) : (
                     <>
@@ -532,8 +530,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                             <div className="flex items-center gap-2">
                               <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                               <span className="text-body font-medium leading-snug">
-                                Tiket ini sedang ditangani oleh <strong>Bot AI</strong>. Input balasan dikunci agar tidak terjadi konflik percakapan.
-                        </span>
+                                Tiket ini sedang ditangani oleh <strong>Bot AI</strong>. Input
+                                balasan dikunci agar tidak terjadi konflik percakapan.
+                              </span>
                             </div>
                             <Button
                               variant="confirm"
@@ -570,7 +569,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                           disabled={isHandledByAi}
                           onClick={() =>
                             setDraft(
-                              "Silakan lakukan transfer pelunasan ke rekening resmi Bank BRI 0321-01-002847-53-1 an MobilJuragan Merauke.",
+                              "Silakan lakukan transfer pelunasan ke rekening resmi perusahaan. Nomor rekening yang benar kami kirimkan melalui kanal resmi agar tidak tertukar dengan rekening lain.",
                             )
                           }
                           className="rounded-xs border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink hover:border-navy hover:text-navy disabled:cursor-not-allowed disabled:opacity-40"
@@ -613,7 +612,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                             </>
                           ) : dipegangSendiri ? (
                             <>
-                              <span className="text-meta font-medium text-teal">Anda pegang tiket ini.</span>
+                              <span className="text-meta font-medium text-teal">
+                                Anda pegang tiket ini.
+                              </span>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -625,7 +626,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                             </>
                           ) : (
                             <>
-                              <span className="text-meta text-ink-soft">Tiket belum dipegang siapa pun.</span>
+                              <span className="text-meta text-ink-soft">
+                                Tiket belum dipegang siapa pun.
+                              </span>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -654,7 +657,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                               ? "Tiket ditangani Bot AI. Klik 'Ambil Alih Tiket' untuk membalas..."
                               : dipegangOrangLain
                                 ? `Tiket ini sedang dipegang ${activeTicket.assignedAdminName ?? "admin lain"}. Ambil alih dulu untuk membalas.`
-                              : "Tulis balasan solusi resmi ke pelanggan..."
+                                : "Tulis balasan solusi resmi ke pelanggan..."
                           }
                           aria-invalid={Boolean(draftError)}
                           aria-describedby={draftError ? "ticket-reply-error" : undefined}
@@ -734,13 +737,12 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
       >
         <div className="space-y-3">
           <p className="text-body text-ink">
-            Tiket akan dipindah ke Arsip, dan pelanggan tidak bisa lagi mengirim
-            pesan ke tiket ini.
+            Tiket akan dipindah ke Arsip, dan pelanggan tidak bisa lagi mengirim pesan ke tiket ini.
           </p>
           <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
             <p>
-              Tutup tiket hanya kalau pertanyaannya sudah terjawab. Kalau pelanggan
-              masih perlu dibantu, balas dulu lewat kotak balasan di bawah.
+              Tutup tiket hanya kalau pertanyaannya sudah terjawab. Kalau pelanggan masih perlu
+              dibantu, balas dulu lewat kotak balasan di bawah.
             </p>
           </div>
         </div>

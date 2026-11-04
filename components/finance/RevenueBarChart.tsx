@@ -17,10 +17,13 @@ import type { FinanceSummary } from "@/lib/operations";
 type Props = {
   monthlyTrends: FinanceSummary["monthlyTrends"];
   weeklyBreakdown: FinanceSummary["weeklyBreakdown"];
+  /* Jumlah bulan pada sumbu X. Dikirim dari pemilih rentang supaya judul dan
+     keterangan kosong menyebut angka yang benar-benar ditampilkan. */
+  jumlahBulan?: number;
 };
 
 /**
- * Grafik omzet 12 bulan terakhir.
+ * Grafik omzet beberapa bulan terakhir.
  *
  * Klik satu batang untuk membuka rincian minggu pada bulan itu. Ini yang diminta
  * Ami poin 16: "grafik omzet tahun ini, klik bulan → detail mingguan".
@@ -29,7 +32,7 @@ type Props = {
  * Kalau dihilangkan, grafik terbaca seolah datanya rusak, padahal memang belum
  * ada uang masuk di bulan tersebut.
  */
-export function RevenueBarChart({ monthlyTrends, weeklyBreakdown }: Props) {
+export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }: Props) {
   const [bulanAktif, setBulanAktif] = useState<string | null>(null);
 
   const data = useMemo(
@@ -54,17 +57,24 @@ export function RevenueBarChart({ monthlyTrends, weeklyBreakdown }: Props) {
     data[0] ?? { label: "-", labelPenuh: "-", revenue: 0, bookings: 0 },
   );
 
+  /* Judul mengikuti rentang yang sedang dipakai. "12 bulan terakhir" tidak lagi
+     selalu benar begitu rentangnya bisa diperkecil. */
+  const rentang = jumlahBulan ?? data.length;
+  const judul = rentang === 1 ? "Omzet Bulan Ini" : `Omzet ${rentang} Bulan Terakhir`;
+
   return (
     <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
       <div className="flex flex-col gap-1 border-b border-rule pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-subtitle font-bold text-ink">Omzet 12 Bulan Terakhir</h3>
+          <h3 className="text-subtitle font-bold text-ink">{judul}</h3>
           <p className="text-meta text-ink-soft">
             Klik salah satu batang untuk melihat rincian per minggu.
           </p>
         </div>
         <div className="text-right">
-          <span className="block text-micro text-ink-soft">Total setahun</span>
+          <span className="block text-micro text-ink-soft">
+            Total {rentang === 1 ? "bulan ini" : `${rentang} bulan`}
+          </span>
           <span className="text-body font-bold text-ink tabular-nums">
             {formatRupiah(totalSetahun)}
           </span>

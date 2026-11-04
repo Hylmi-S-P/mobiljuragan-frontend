@@ -60,7 +60,7 @@ export function LoginForm() {
               aria-invalid={Boolean(state?.errors?.username)}
               aria-describedby={state?.errors?.username ? `${fieldId}-username-error` : undefined}
               className="h-11 w-full rounded-md border border-slate-300 bg-canvas pl-3 pr-11 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-              placeholder="081234567890 atau admin"
+              placeholder="Nomor telepon atau nama pengguna"
             />
             <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
               <IconUser className="h-3.5 w-3.5" />

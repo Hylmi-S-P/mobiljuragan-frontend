@@ -117,15 +117,47 @@ export function formatTicketCategory(category: string | null | undefined): strin
   return TICKET_CATEGORY_LABEL[category] ?? category.replace(/_/g, " ");
 }
 
-/* Pilihan kategori armada yang ringkas, terstandarisasi, dan selaras dengan katalog mobile. */
-export const VEHICLE_CATEGORY_OPTIONS = [
-  "MPV",
-  "SUV",
-  "Pickup",
-  "Commercial",
-];
+/*
+ * Nilai kategori harus sama persis dengan yang tersimpan di database.
+ *
+ * Sebelumnya daftar ini memakai "Pickup" dan "Commercial" dengan huruf besar
+ * di awal, sedangkan database menyimpan "PICKUP" dan "COMMERCIAL". Akibatnya
+ * `<select>` tidak menemukan pilihan yang cocok dan menampilkan pilihan
+ * pertama, "MPV", untuk unit pickup dan commercial. Nilainya sendiri tidak
+ * ikut berubah saat disimpan, tetapi yang terlihat di layar menyesatkan admin
+ * yang menyunting unit itu.
+ */
+export const VEHICLE_CATEGORY_OPTIONS = ["MPV", "SUV", "PICKUP", "COMMERCIAL"];
 
 export const VEHICLE_TRANSMISSION_OPTIONS = ["Manual", "Automatic"];
+
+/**
+ * Menyeragamkan nilai transmisi ke bentuk yang ditampilkan di layar.
+ *
+ * Database menyimpan `MANUAL` / `AUTOMATIC` (huruf besar semua), sedangkan
+ * daftar pilihan di form memakai `Manual` / `Automatic`. Tanpa penyeragaman,
+ * `<select>` tidak menemukan pilihan yang cocok dengan nilai dari database lalu
+ * menampilkan pilihan pertama, sehingga unit matic terbaca "Manual" saat
+ * disunting. Lebih dari sekadar salah baca: menyimpannya tanpa mengubah apa pun
+ * benar-benar mengubah nilainya menjadi MANUAL.
+ *
+ * Kasus yang sama pernah terjadi pada kategori armada dan sudah diperbaiki lewat
+ * `VEHICLE_CATEGORY_OPTIONS`. Di sini penyeragamannya dilakukan sekali di
+ * pembacaan data, bukan diulang di setiap komponen.
+ *
+ * Nilai yang tidak dikenali dikembalikan apa adanya supaya tidak ada informasi
+ * yang hilang.
+ */
+export function normalisasiTransmisi(nilai: string | null | undefined): string | null {
+  if (!nilai) return null;
+
+  const bersih = nilai.trim().toUpperCase();
+
+  if (bersih === "AUTOMATIC" || bersih === "MATIC" || bersih === "A/T") return "Automatic";
+  if (bersih === "MANUAL" || bersih === "M/T") return "Manual";
+
+  return nilai;
+}
 
 export const VEHICLE_SEAT_OPTIONS = [3, 5, 7, 9, 12];
 
@@ -141,10 +173,7 @@ export const FAQ_CATEGORY_PRESETS = [
 export type FaqCategoryPreset = (typeof FAQ_CATEGORY_PRESETS)[number];
 
 /* Konfigurasi label dan tone visual untuk status pembayaran */
-export const PAYMENT_STATUS: Record<
-  PaymentStatus,
-  { label: string; tone: ChipTone }
-> = {
+export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; tone: ChipTone }> = {
   UNPAID: { label: "Belum Bayar", tone: "neutral" },
   PENDING_VERIFICATION: { label: "Menunggu Verifikasi", tone: "pending" },
   PAID: { label: "Terbayar", tone: "available" },

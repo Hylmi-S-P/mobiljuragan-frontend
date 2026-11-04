@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/ui/useToast";
 import { useState, useTransition } from "react";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip, type ChipTone } from "@/components/ui/StatusChip";
@@ -37,7 +38,7 @@ const STATUS_CONFIG: Record<
     label: "Terverifikasi & Disetujui",
     tone: "available",
     description:
-      "Seluruh dokumen persyaratan telah diperiksa dan dinyatakan memenuhi standar sewa lepas kunci PT MobilJuragan Trans Merauke.",
+      "Seluruh dokumen persyaratan telah diperiksa dan dinyatakan memenuhi standar sewa lepas kunci CV. Mobil Juragan Express Transport.",
   },
   REJECTED: {
     label: "Ditolak (Perlu Perbaikan)",
@@ -55,7 +56,7 @@ type DocumentTargetKey = "KTP" | "SIM" | "STATEMENT";
 const TARGET_OPTIONS: { key: DocumentTargetKey; label: string; hint: string }[] = [
   { key: "KTP", label: "e-KTP", hint: "Foto KTP asli" },
   { key: "SIM", label: "SIM A", hint: "SIM A aktif" },
-  { key: "STATEMENT", label: "Surat Pernyataan", hint: "TTD basah" },
+  { key: "STATEMENT", label: "Form Kesanggupan", hint: "TTD basah" },
 ];
 
 /* Catatan cepat = jalan pintas menulis, bukan label terpisah. Yang dikirim ke
@@ -102,7 +103,7 @@ const QUICK_NOTES: { group: string; notes: string[] }[] = [
 const TARGET_LABEL: Record<DocumentTargetKey, string> = {
   KTP: "e-KTP",
   SIM: "SIM A",
-  STATEMENT: "Surat Pernyataan",
+  STATEMENT: "Form Kesanggupan",
 };
 
 export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Props) {
@@ -113,7 +114,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionTargets, setRejectionTargets] = useState<DocumentTargetKey[]>([]);
-  const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
+  const { show, dismiss, node } = useToast();
   const [isPending, startTransition] = useTransition();
 
   function toggleTarget(key: DocumentTargetKey) {
@@ -162,21 +163,18 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
 
   function handleVerify(action: "APPROVE" | "REJECT", reason?: string, targets?: string[]) {
     startTransition(async () => {
-      setNotice(null);
+      dismiss();
       const res = await verifyBookingDocumentsAction(booking.id, action, reason, targets);
 
       if (res.success && res.data) {
         setDocument(res.data);
         onDocumentUpdated?.(res.data);
-        setNotice({ text: res.message || "Status dokumen berhasil diperbarui." });
+        show(res.message || "Status dokumen berhasil diperbarui.");
         if (action === "REJECT") {
           resetRejectForm();
         }
       } else {
-        setNotice({
-          text: res.message || "Gagal memproses verifikasi dokumen.",
-          isError: true,
-        });
+        show(res.message || "Gagal memproses verifikasi dokumen.", "error");
       }
     });
   }
@@ -194,23 +192,13 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
 
   return (
     <>
+      {node}
+
       <Panel
         title="Dokumen Persyaratan Lepas Kunci"
         action={<StatusChip tone={config.tone}>{config.label}</StatusChip>}
       >
         <div className="space-y-4">
-          {notice && (
-            <div
-              className={`rounded-md border p-3 text-meta ${
-                notice.isError
-                  ? "border-danger/40 bg-danger-soft/10 text-danger"
-                  : "border-teal/40 bg-teal/10 text-teal"
-              }`}
-            >
-              {notice.text}
-            </div>
-          )}
-
           {/* Deskripsi status dan catatan penolakan jika ada */}
           <div className="rounded-md border border-rule bg-canvas p-3.5 space-y-1.5">
             <p className="text-meta font-medium text-ink">{config.description}</p>
@@ -240,7 +228,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
 
           {/* Ringkasan status kelengkapan 3 slot berkas */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {/* Slot 1: Surat Pernyataan Tanda Tangan Basah */}
+            {/* Slot 1: Form Kesanggupan bertanda tangan basah */}
             <div className="flex flex-col justify-between rounded-md border border-rule bg-surface p-3">
               <div>
                 <div className="flex items-center justify-between">
@@ -253,9 +241,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                     }`}
                   />
                 </div>
-                <p className="mt-1 text-meta font-medium text-ink">
-                  Bebas Narkoba &amp; Anti Penggelapan
-                </p>
+                <p className="mt-1 text-meta font-medium text-ink">Form Kesanggupan</p>
                 <p className="mt-0.5 text-micro text-ink-soft">Wajib tanda tangan basah penyewa</p>
               </div>
 
@@ -263,7 +249,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                 {hasStatement ? (
                   <button
                     type="button"
-                    onClick={() => openPreview(document!.statementLetterUrl!, "Surat Pernyataan TTD Basah")}
+                    onClick={() => openPreview(document!.statementLetterUrl!, "Form Kesanggupan TTD Basah")}
                     className="flex-1 rounded border border-navy bg-navy/5 py-1.5 text-center text-micro font-medium text-navy hover:bg-navy/10"
                   >
                     Lihat Berkas
@@ -350,12 +336,12 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
             {/* Blanko kosong, bukan surat terisi otomatis: yang sah adalah hasil
                 pindaian bertanda tangan basah dari penyewa. */}
             <a
-              href={`${API_BASE_URL}/documents/template/surat-pernyataan-lepas-kunci.pdf`}
+              href={`${API_BASE_URL}/documents/form-kesanggupan.pdf`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-micro font-medium text-navy hover:underline inline-flex items-center gap-1.5"
             >
-              Unduh Template Surat Pernyataan (PDF)
+              Unduh Form Kesanggupan Kosong
             </a>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">

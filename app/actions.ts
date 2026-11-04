@@ -26,11 +26,15 @@ import {
   apiCreateKnowledgeCategory,
   apiUpdateKnowledgeCategory,
   apiDeleteKnowledgeCategory,
-  apiFetchGatewayModels,
   apiTestAiChat,
   apiGetAiGatewayLogs,
   apiClearAiGatewayLogs,
   apiParseKnowledgeFile,
+  apiUnggahFotoKendaraan,
+  apiCreateBookingLineItem,
+  apiCancelBookingLineItem,
+  apiUnggahTemplate,
+  apiAktifkanVersi,
   apiCreateFaq,
   apiUpdateFaq,
   apiDeleteFaq,
@@ -45,8 +49,21 @@ import {
   apiGetBookingDocuments,
   apiAdminVerifyBookingDocuments,
 } from "@/lib/api";
-import { getTicketDetail, getTicketMessages, type TicketMessageView } from "@/lib/operations";
-import type { AdminRole, CanonicalBookingStatus, FaqItem, Vehicle, BookingDocument } from "@/lib/types";
+import {
+  getTicketDetail,
+  getTicketMessages,
+  getFinanceSummary,
+  type FinanceSummary,
+  type TicketMessageView,
+} from "@/lib/operations";
+import { PILIHAN_BULAN_OMZET, type JumlahBulanOmzet } from "@/lib/financePeriod";
+import type {
+  AdminRole,
+  CanonicalBookingStatus,
+  FaqItem,
+  Vehicle,
+  BookingDocument,
+} from "@/lib/types";
 
 export type ActionState = {
   success?: boolean;
@@ -89,10 +106,13 @@ export async function loginAction(
   }
 
   const cookieStore = await cookies();
+  /* Di production cookie wajib hanya terkirim lewat HTTPS. */
+  const secure = process.env.NODE_ENV === "production";
   cookieStore.set("admin_token", token, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure,
     // Tanpa pilihan ingat sesi, cookie dihapus saat browser ditutup.
     // JWT backend tetap kedaluwarsa setelah 1 jam meski cookie masih ada.
     ...(rememberMe ? { maxAge: 60 * 60 * 24 * 7 } : {}),
@@ -101,6 +121,7 @@ export async function loginAction(
     httpOnly: false,
     sameSite: "lax",
     path: "/",
+    secure,
     ...(rememberMe ? { maxAge: 60 * 60 * 24 * 7 } : {}),
   });
 
@@ -261,9 +282,12 @@ export async function replyToTicketAction(ticketId: string, body: string): Promi
  * dimuat ulang. Akibatnya mengklik tiket lain tetap menampilkan pesan tiket pertama,
  * pesan pelanggan tertukar antar tiket, dan balasan bisa dikirim ke tiket yang salah.
  */
-export async function loadTicketMessagesAction(
-  ticketId: string,
-): Promise<{ success: boolean; messages: TicketMessageView[]; handledBy?: string; message?: string }> {
+export async function loadTicketMessagesAction(ticketId: string): Promise<{
+  success: boolean;
+  messages: TicketMessageView[];
+  handledBy?: string;
+  message?: string;
+}> {
   if (!ticketId) {
     return { success: false, messages: [], message: "Tiket tidak valid." };
   }
@@ -455,7 +479,7 @@ export async function assignDriverAction(
 export async function createDriverAction(
   _prevState: ActionState | null,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<ActionState & { data?: { id?: string } }> {
   const fullName = (formData.get("fullName") as string)?.trim() || "";
   const phoneNumber = (formData.get("phoneNumber") as string)?.trim() || undefined;
   const licenseNumber = (formData.get("licenseNumber") as string)?.trim() || undefined;
@@ -469,8 +493,6 @@ export async function createDriverAction(
     licenseTypeRaw === "SIM_C"
       ? licenseTypeRaw
       : null;
-  /* Foto SIM berupa data URL Base64. String kosong berarti fotonya dihapus. */
-  const licensePhotoUrl = (formData.get("licensePhotoUrl") as string)?.trim() || null;
   const rawRoute = (formData.get("route") as string)?.trim() || "dalam_kota";
   const routeScope = rawRoute === "luar_kota" ? "LUAR_KOTA" : "DALAM_KOTA";
 
@@ -481,15 +503,15 @@ export async function createDriverAction(
     return { success: false, errors };
   }
 
+  let hasil: unknown;
   try {
-    await apiCreateDriver({
-        fullName,
-        phoneNumber,
-        licenseNumber,
-        licenseType,
-        licensePhotoUrl,
-        routeScope,
-      });
+    hasil = await apiCreateDriver({
+      fullName,
+      phoneNumber,
+      licenseNumber,
+      licenseType,
+      routeScope,
+    });
   } catch (err) {
     if (err instanceof ApiError) {
       return { success: false, message: err.message };
@@ -498,7 +520,14 @@ export async function createDriverAction(
   }
 
   revalidatePath("/fleet/drivers");
-  return { success: true, message: `Supir ${fullName} berhasil didaftarkan ke roster.` };
+  return {
+    success: true,
+    message: `Supir ${fullName} berhasil didaftarkan ke roster.`,
+    /* ID asli dikembalikan supaya pemanggil bisa mengganti id sementara `d-...`
+       di layar. Tanpa ini, menyunting supir yang baru ditambah akan mengirim
+       PATCH ke id sementara dan ditolak 404. */
+    data: hasil as { id?: string },
+  };
 }
 
 /**
@@ -507,7 +536,7 @@ export async function createDriverAction(
 export async function updateDriverAction(
   _prevState: ActionState | null,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<ActionState & { data?: { id?: string } }> {
   const id = (formData.get("id") as string)?.trim() || "";
   const fullName = (formData.get("fullName") as string)?.trim() || undefined;
   const phoneNumber = (formData.get("phoneNumber") as string)?.trim() || undefined;
@@ -522,20 +551,23 @@ export async function updateDriverAction(
     licenseTypeRaw === "SIM_C"
       ? licenseTypeRaw
       : null;
-  /* Foto SIM berupa data URL Base64. String kosong berarti fotonya dihapus. */
-  const licensePhotoUrl = (formData.get("licensePhotoUrl") as string)?.trim() || null;
+  /* Foto SIM tidak lagi diunggah dari form supir: kelayakan mengemudi diperiksa
+     saat wawancara dengan melihat dokumen fisik. Kolomnya sengaja TIDAK dikirim
+     sama sekali, bukan dikirim sebagai null. Backend membedakan "tidak diubah"
+     (undefined) dari "dikosongkan" (null); kalau null yang dikirim, foto lama
+     pada data yang sudah ada akan terhapus setiap kali profil disunting. */
   const rawRoute = (formData.get("route") as string)?.trim() || "dalam_kota";
   const routeScope = rawRoute === "luar_kota" ? "LUAR_KOTA" : "DALAM_KOTA";
 
   if (!id) return { success: false, message: "ID supir tidak valid." };
 
+  let hasil: unknown;
   try {
-    await apiUpdateDriver(id, {
+    hasil = await apiUpdateDriver(id, {
       fullName,
       phoneNumber,
       licenseNumber,
       licenseType,
-      licensePhotoUrl,
       routeScope,
     });
   } catch (err) {
@@ -546,7 +578,11 @@ export async function updateDriverAction(
   }
 
   revalidatePath("/fleet/drivers");
-  return { success: true, message: "Data supir berhasil diperbarui." };
+  return {
+    success: true,
+    message: "Data supir berhasil diperbarui.",
+    data: hasil as { id?: string },
+  };
 }
 
 /**
@@ -727,25 +763,6 @@ export async function deleteKnowledgeDocumentAction(id: string): Promise<ActionS
   return { success: true, message: "Dokumen pengetahuan berhasil dihapus." };
 }
 
-/**
- * Server Action untuk menarik live models dari gateway.
- */
-export async function fetchGatewayModelsAction(gatewayUrl?: string, apiKey?: string) {
-  try {
-    const data = await apiFetchGatewayModels(gatewayUrl, apiKey);
-    return { success: true, data };
-  } catch (err) {
-    return {
-      success: false,
-      message: err instanceof Error ? err.message : "Gagal mengambil daftar model.",
-      data: {
-        models: ["gemini-2.5-flash", "claude-3-5-sonnet", "deepseek-chat", "gpt-4o-mini"],
-        source: "fallback",
-        count: 4,
-      },
-    };
-  }
-}
 
 /**
  * Server Action untuk mengambil live log aktivitas 9Router Gateway.
@@ -772,7 +789,10 @@ export async function clearAiGatewayLogsAction() {
     revalidatePath("/admin/ai-hub");
     return { success: true };
   } catch (err) {
-    return { success: false, message: err instanceof Error ? err.message : "Gagal membersihkan log." };
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : "Gagal membersihkan log.",
+    };
   }
 }
 
@@ -823,7 +843,8 @@ export async function createFaqAction(
   const answer = (formData.get("answer") as string)?.trim() || "";
   const category = (formData.get("category") as string)?.trim() || "Umum";
   const orderIndexStr = formData.get("orderIndex") as string;
-  const orderIndex = orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : 0;
+  const orderIndex =
+    orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : 0;
   const activeVal = formData.get("isActive");
   const isActive = activeVal !== null ? activeVal === "true" || activeVal === "on" : true;
 
@@ -866,7 +887,8 @@ export async function updateFaqAction(
   const answer = (formData.get("answer") as string)?.trim();
   const category = (formData.get("category") as string)?.trim();
   const orderIndexStr = formData.get("orderIndex") as string;
-  const orderIndex = orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : undefined;
+  const orderIndex =
+    orderIndexStr !== null && orderIndexStr !== "" ? parseInt(orderIndexStr, 10) : undefined;
   const activeVal = formData.get("isActive");
   const isActive = activeVal !== null ? activeVal === "true" || activeVal === "on" : undefined;
 
@@ -975,11 +997,25 @@ export async function updateFaqPriorityAction(
 /**
  * Server Action untuk menyimpan atau menambah armada mobil beserta tarif sewa harian.
  */
+/**
+ * Menyimpan unit armada: menambah baru atau memperbarui yang sudah ada.
+ *
+ * `mode` WAJIB disebut pemanggil, karena hanya pemanggil yang tahu apakah admin
+ * sedang membuka modal "Tambah Armada" atau "Edit Spesifikasi". Sebelumnya
+ * keputusan itu ditebak dari awalan id (`v-`), dan tebakan itu salah begitu id
+ * sementara tertinggal di state: unit yang baru dibuat lalu disunting akan
+ * dikirim sebagai unit BARU, sehingga datanya terduplikasi atau ditolak karena
+ * externalId sudah dipakai.
+ *
+ * Tebakan awalan `v-` masih dipertahankan sebagai cadangan untuk pemanggil lama,
+ * tetapi bukan lagi satu-satunya penentu.
+ */
 export async function saveVehicleAction(
   vehicle: Vehicle,
+  mode?: "create" | "update",
 ): Promise<ActionState & { data?: any }> {
   try {
-    const isNew = vehicle.id.startsWith("v-") || !vehicle.id;
+    const isNew = mode ? mode === "create" : vehicle.id.startsWith("v-") || !vehicle.id;
     const payload = {
       name: vehicle.name,
       licensePlate: vehicle.plate,
@@ -990,9 +1026,9 @@ export async function saveVehicleAction(
           : vehicle.transmission?.toUpperCase() || "MANUAL",
       seatingCapacity: vehicle.seats ?? 7,
       pricePerDay: Number(vehicle.pricePerDay) || 400000,
-        /* Foto ikut dikirim. Sebelumnya hanya menjadi pratinjau di layar lalu
+      /* Foto ikut dikirim. Sebelumnya hanya menjadi pratinjau di layar lalu
            hilang saat modal ditutup, sehingga unit tidak pernah punya foto. */
-        imageUrl: vehicle.imageUrl ?? undefined,
+      imageUrl: vehicle.imageUrl ?? undefined,
       operationalStatus: (vehicle.status === "tersedia"
         ? "AVAILABLE"
         : vehicle.status === "servis"
@@ -1063,7 +1099,9 @@ export async function logoutAction(): Promise<void> {
  */
 export async function createKnowledgeCategoryAction(
   label: string,
-): Promise<ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number } }> {
+): Promise<
+  ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number } }
+> {
   if (!label.trim()) {
     return { success: false, message: "Nama kategori wajib diisi." };
   }
@@ -1118,7 +1156,15 @@ export async function deleteKnowledgeCategoryAction(id: string): Promise<ActionS
 }
 /** Memuat ulang daftar kategori setelah ada perubahan. */
 export async function getKnowledgeCategoriesAction(): Promise<
-  ActionState & { data?: { id: string; slug: string; label: string; orderIndex: number; jumlahDokumen?: number }[] }
+  ActionState & {
+    data?: {
+      id: string;
+      slug: string;
+      label: string;
+      orderIndex: number;
+      jumlahDokumen?: number;
+    }[];
+  }
 > {
   try {
     const data = await apiGetKnowledgeCategories();
@@ -1173,5 +1219,198 @@ export async function verifyBookingDocumentsAction(
       return { success: false, message: err.message };
     }
     return { success: false, message: "Gagal memverifikasi dokumen." };
+  }
+}
+
+// ==========================================
+// Template Dokumen Resmi (Form Kesanggupan)
+// ==========================================
+
+/**
+ * Mengunggah berkas dokumen resmi sebagai versi baru.
+ *
+ * Berkas diteruskan apa adanya ke backend. Pemeriksaan jenis dan ukuran
+ * dilakukan di sana, karena hanya di server isi berkas bisa dibaca untuk
+ * memastikan itu benar-benar PDF atau Word.
+ */
+export async function unggahTemplateDokumenAction(
+  formData: FormData,
+): Promise<ActionState & { versi?: number }> {
+  const berkas = formData.get("berkas");
+
+  if (!(berkas instanceof File) || berkas.size === 0) {
+    return { success: false, message: "Pilih berkas dokumen terlebih dahulu." };
+  }
+
+  const judul = (formData.get("judul") as string | null)?.trim() || undefined;
+  const catatan = (formData.get("catatan") as string | null)?.trim() || undefined;
+
+  try {
+    const hasil = await apiUnggahTemplate({ berkas, judul, catatan });
+
+    revalidatePath("/documents");
+    return {
+      success: true,
+      message: `Dokumen tersimpan sebagai versi ${hasil.versi} dan langsung dipakai pelanggan.`,
+      versi: hasil.versi,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Gagal mengunggah dokumen.",
+    };
+  }
+}
+
+/** Mengaktifkan kembali versi lama tanpa membuat versi baru. */
+export async function aktifkanVersiTemplateAction(id: string): Promise<ActionState> {
+  try {
+    const hasil = await apiAktifkanVersi(id);
+    revalidatePath("/documents");
+    return { success: true, message: `Versi ${hasil.versi} diaktifkan kembali.` };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Gagal mengaktifkan versi.",
+    };
+  }
+}
+
+/**
+ * Mengunggah foto armada setelah data unitnya tersimpan.
+ *
+ * Dipisah dari `saveVehicleAction` karena endpoint unggah membutuhkan ID unit
+ * yang sudah ada. Untuk unit baru, ID itu baru didapat setelah penyimpanan
+ * pertama berhasil.
+ */
+export async function unggahFotoKendaraanAction(
+  id: string,
+  formData: FormData,
+): Promise<ActionState & { imageUrl?: string }> {
+  const berkas = formData.get("berkas");
+
+  if (!(berkas instanceof File) || berkas.size === 0) {
+    return { success: false, message: "Pilih berkas foto terlebih dahulu." };
+  }
+
+  try {
+    const imageUrl = await apiUnggahFotoKendaraan(id, berkas);
+    revalidatePath("/fleet/catalog");
+    revalidatePath("/fleet/calendar");
+    return { success: true, message: "Foto armada tersimpan.", imageUrl };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Gagal mengunggah foto armada.",
+    };
+  }
+}
+
+/**
+ * Menyimpan penyesuaian biaya manual (surcharge) pada satu pesanan.
+ *
+ * Sebelumnya modal hanya memanggil `onApply` yang menambah baris ke state React.
+ * Deskripsi, nominal, dan justifikasi audit yang wajib diisi hilang begitu halaman
+ * dimuat ulang, dan tidak ada satu pun jejak yang tersisa — padahal modalnya
+ * menyatakan "Penyesuaian tercatat pada riwayat pesanan".
+ *
+ * Sekarang barisnya benar-benar tersimpan di `booking_line_items`, dan backend
+ * mencatatnya ke audit log.
+ */
+export async function createBookingLineItemAction(
+  bookingId: string,
+  data: {
+    kategori: string;
+    deskripsi: string;
+    nominal: number;
+    arah: "TAMBAH" | "KURANG";
+    justifikasi: string;
+  },
+): Promise<ActionState & { data?: unknown }> {
+  if (!bookingId) {
+    return { success: false, message: "Kode pemesanan tidak valid." };
+  }
+
+  if (!data.deskripsi?.trim()) {
+    return { success: false, message: "Deskripsi penyesuaian wajib diisi." };
+  }
+  if (!Number.isFinite(data.nominal) || data.nominal <= 0) {
+    return { success: false, message: "Nominal penyesuaian harus lebih dari 0." };
+  }
+  if (!data.justifikasi?.trim()) {
+    return { success: false, message: "Justifikasi wajib diisi untuk audit internal." };
+  }
+
+  try {
+    const hasil = await apiCreateBookingLineItem(bookingId, {
+      ...data,
+      deskripsi: data.deskripsi.trim(),
+      justifikasi: data.justifikasi.trim(),
+    });
+    revalidatePath("/bookings");
+    revalidatePath(`/bookings/${bookingId}`);
+    return {
+      success: true,
+      message: "Penyesuaian biaya tersimpan dan tercatat pada riwayat pesanan.",
+      data: hasil,
+    };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menyimpan penyesuaian biaya ke backend." };
+  }
+}
+
+/**
+ * Membatalkan penyesuaian biaya yang sudah tersimpan.
+ *
+ * Barisnya tidak dihapus di backend, hanya ditandai dibatalkan, supaya
+ * penyesuaian yang pernah menagih pelanggan tetap bisa ditelusuri.
+ */
+export async function cancelBookingLineItemAction(
+  bookingId: string,
+  lineItemId: string,
+): Promise<ActionState> {
+  if (!bookingId || !lineItemId) {
+    return { success: false, message: "Penyesuaian biaya tidak valid." };
+  }
+
+  try {
+    await apiCancelBookingLineItem(bookingId, lineItemId);
+    revalidatePath("/bookings");
+    revalidatePath(`/bookings/${bookingId}`);
+    return { success: true, message: "Penyesuaian biaya dibatalkan." };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal membatalkan penyesuaian biaya." };
+  }
+}
+
+/**
+ * Memuat ulang ringkasan keuangan dengan rentang bulan tertentu.
+ *
+ * Dipakai pemilih periode di tab Omzet. Datanya diambil di server, bukan di
+ * browser, karena token sesi hanya ada di cookie HttpOnly dan endpoint finance
+ * dijaga peran ADMIN/STAFF. Hanya grafik yang ikut berubah — kartu ringkasan
+ * dan tabel armada tetap memakai rentang `range` seperti sebelumnya.
+ */
+export async function muatUlangGrafikKeuanganAction(
+  bulan: JumlahBulanOmzet,
+): Promise<ActionState & { data?: FinanceSummary }> {
+  if (!PILIHAN_BULAN_OMZET.includes(bulan)) {
+    return { success: false, message: "Rentang bulan tidak dikenali." };
+  }
+
+  try {
+    const data = await getFinanceSummary("all", bulan);
+    return { success: true, data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Grafik keuangan gagal dimuat ulang." };
   }
 }

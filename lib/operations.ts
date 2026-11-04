@@ -1,5 +1,7 @@
 import "server-only";
 import { getSessionToken, ApiError } from "./api";
+import { normalisasiTransmisi } from "./labels";
+import type { JumlahBulanOmzet } from "./financePeriod";
 import type {
   AdminPaymentItem,
   AdminPaymentsResponse,
@@ -107,14 +109,23 @@ function mapVehicle(v: ApiVehicle): Vehicle {
     plate: v.licensePlate,
     status: statusTampil(v),
     category: v.category,
-    transmission: v.transmission,
+    /* Backend menyimpan MANUAL/AUTOMATIC; layar memakai Manual/Automatic.
+       Diseragamkan di sini supaya semua komponen menerima bentuk yang sama. */
+    transmission: normalisasiTransmisi(v.transmission),
     seats: v.seatingCapacity,
     pricePerDay: v.pricePerDay ?? 400000,
     imageUrl: v.imageUrl ?? null,
-    // `usage` dan `allowedModes` tidak dikirim backend. Dibiarkan null/kosong
-    // daripada diisi teks karangan.
+    /*
+     * `usage` tidak dikirim backend, jadi dibiarkan null daripada dikarang.
+     *
+     * `allowedModes` juga tidak dikirim, TETAPI tidak boleh dibiarkan kosong:
+     * form edit memakai array ini untuk mencentang kotak mode rental, dan array
+     * kosong membuat validasi menolak setiap penyimpanan unit lama. Karena
+     * backend memang tidak membatasi mode rental per unit, keduanya dianggap
+     * diizinkan sampai ada kolomnya sendiri.
+     */
     usage: null,
-    allowedModes: [] as BookingMode[],
+    allowedModes: ["lepas_kunci", "dengan_supir"] as BookingMode[],
   };
 }
 
@@ -273,6 +284,16 @@ type ApiBooking = {
     createdAt: string;
     updatedAt: string;
   } | null;
+  /** Penyesuaian biaya manual. Baris yang dibatalkan tetap dikirim, ditandai. */
+  lineItems?: Array<{
+    id: string;
+    kategori: string;
+    deskripsi: string;
+    nominal: string | number;
+    arah: "TAMBAH" | "KURANG";
+    justifikasi: string;
+    dibatalkanPada: string | null;
+  }> | null;
 };
 
 function countDays(start: string, end: string): number {
@@ -287,6 +308,7 @@ function mapBooking(b: ApiBooking): Booking {
   const lineItems: LineItem[] = [
     {
       id: `${b.id}-sewa`,
+      kind: "sewa",
       label: isDriverService ? "Sewa unit dengan supir" : "Sewa unit lepas kunci",
       // Nominal hanya ditampilkan kalau tim sudah mengonfirmasi tarifnya.
       amount:
@@ -294,6 +316,33 @@ function mapBooking(b: ApiBooking): Booking {
       note: `${countDays(b.startDateTime, b.endDateTime)} hari`,
     },
   ];
+
+  /*
+   * Penyesuaian biaya manual yang tersimpan ikut ditampilkan.
+   *
+   * Sebelumnya rincian ini hanya hidup di state React dan hilang saat halaman
+   * dimuat ulang. Sekarang sumbernya database, jadi yang tampil selalu sama
+   * dengan yang tersimpan.
+   *
+   * Baris yang sudah dibatalkan sengaja dilewati: pembatalan berarti
+   * penyesuaian itu tidak lagi ditagihkan. Jejaknya tetap ada di database dan
+   * audit log untuk keperluan penelusuran, bukan untuk ditampilkan sebagai
+   * tagihan aktif.
+   */
+  for (const li of b.lineItems ?? []) {
+    if (li.dibatalkanPada) continue;
+
+    const nominal = Number(li.nominal);
+    lineItems.push({
+      id: li.id,
+      kind: "penyesuaian",
+      label: li.deskripsi,
+      /* Nominal dikirim bertanda supaya tabel tagihan bisa menampilkan
+         pengurangan apa adanya, sesuai bentuk yang sudah dipakai layar. */
+      amount: `${li.arah === "KURANG" ? "-" : "+"}${nominal}`,
+      note: `${li.kategori} — ${li.justifikasi}`,
+    });
+  }
 
   return {
     id: b.id,
@@ -308,13 +357,15 @@ function mapBooking(b: ApiBooking): Booking {
     status: resolveBookingStatus(b),
     rawStatus: b.status,
     tariffStatus: b.tariffStatus,
-    quotedAmount: b.quotedAmount !== null && b.quotedAmount !== undefined ? Number(b.quotedAmount) : null,
+    quotedAmount:
+      b.quotedAmount !== null && b.quotedAmount !== undefined ? Number(b.quotedAmount) : null,
     driverId: b.driverId,
     serviceType: isDriverService ? "Dengan Supir" : "Lepas Kunci",
     pickupRoute: b.pickupLocation,
     driverName: b.driver?.fullName ?? null,
     driverStatus: b.driver?.readiness ? (DRIVER_READINESS[b.driver.readiness] ?? null) : null,
-    whatsappIntent: (b as { whatsappIntent?: { message: string; url: string } }).whatsappIntent ?? null,
+    whatsappIntent:
+      (b as { whatsappIntent?: { message: string; url: string } }).whatsappIntent ?? null,
     lineItems,
     payment: b.payment
       ? {
@@ -533,10 +584,13 @@ export async function getTicketDetail(
   return { messages, handledBy: data?.handledBy };
 }
 
-
 /* Laporan Keuangan */
 
 export type FinanceSummary = {
+  /* Rentang bulan yang dipakai backend untuk grafik omzet. Dikirim balik supaya
+     tampilan tidak perlu menebak nilai default mana yang sedang berlaku. */
+  bulan?: number;
+
   summary: {
     totalRevenue: number;
     completedBookingsCount: number;
@@ -583,8 +637,20 @@ export type FinanceSummary = {
   }>;
 };
 
-export async function getFinanceSummary(range: string = "all"): Promise<FinanceSummary> {
-  return await apiGet<FinanceSummary>(`/admin/finance/summary?range=${encodeURIComponent(range)}`);
+/* Daftar rentang bulan tinggal di `lib/financePeriod.ts` supaya komponen klien
+   bisa memakainya tanpa ikut menyeret modul server ini ke bundel browser.
+ *
+ * Default di sini 12 bulan, bukan 1 seperti default API. Alasannya: pemanggil
+ * yang tidak menyebut rentang (dashboard) memakai `monthlyTrends` sebagai tren
+ * setahun untuk sparkline. Kalau ikut default API yang 1 bulan, sparkline-nya
+ * menciut jadi satu titik. Halaman laporan keuangan menyebut rentangnya sendiri,
+ * jadi tidak ada pemanggil yang bergantung pada nilai bawaan ini secara diam. */
+export async function getFinanceSummary(
+  range: string = "all",
+  bulan: JumlahBulanOmzet = 12,
+): Promise<FinanceSummary> {
+  const params = new URLSearchParams({ range, bulan: String(bulan) });
+  return await apiGet<FinanceSummary>(`/admin/finance/summary?${params.toString()}`);
 }
 
 /* Konfigurasi AI & Knowledge Base */
@@ -673,7 +739,7 @@ export async function getKnowledgeCategories(): Promise<KnowledgeCategoryView[]>
 export type AiGatewayLog = {
   id: string;
   timestamp: string;
-  event: 'CHAT_COMPLETION' | 'HEALTH_CHECK' | 'GATEWAY_ROUTING' | 'DOC_PARSED';
+  event: "CHAT_COMPLETION" | "HEALTH_CHECK" | "GATEWAY_ROUTING" | "DOC_PARSED";
   model: string;
   status: number;
   latencyMs: number;
@@ -756,7 +822,7 @@ export async function verifyPayment(
  *
  * Katalog armada memakai ini untuk menampilkan badge "Disewa". Tanpa data ini,
  * katalog hanya membaca `operationalStatus`, yang menyimpan keadaan unit di
- * gudang dan tidak diperbarui saat ada sewa berjalan â€” sehingga unit yang
+ * gudang dan tidak diperbarui saat ada sewa berjalan Ã¢â‚¬â€ sehingga unit yang
  * sedang disewa tetap tampil "Tersedia".
  *
  * Kegagalan mengambil data tidak boleh menjatuhkan halaman katalog. Kalau gagal,
@@ -771,5 +837,3 @@ export async function getRentedVehicleIds(): Promise<Set<string>> {
     return new Set();
   }
 }
-
-

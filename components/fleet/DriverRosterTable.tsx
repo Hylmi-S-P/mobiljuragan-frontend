@@ -13,7 +13,7 @@ import { DriverFormModal } from "@/components/modals/DriverFormModal";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/components/ui/useToast";
 import { Toggle } from "@/components/ui/Toggle";
 import { IconPencil, IconPlus } from "@/components/ui/icons";
 import { DRIVER_ROUTE, DRIVER_STATUS } from "@/lib/labels";
@@ -30,7 +30,7 @@ export function DriverRosterTable({ initialDrivers }: Props) {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [formTarget, setFormTarget] = useState<{ driverId: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ text: string; isError?: boolean } | null>(null);
+  const { show, node } = useToast();
   const [isPending, startTransition] = useTransition();
 
   const filteredDrivers = drivers.filter((driver) => {
@@ -64,11 +64,11 @@ export function DriverRosterTable({ initialDrivers }: Props) {
     startTransition(async () => {
       const res = await toggleDriverReadinessAction(driverId, apiReadiness);
       if (res.success) {
-        setNotice({ text: res.message ?? `Kesiapan supir berhasil diubah menjadi ${apiReadiness}.` });
+        show(res.message ?? `Kesiapan supir berhasil diubah menjadi ${apiReadiness}.`);
       } else {
         // Rollback on failure
         setDrivers(previous);
-        setNotice({ text: res.message ?? "Gagal mengubah kesiapan supir.", isError: true });
+        show(res.message ?? "Gagal mengubah kesiapan supir.", "error");
       }
     });
   }
@@ -88,10 +88,6 @@ export function DriverRosterTable({ initialDrivers }: Props) {
        "tidak diubah" dari "dikosongkan". */
     formData.set("licenseType", saved.licenseType ?? "");
 
-    /* Foto SIM juga selalu dikirim. String kosong berarti fotonya dihapus —
-       itu yang membuat tombol Hapus foto berpengaruh. */
-    formData.set("licensePhotoUrl", saved.licensePhotoUrl ?? "");
-
     formData.set("route", saved.route);
 
     startTransition(async () => {
@@ -99,27 +95,35 @@ export function DriverRosterTable({ initialDrivers }: Props) {
         ? await updateDriverAction(null, formData)
         : await createDriverAction(null, formData);
 
-      if (res.success) {
-        setDrivers((current) => {
-          const exists = current.some((driver) => driver.id === saved.id);
-          return exists
-            ? current.map((driver) => (driver.id === saved.id ? saved : driver))
-            : [...current, saved];
-        });
-        setNotice({
-          text:
-            res.message ??
-            (isEdit
-              ? `Data ${saved.label} berhasil diperbarui di database.`
-              : `${saved.label} berhasil didaftarkan ke roster operasional.`),
-        });
-        setFormTarget(null);
-      } else {
-        setNotice({
-          text: res.message ?? "Gagal menyimpan data supir ke database.",
-          isError: true,
-        });
+      if (!res.success) {
+        show(res.message ?? "Gagal menyimpan data supir ke database.", "error");
+        return;
       }
+
+      /*
+       * ID sementara `d-<timestamp>` diganti ID asli dari backend.
+       *
+       * Modal memberi id sementara untuk supir baru karena saat itu backend belum
+       * memberi id apa pun. Sebelumnya id itu dibiarkan di state, sehingga
+       * menyunting supir yang baru ditambah mengirim PATCH ke id sementara dan
+       * ditolak 404.
+       */
+      const idTersimpan: string = res.data?.id ?? saved.id;
+
+      setDrivers((current) =>
+        current.some((driver) => driver.id === saved.id)
+          ? current.map((driver) =>
+              driver.id === saved.id ? { ...saved, id: idTersimpan } : driver,
+            )
+          : [...current, { ...saved, id: idTersimpan }],
+      );
+      show(
+        res.message ??
+          (isEdit
+            ? `Data ${saved.label} berhasil diperbarui di database.`
+            : `${saved.label} berhasil didaftarkan ke roster operasional.`),
+      );
+      setFormTarget(null);
     });
   }
 
@@ -134,29 +138,17 @@ export function DriverRosterTable({ initialDrivers }: Props) {
       const res = await deleteDriverAction(null, formData);
       if (res.success) {
         setDrivers((current) => current.filter((driver) => driver.id !== targetId));
-        setNotice({
-          text: res.message ?? `Supir ${targetDriver?.label ?? ""} berhasil dinonaktifkan.`,
-        });
+        show(res.message ?? `Supir ${targetDriver?.label ?? ""} berhasil dinonaktifkan.`);
         setDeleteTarget(null);
       } else {
-        setNotice({
-          text: res.message ?? "Gagal menghapus supir dari database.",
-          isError: true,
-        });
+        show(res.message ?? "Gagal menghapus supir dari database.", "error");
       }
     });
   }
 
   return (
     <>
-      {notice ? (
-        <Toast
-          message={notice.text}
-          tone={notice.isError ? "error" : "success"}
-          durationMs={3500}
-          onClose={() => setNotice(null)}
-        />
-      ) : null}
+      {node}
       <div className="mt-3">
         <Panel
           action={

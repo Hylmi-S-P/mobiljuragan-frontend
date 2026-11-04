@@ -321,8 +321,6 @@ export async function apiUpdateBookingStatus(
   return json.data;
 }
 
-
-
 // Menugaskan supir resmi ke pesanan sewa bertipe WITH_DRIVER.
 export async function apiAssignDriverToBooking(id: string, driverId: string, note?: string) {
   const token = await getSessionToken();
@@ -353,7 +351,81 @@ export async function apiAssignDriverToBooking(id: string, driverId: string, not
   return json.data;
 }
 
+/**
+ * Menambah penyesuaian biaya manual (surcharge) pada satu pesanan.
+ *
+ * `nominal` dikirim sebagai angka POSITIF; arahnya ditentukan `arah`. Backend
+ * menyimpannya apa adanya ditambah `arah`, jadi laporan bisa menjumlahkan
+ * penambahan dan pengurangan secara terpisah.
+ */
+export async function apiCreateBookingLineItem(
+  bookingId: string,
+  data: {
+    kategori: string;
+    deskripsi: string;
+    nominal: number;
+    arah: "TAMBAH" | "KURANG";
+    justifikasi: string;
+  },
+) {
+  const token = await getSessionToken();
 
+  const res = await fetch(
+    `${API_BASE_URL}/admin/bookings/${encodeURIComponent(bookingId)}/line-items`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CREATE_LINE_ITEM_FAILED",
+      json?.error?.message || "Gagal menyimpan penyesuaian biaya.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+/**
+ * Membatalkan penyesuaian biaya.
+ *
+ * Barisnya tidak dihapus di backend, hanya ditandai dibatalkan, supaya
+ * penyesuaian yang sudah pernah menagih pelanggan tetap bisa ditelusuri.
+ */
+export async function apiCancelBookingLineItem(bookingId: string, lineItemId: string) {
+  const token = await getSessionToken();
+
+  const res = await fetch(
+    `${API_BASE_URL}/admin/bookings/${encodeURIComponent(bookingId)}/line-items/${encodeURIComponent(lineItemId)}`,
+    {
+      method: "DELETE",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    },
+  );
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CANCEL_LINE_ITEM_FAILED",
+      json?.error?.message || "Gagal membatalkan penyesuaian biaya.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
 
 // Menambah pengemudi resmi baru ke roster supir.
 
@@ -393,8 +465,6 @@ export async function apiCreateDriver(data: {
   return json.data;
 }
 
-
-
 // Memperbarui data supir dan wilayah rute tugas.
 export async function apiUpdateDriver(
   id: string,
@@ -432,8 +502,6 @@ export async function apiUpdateDriver(
   return json.data;
 }
 
-
-
 /**
  * Mengambil tiket yang belum dipegang siapa pun.
  *
@@ -442,13 +510,10 @@ export async function apiUpdateDriver(
  */
 export async function apiClaimTicket(ticketId: string) {
   const token = await getSessionToken();
-  const res = await fetch(
-    `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`,
-    {
-      method: "POST",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    },
-  );
+  const res = await fetch(`${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
   const json = await res.json().catch(() => null);
   if (!res.ok) {
     throw new ApiError(
@@ -486,13 +551,10 @@ export async function apiTakeoverTicket(ticketId: string) {
 /** Melepas tiket supaya bisa diambil admin lain. */
 export async function apiReleaseTicket(ticketId: string) {
   const token = await getSessionToken();
-  const res = await fetch(
-    `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`,
-    {
-      method: "DELETE",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    },
-  );
+  const res = await fetch(`${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/assign`, {
+    method: "DELETE",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
   const json = await res.json().catch(() => null);
   if (!res.ok) {
     throw new ApiError(
@@ -539,8 +601,6 @@ export async function apiUpdateDriverReadiness(
   return json.data;
 }
 
-
-
 // Menonaktifkan / menghapus supir dari roster operasional.
 export async function apiDeleteDriver(id: string) {
   const token = await getSessionToken();
@@ -565,8 +625,6 @@ export async function apiDeleteDriver(id: string) {
 
   return json.data;
 }
-
-
 
 // Memperbarui status tiket bantuan (RESOLVED / CLOSED / IN_PROGRESS / OPEN).
 export async function apiUpdateTicketStatus(
@@ -739,35 +797,11 @@ export async function apiDeleteKnowledgeDocument(id: string) {
   return json.data;
 }
 
-export async function apiFetchGatewayModels(gatewayUrl?: string, apiKey?: string) {
-  const token = await getSessionToken();
-
-  const params = new URLSearchParams();
-  if (gatewayUrl) params.append("gatewayUrl", gatewayUrl);
-  if (apiKey) params.append("apiKey", apiKey);
-
-  const res = await fetch(`${API_BASE_URL}/admin/ai/models?${params.toString()}`, {
-    method: "GET",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new ApiError(
-      res.status,
-      json?.error?.code || "FETCH_MODELS_FAILED",
-      json?.error?.message || "Gagal mengambil daftar model.",
-    );
-  }
-  return json.data as { models: string[]; source: string; count: number };
-}
 
 export type AiGatewayLog = {
   id: string;
   timestamp: string;
-  event: 'CHAT_COMPLETION' | 'HEALTH_CHECK' | 'GATEWAY_ROUTING' | 'DOC_PARSED';
+  event: "CHAT_COMPLETION" | "HEALTH_CHECK" | "GATEWAY_ROUTING" | "DOC_PARSED";
   model: string;
   status: number;
   latencyMs: number;
@@ -807,7 +841,10 @@ export async function apiClearAiGatewayLogs(): Promise<void> {
   if (!res.ok) throw new ApiError(res.status, "CLEAR_LOGS_FAILED", "Gagal membersihkan log.");
 }
 
-export async function apiParseKnowledgeFile(filename: string, contentBase64: string): Promise<{
+export async function apiParseKnowledgeFile(
+  filename: string,
+  contentBase64: string,
+): Promise<{
   title: string;
   content: string;
   format: string;
@@ -837,7 +874,7 @@ export async function apiParseKnowledgeFile(filename: string, contentBase64: str
 export async function apiTestAiChat(
   prompt: string,
   history?: Array<{ role: string; content: string }>,
-  options?: { temperature?: number; maxTokens?: number; systemPrompt?: string }
+  options?: { temperature?: number; maxTokens?: number; systemPrompt?: string },
 ) {
   const token = await getSessionToken();
 
@@ -1139,6 +1176,41 @@ export async function apiCreateVehicle(payload: VehiclePayload) {
   return json.data;
 }
 
+/**
+ * Mengunggah foto armada lewat multipart.
+ *
+ * Berkas dikirim apa adanya, bukan sebagai Base64 di dalam JSON. Untuk foto
+ * 5 MB, Base64 membengkak menjadi sekitar 6,7 MB teks yang harus ditampung di
+ * memori peramban sekaligus. Dengan multipart, yang dikirim adalah byte asli
+ * dan server yang menormalkannya lewat sharp.
+ *
+ * Mengembalikan tautan media yang siap dipakai sebagai `imageUrl`.
+ */
+export async function apiUnggahFotoKendaraan(id: string, berkas: File): Promise<string> {
+  const token = await getSessionToken();
+
+  const form = new FormData();
+  form.append("file", berkas, berkas.name);
+
+  const res = await fetch(`${API_BASE_URL}/admin/vehicles/${id}/photo`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: form,
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPLOAD_VEHICLE_PHOTO_FAILED",
+      json?.error?.message || "Gagal mengunggah foto armada.",
+      json?.error?.details,
+    );
+  }
+
+  /* Balasan endpoint foto berbentuk { vehicle, media: { id, url, ... } }. */
+  return json?.data?.media?.url ?? "";
+}
 export async function apiUpdateVehicle(id: string, payload: Partial<VehiclePayload>) {
   const token = await getSessionToken();
 
@@ -1240,7 +1312,10 @@ export async function apiCreateKnowledgeCategory(label: string) {
   return json.data as KnowledgeCategoryApi;
 }
 
-export async function apiUpdateKnowledgeCategory(id: string, payload: { label?: string; orderIndex?: number }) {
+export async function apiUpdateKnowledgeCategory(
+  id: string,
+  payload: { label?: string; orderIndex?: number },
+) {
   const token = await getSessionToken();
 
   const res = await fetch(`${API_BASE_URL}/admin/ai/categories/${encodeURIComponent(id)}`, {
@@ -1314,14 +1389,17 @@ export async function apiAdminVerifyBookingDocuments(
 ): Promise<BookingDocument> {
   const token = await getSessionToken();
 
-  const res = await fetch(`${API_BASE_URL}/admin/bookings/${encodeURIComponent(bookingId)}/documents/verify`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  const res = await fetch(
+    `${API_BASE_URL}/admin/bookings/${encodeURIComponent(bookingId)}/documents/verify`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ action, rejectionReason, targets: rejectionTargets }),
     },
-    body: JSON.stringify({ action, rejectionReason, targets: rejectionTargets }),
-  });
+  );
 
   const json = await res.json().catch(() => null);
   if (!res.ok) {
@@ -1331,5 +1409,156 @@ export async function apiAdminVerifyBookingDocuments(
       json?.error?.message || "Gagal memverifikasi dokumen pemesanan.",
     );
   }
-  return json.data as BookingDocument;
+
+  /*
+   * Backend membalas `{ bookingId, bookingCode, document }`, bukan dokumennya
+   * langsung. Sebelumnya yang dikembalikan adalah objek pembungkus itu, sehingga
+   * pemanggil membaca `.status` dari objek yang tidak punya `status` dan kartu
+   * verifikasi tidak pernah tahu status terbarunya.
+   *
+   * Bentuk `document` diambil apa adanya; kalau karena satu dan lain hal tidak
+   * ada, yang dikembalikan objek aslinya supaya pemanggil tidak menerima
+   * `undefined` tanpa penjelasan.
+   */
+  return (json?.data?.document ?? json?.data) as BookingDocument;
+}
+
+// ==========================================
+// Template Dokumen Resmi (Form Kesanggupan)
+// ==========================================
+
+/**
+ * Satu versi dokumen yang tersimpan.
+ *
+ * Dokumen berupa berkas unggahan admin, bukan isi terstruktur. Karena itu yang
+ * disimpan adalah keterangan berkasnya, bukan klausul per butir.
+ */
+export type VersiTemplate = {
+  id: string;
+  kode: string;
+  judul: string;
+  versi: number;
+  berkasNama: string;
+  berkasMime: string;
+  berkasByte: number;
+  isActive: boolean;
+  catatan: string | null;
+  dibuatOleh: string | null;
+  diperbaruiOleh: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Keterangan dokumen yang sedang aktif. */
+export type TemplateAktif = {
+  id: string;
+  kode: string;
+  judul: string;
+  versi: number;
+  berkasNama: string;
+  berkasMime: string;
+  berkasByte: number;
+  catatan: string | null;
+  dibuatOleh: string | null;
+  createdAt: string;
+};
+
+export async function getDaftarVersiTemplate(kode?: string): Promise<VersiTemplate[]> {
+  const token = await getSessionToken();
+  const query = kode ? `?kode=${encodeURIComponent(kode)}` : "";
+
+  const res = await fetch(`${API_BASE_URL}/admin/document-templates${query}`, {
+    method: "GET",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "FETCH_TEMPLATES_FAILED",
+      json?.error?.message || "Gagal memuat daftar versi dokumen.",
+    );
+  }
+
+  return Array.isArray(json?.data?.items) ? (json.data.items as VersiTemplate[]) : [];
+}
+
+export async function getTemplateAktif(): Promise<TemplateAktif | null> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/document-templates/aktif`, {
+    method: "GET",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "FETCH_TEMPLATE_FAILED",
+      json?.error?.message || "Gagal memuat dokumen aktif.",
+    );
+  }
+
+  return (json?.data ?? null) as TemplateAktif | null;
+}
+
+/**
+ * Mengunggah berkas dokumen sebagai versi baru.
+ *
+ * Memakai FormData, bukan JSON, karena berkas bisa berukuran beberapa megabita.
+ * Mengubahnya menjadi Base64 akan membengkakkan ukurannya sekitar sepertiga dan
+ * memaksa seluruh isi berkas ditampung di memori dua kali.
+ */
+export async function apiUnggahTemplate(data: {
+  berkas: File;
+  judul?: string;
+  catatan?: string;
+}): Promise<VersiTemplate> {
+  const token = await getSessionToken();
+
+  const form = new FormData();
+  form.append("berkas", data.berkas, data.berkas.name);
+  if (data.judul) form.append("judul", data.judul);
+  if (data.catatan) form.append("catatan", data.catatan);
+
+  const res = await fetch(`${API_BASE_URL}/admin/document-templates`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: form,
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPLOAD_TEMPLATE_FAILED",
+      json?.error?.message || "Gagal mengunggah dokumen.",
+    );
+  }
+
+  return json.data as VersiTemplate;
+}
+
+export async function apiAktifkanVersi(id: string): Promise<VersiTemplate> {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/document-templates/${id}/aktifkan`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "ACTIVATE_TEMPLATE_FAILED",
+      json?.error?.message || "Gagal mengaktifkan versi dokumen.",
+    );
+  }
+
+  return json.data as VersiTemplate;
 }

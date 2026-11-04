@@ -43,6 +43,7 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
   "/fleet/drivers": IconUsers,
   "/customer-care": IconChat,
   "/finance": IconTrendingUp,
+  "/documents": IconShield,
   "/admin/ai-hub": IconSparkles,
   "/faqs": IconHelpCircle,
   "/admin": IconShield,

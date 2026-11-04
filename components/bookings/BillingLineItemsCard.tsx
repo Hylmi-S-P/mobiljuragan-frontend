@@ -50,8 +50,12 @@ export function BillingLineItemsCard({
           </thead>
           <tbody className="divide-y divide-rule/60">
             {items.map((item) => {
-              const isManualSurcharge = item.id.startsWith("li-");
-              const isSupirBreakdown = item.id.includes("supir-breakdown");
+              /* Ditentukan dari `kind`, bukan dari awalan id. Awalan `li-` dulu
+                 dipakai untuk menandai baris baru, tetapi id berubah menjadi uuid
+                 begitu penyesuaian disimpan ke database — dan nominalnya lalu
+                 salah tampil sebesar tarif sewa. */
+              const isManualSurcharge = item.kind === "penyesuaian";
+              const isSupirBreakdown = item.kind === "supir";
 
               /* Nominal per baris.
                *

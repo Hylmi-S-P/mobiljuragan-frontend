@@ -24,7 +24,7 @@ export function FleetRevenueTable({ fleetBreakdown }: Props) {
         <div>
           <h3 className="text-subtitle font-bold text-ink">Pendapatan per Unit Armada</h3>
           <p className="text-meta text-ink-soft">
-            Rincian performa finansial 9 unit kendaraan operasional resmi MobilJuragan Merauke.
+            Rincian performa finansial tiap unit kendaraan operasional resmi MobilJuragan Merauke.
           </p>
         </div>
         <span className="text-micro font-semibold text-ink-soft bg-canvas px-2.5 py-1 rounded-sm border border-rule shrink-0 self-start sm:self-auto">
@@ -66,7 +66,8 @@ export function FleetRevenueTable({ fleetBreakdown }: Props) {
               {/* Status Transaksi Selesai & Sedang Aktif */}
               <div className="mt-3 flex items-center justify-between text-meta text-ink-soft pt-1">
                 <span>
-                  <strong className="text-ink tabular-nums">{unit.completedBookings}</strong> sewa selesai
+                  <strong className="text-ink tabular-nums">{unit.completedBookings}</strong> sewa
+                  selesai
                 </span>
                 <div>
                   {unit.activeBookings > 0 ? (
