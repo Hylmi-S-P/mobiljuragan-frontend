@@ -1562,3 +1562,177 @@ export async function apiAktifkanVersi(id: string): Promise<VersiTemplate> {
 
   return json.data as VersiTemplate;
 }
+
+// ==========================================
+// Akun Pelanggan & Jejak Identitas
+// ==========================================
+
+export type CustomerAccount = {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+  isActive: boolean;
+  phoneVerifiedAt: string | null;
+  passwordUpdatedAt: string | null;
+  lastLoginAt: string | null;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
+  tokenVersion: number;
+  createdAt: string;
+  updatedAt: string;
+  jumlahBooking: number;
+  jumlahTiket: number;
+  umurHari: number;
+  perluDiperiksa: boolean;
+  punyaKataSandi: boolean;
+};
+
+export type IdentityAuditItem = {
+  id: string;
+  userId: string;
+  actorType: "SELF" | "ADMIN" | "SYSTEM";
+  actorId: string | null;
+  action: string;
+  field: string;
+  before: string | null;
+  after: string | null;
+  reason: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  user?: { fullName: string; phoneNumber: string };
+};
+
+async function ambilJson(path: string): Promise<unknown> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "GET",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    cache: "no-store",
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      (json as { error?: { code?: string } })?.error?.code || "REQUEST_FAILED",
+      (json as { error?: { message?: string } })?.error?.message || "Permintaan gagal.",
+    );
+  }
+  return (json as { data?: unknown })?.data;
+}
+
+/** Daftar akun pelanggan. `curiga` menyaring akun yang identitasnya pernah berubah. */
+export async function getCustomerAccounts(params?: {
+  cari?: string;
+  curiga?: boolean;
+  tanpaSandi?: boolean;
+}): Promise<{ items: CustomerAccount[]; pagination: { total: number } }> {
+  const query = new URLSearchParams();
+  if (params?.cari) query.set("cari", params.cari);
+  if (params?.curiga) query.set("curiga", "true");
+  if (params?.tanpaSandi) query.set("tanpaSandi", "true");
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return (await ambilJson(`/admin/customers${suffix}`)) as {
+    items: CustomerAccount[];
+    pagination: { total: number };
+  };
+}
+
+/** Profil satu pelanggan beserta riwayat identitasnya. */
+export async function getCustomerDetail(id: string): Promise<{
+  user: CustomerAccount;
+  riwayatIdentitas: IdentityAuditItem[];
+}> {
+  return (await ambilJson(`/admin/customers/${encodeURIComponent(id)}`)) as {
+    user: CustomerAccount;
+    riwayatIdentitas: IdentityAuditItem[];
+  };
+}
+
+/** Jejak identitas lintas akun. */
+export async function getIdentityAudit(params?: {
+  action?: string;
+}): Promise<{ items: IdentityAuditItem[]; pagination: { total: number } }> {
+  const query = new URLSearchParams();
+  if (params?.action) query.set("action", params.action);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return (await ambilJson(`/admin/identity-audit${suffix}`)) as {
+    items: IdentityAuditItem[];
+    pagination: { total: number };
+  };
+}
+
+/** Koreksi nama pelanggan. Alasan wajib agar jejaknya bisa ditelusuri. */
+export async function apiCorrectCustomerName(
+  id: string,
+  fullName: string,
+  reason: string,
+): Promise<{ message: string }> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}/admin/customers/${encodeURIComponent(id)}/name`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ fullName, reason }),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "CORRECT_NAME_FAILED",
+      json?.error?.message || "Gagal mengoreksi nama pelanggan.",
+    );
+  }
+  return json.data as { message: string };
+}
+
+/** Membuka penguncian akun pelanggan. */
+export async function apiUnlockCustomer(id: string, reason?: string): Promise<{ message: string }> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}/admin/customers/${encodeURIComponent(id)}/unlock`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UNLOCK_FAILED",
+      json?.error?.message || "Gagal membuka penguncian akun.",
+    );
+  }
+  return json.data as { message: string };
+}
+
+/** Mengeluarkan pelanggan dari semua perangkat. */
+export async function apiRevokeCustomerSessions(
+  id: string,
+  reason?: string,
+): Promise<{ message: string }> {
+  const token = await getSessionToken();
+  const res = await fetch(
+    `${API_BASE_URL}/admin/customers/${encodeURIComponent(id)}/revoke-sessions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ reason }),
+    },
+  );
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "REVOKE_FAILED",
+      json?.error?.message || "Gagal mencabut sesi pelanggan.",
+    );
+  }
+  return json.data as { message: string };
+}

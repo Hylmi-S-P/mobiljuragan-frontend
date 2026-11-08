@@ -19,6 +19,15 @@ export const NAV_ENTRIES: NavEntry[] = [
     ],
   },
   { label: "Customer Care", href: "/customer-care" },
+  {
+    /* Keperluan audit & pemulihan identitas. Diletakkan berdekatan dengan
+       Customer Care karena dipakai saat menangani laporan pelanggan. */
+    label: "Akun Pelanggan",
+    items: [
+      { label: "Daftar Akun", href: "/customers" },
+      { label: "Jejak Identitas", href: "/identity-audit" },
+    ],
+  },
   { label: "Laporan Keuangan", href: "/finance" },
   { label: "Template Dokumen", href: "/documents" },
   { label: "AI HUB", href: "/admin/ai-hub" },

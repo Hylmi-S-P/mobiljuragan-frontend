@@ -8,6 +8,9 @@ import {
   apiCreateAdminAccount,
   apiUpdateAdminAccount,
   apiDeleteAdminAccount,
+  apiCorrectCustomerName,
+  apiUnlockCustomer,
+  apiRevokeCustomerSessions,
   apiReplyToTicket,
   apiTakeOverTicket,
   apiUpdateBookingStatus,
@@ -1412,5 +1415,86 @@ export async function muatUlangGrafikKeuanganAction(
       return { success: false, message: err.message };
     }
     return { success: false, message: "Grafik keuangan gagal dimuat ulang." };
+  }
+}
+
+// ==========================================
+// Akun Pelanggan & Koreksi Identitas
+// ==========================================
+
+/**
+ * Mengoreksi nama pelanggan.
+ *
+ * Alasan wajib diisi: inilah satu-satunya keterangan mengapa identitas seseorang
+ * diubah oleh orang lain, dan ikut tersimpan di `identity_audits` di backend.
+ */
+export async function correctCustomerNameAction(
+  _prevState: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = (formData.get("id") as string) || "";
+  const fullName = (formData.get("fullName") as string)?.trim() || "";
+  const reason = (formData.get("reason") as string)?.trim() || "";
+
+  const errors: Record<string, string> = {};
+  if (!id) errors.id = "Akun tidak dikenali.";
+  if (fullName.length < 3) errors.fullName = "Nama minimal 3 karakter.";
+  if (reason.length < 10) {
+    errors.reason = "Alasan minimal 10 karakter agar jejaknya bisa ditelusuri.";
+  }
+  if (Object.keys(errors).length > 0) {
+    return { success: false, errors };
+  }
+
+  try {
+    const hasil = await apiCorrectCustomerName(id, fullName, reason);
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${id}`);
+    revalidatePath("/identity-audit");
+    return { success: true, message: hasil.message };
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal mengoreksi nama pelanggan." };
+  }
+}
+
+/** Membuka penguncian akun pelanggan yang terkunci karena percobaan masuk. */
+export async function unlockCustomerAction(
+  _prevState: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = (formData.get("id") as string) || "";
+  const reason = (formData.get("reason") as string)?.trim() || "";
+
+  if (!id) return { success: false, message: "Akun tidak dikenali." };
+
+  try {
+    const hasil = await apiUnlockCustomer(id, reason);
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${id}`);
+    return { success: true, message: hasil.message };
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal membuka penguncian akun." };
+  }
+}
+
+/** Mengeluarkan pelanggan dari semua perangkat. */
+export async function revokeCustomerSessionsAction(
+  _prevState: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = (formData.get("id") as string) || "";
+  const reason = (formData.get("reason") as string)?.trim() || "";
+
+  if (!id) return { success: false, message: "Akun tidak dikenali." };
+
+  try {
+    const hasil = await apiRevokeCustomerSessions(id, reason);
+    revalidatePath(`/customers/${id}`);
+    return { success: true, message: hasil.message };
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal mencabut sesi pelanggan." };
   }
 }
