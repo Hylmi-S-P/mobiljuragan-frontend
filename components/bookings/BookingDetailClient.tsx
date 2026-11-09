@@ -73,9 +73,27 @@ export function BookingDetailClient({
   const [rawStatus, setRawStatus] = useState<CanonicalBookingStatus>(
     booking.rawStatus ?? "CREATED",
   );
-  const [quotedAmount, setQuotedAmount] = useState<number>(
-    booking.quotedAmount ?? (isDriverService ? 750000 : 500000) * (booking.dayCount || 1),
-  );
+  /**
+   * Tarif dasar awal.
+   *
+   * Urutannya: nominal yang sudah tersimpan di server → harga katalog × jumlah
+   * hari → 0 (belum ditetapkan).
+   *
+   * Sebelumnya cabang kedua memakai konstanta 500.000/750.000 per hari, sehingga
+   * pesanan baru selalu tampil dengan angka karangan: HILUX 2 hari muncul
+   * 1.000.000 padahal katalog 850.000/hari = 1.700.000. Angka itu ikut terkirim
+   * kalau admin langsung menyetujui, jadi bukan sekadar tampilan.
+   *
+   * Bila harga katalog tidak diketahui, sengaja dibiarkan 0 agar admin mengisi
+   * sendiri — menebak lebih berbahaya daripada mengosongkan.
+   */
+  const [quotedAmount, setQuotedAmount] = useState<number>(() => {
+    if (booking.quotedAmount !== null && booking.quotedAmount !== undefined) {
+      return Number(booking.quotedAmount);
+    }
+    const hargaKatalog = Number(booking.pricePerDay ?? 0);
+    return hargaKatalog > 0 ? hargaKatalog * (booking.dayCount || 1) : 0;
+  });
   const [selectedDriverId, setSelectedDriverId] = useState<string>(
     booking.driverId ?? "",
   );
@@ -222,6 +240,33 @@ export function BookingDetailClient({
   const hasAssignedDriver = Boolean(
     assignedDriverName || (selectedDriverId && availableDrivers.some((d) => d.id === selectedDriverId)),
   );
+
+  /**
+   * Tahap 1: menerima permintaan masuk.
+   *
+   * Memindahkan CREATED -> PENDING_CONFIRMATION. Sebelumnya tombol langsung
+   * mengirim CONFIRMED, sehingga backend menolaknya dengan pesan
+   * "tidak bisa berpindah dari CREATED ke CONFIRMED" — karena tahap ini memang
+   * tidak pernah dilewati oleh antarmuka.
+   */
+  function handleAcceptRequest() {
+    startTransition(async () => {
+      const result = await updateBookingStatusAction(
+        booking.id,
+        "PENDING_CONFIRMATION",
+        undefined,
+        "Permintaan sewa diterima. Menunggu penetapan tarif oleh admin.",
+      );
+
+      if (result.success) {
+        setRawStatus("PENDING_CONFIRMATION");
+        setStatus("perlu_konfirmasi_tarif");
+        show(result.message ?? "Permintaan diterima. Lanjutkan ke penetapan tarif.");
+      } else {
+        show(result.message ?? "Gagal menerima permintaan.", "error");
+      }
+    });
+  }
 
   // Konfirmasi tarif dan persetujuan pesanan
   function handleConfirmBooking() {
@@ -384,6 +429,7 @@ export function BookingDetailClient({
             hasAssignedDriver={hasAssignedDriver}
             isDriverService={isDriverService}
             isPending={isPending}
+            onAcceptRequest={handleAcceptRequest}
             onConfirmBooking={handleConfirmBooking}
             onOpenRejectModal={() => setShowRejectModal(true)}
             onTransitionStatus={handleTransitionStatus}

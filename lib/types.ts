@@ -58,6 +58,17 @@ export type Booking = {
   customerName: string;
   customerContext: string | null;
   vehicleId: string;
+  /**
+   * Tarif harian unit menurut katalog, dibawa dari backend.
+   *
+   * Dipakai sebagai titik awal saat admin menetapkan tarif, supaya angkanya
+   * berasal dari harga resmi unit — bukan angka tetap di kode seperti
+   * sebelumnya (500.000/750.000) yang membuat HILUX 2 hari tampil 1.000.000
+   * padahal seharusnya 1.700.000.
+   *
+   * `null` berarti unit tidak lagi ada di katalog.
+   */
+  pricePerDay?: number | null;
   mode: BookingMode;
   startDate: string;
   endDate: string;

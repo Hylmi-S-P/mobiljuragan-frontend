@@ -262,7 +262,16 @@ type ApiBooking = {
   quotedAmount: string | number | null;
   status: CanonicalBookingStatus;
   customer?: { fullName: string; phoneNumber: string } | null;
-  vehicle?: { externalId: string | null; id: string; name: string; licensePlate: string } | null;
+  vehicle?: {
+    externalId: string | null;
+    id: string;
+    name: string;
+    licensePlate: string;
+    /* Tarif harian dari katalog. Backend sudah mengirimnya (`vehicle: true`)
+       tetapi sebelumnya dibuang saat pemetaan, sehingga dashboard tidak punya
+       angka resmi dan memakai konstanta karangan. */
+    pricePerDay?: number | null;
+  } | null;
   driver?: { fullName: string; readiness?: string } | null;
   payment?: {
     id: string;
@@ -350,6 +359,7 @@ function mapBooking(b: ApiBooking): Booking {
     customerName: b.customer?.fullName ?? "Pelanggan",
     customerContext: b.customer?.phoneNumber ?? null,
     vehicleId: b.vehicle?.externalId || b.vehicleId,
+    pricePerDay: b.vehicle?.pricePerDay ?? null,
     mode: isDriverService ? "dengan_supir" : "lepas_kunci",
     startDate: b.startDateTime,
     endDate: b.endDateTime,

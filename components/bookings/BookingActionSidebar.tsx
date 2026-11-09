@@ -18,6 +18,10 @@ type Props = {
   hasAssignedDriver: boolean;
   isDriverService: boolean;
   isPending: boolean;
+  /* Tahap 1: menerima permintaan masuk (CREATED -> PENDING_CONFIRMATION).
+     Dipisah dari penetapan tarif karena keduanya keputusan berbeda: menerima
+     pesanan, lalu menetapkan harganya. */
+  onAcceptRequest: () => void;
   onConfirmBooking: () => void;
   onOpenRejectModal: () => void;
   onTransitionStatus: (status: CanonicalBookingStatus, note?: string) => void;
@@ -38,13 +42,18 @@ export function BookingActionSidebar({
   hasAssignedDriver,
   isDriverService,
   isPending,
+  onAcceptRequest,
   onConfirmBooking,
   onOpenRejectModal,
   onTransitionStatus,
   whatsappUrl,
   onOpenPaymentVerification,
 }: Props) {
-  const canDecide = rawStatus === "CREATED" || rawStatus === "PENDING_CONFIRMATION";
+  /* Dua langkah, bukan satu: pesanan diterima dulu, tarifnya ditetapkan kemudian.
+     Sebelumnya tombol tunggal mengirim CONFIRMED langsung dari CREATED, dan
+     backend menolaknya karena PENDING_CONFIRMATION belum pernah dilewati. */
+  const isRequestIncoming = rawStatus === "CREATED";
+  const isQuoting = rawStatus === "PENDING_CONFIRMATION";
   const isConfirmed = rawStatus === "CONFIRMED";
   const isInProgress = rawStatus === "IN_PROGRESS";
   const isCompleted = rawStatus === "COMPLETED";
@@ -80,12 +89,17 @@ export function BookingActionSidebar({
       </div>
 
 
-      {/* Form Input Nominal Tarif Sewa Resmi */}
-      {canDecide ? (
+      {/* Form Input Nominal Tarif Sewa Resmi — hanya pada tahap penetapan tarif */}
+      {isQuoting ? (
         <div className="rounded-md border border-rule bg-canvas p-3.5 space-y-2">
           <label htmlFor="sidebar-quoted-amount" className="block text-meta font-semibold text-ink">
             Nominal Tarif Sewa Dasar
           </label>
+          <p className="text-micro text-ink-soft">
+            {booking.pricePerDay
+              ? `Awal dari katalog: ${formatRupiah(booking.pricePerDay)}/hari × ${booking.dayCount} hari. Silakan sesuaikan bila perlu.`
+              : "Harga katalog unit ini tidak tersedia. Isi nominal secara manual."}
+          </p>
           <div className="relative flex items-center">
             <span className="inline-flex h-11 items-center rounded-l-sm border border-r-0 border-rule-strong bg-rule/20 px-3.5 text-body font-bold text-ink">
               Rp
@@ -104,6 +118,24 @@ export function BookingActionSidebar({
             />
           </div>
         </div>
+      ) : isRequestIncoming ? (
+        /* Tahap 1: tarif belum ditetapkan. Yang ditampilkan justru acuan harga
+           katalog, supaya admin tidak menyetujui pesanan tanpa gambaran biaya. */
+        <div className="rounded-md border border-rule bg-canvas p-3">
+          <p className="text-micro font-bold uppercase text-ink-soft">
+            Perkiraan dari Katalog
+          </p>
+          <p className="mt-1 text-subtitle font-bold text-ink tabular-nums">
+            {booking.pricePerDay
+              ? formatRupiah(booking.pricePerDay * (booking.dayCount || 1))
+              : "Harga katalog belum tersedia"}
+          </p>
+          <p className="mt-0.5 text-micro text-ink-soft">
+            {booking.pricePerDay
+              ? `${formatRupiah(booking.pricePerDay)}/hari × ${booking.dayCount} hari. Tarif resmi ditetapkan pada tahap berikutnya.`
+              : "Tetapkan tarif setelah permintaan diterima."}
+          </p>
+        </div>
       ) : (
         <div className="rounded-md border border-rule bg-canvas p-3">
           <p className="text-micro font-bold uppercase text-ink-soft">Tarif Sewa Dasar Resmi</p>
@@ -113,32 +145,79 @@ export function BookingActionSidebar({
         </div>
       )}
 
-      {/* Total Tagihan Bersih (Live Clean Bill) */}
-      <div className="rounded-md border border-rule bg-canvas p-3.5">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-micro font-bold uppercase tracking-wider text-ink-soft">
-            Total Tagihan Bersih
-          </span>
-          <span className="text-subtitle font-bold text-ink tabular-nums">
-            {canDecide && totalCleanBill === 0
-              ? "Belum ditetapkan"
-              : formatRupiah(totalCleanBill)}
-          </span>
+      {/* Total Tagihan Bersih (Live Clean Bill).
+          Pada tahap permintaan masuk belum ada tagihan sama sekali, jadi kartu
+          ini tidak ditampilkan agar angka perkiraan tidak disalahartikan
+          sebagai nominal resmi. */}
+      {isRequestIncoming ? null : (
+        <div className="rounded-md border border-rule bg-canvas p-3.5">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-micro font-bold uppercase tracking-wider text-ink-soft">
+              Total Tagihan Bersih
+            </span>
+            <span className="text-subtitle font-bold text-ink tabular-nums">
+              {totalCleanBill === 0 ? "Belum ditetapkan" : formatRupiah(totalCleanBill)}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Primary Decision Actions (CREATED / PENDING_CONFIRMATION) */}
-      {canDecide ? (
+      {/*
+        Tahap 1 — Permintaan Masuk.
+
+        Tombolnya hanya "Terima Permintaan". Tarif belum ditetapkan di sini, dan
+        dokumen/supir belum perlu lengkap: yang diputuskan adalah apakah pesanan
+        ini diterima, bukan berapa harganya. Memisahkan dua keputusan ini membuat
+        admin bisa menerima pesanan lebih dulu lalu menetapkan tarif setelah
+        memeriksa ketersediaan unit.
+      */}
+      {isRequestIncoming ? (
+        <div className="space-y-2.5 pt-1">
+          <p className="rounded-sm border border-rule bg-canvas p-2.5 text-micro text-ink-soft">
+            Setelah diterima, pesanan masuk tahap <strong>Konfirmasi Tarif</strong>.
+            Tarif belum ditetapkan pada langkah ini.
+          </p>
+
+          <Button
+            variant="confirm"
+            size="md"
+            className="w-full"
+            disabled={isPending}
+            onClick={onAcceptRequest}
+          >
+            {isPending ? "Memproses..." : "Terima Permintaan"}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="md"
+            className="w-full border-rose-300 bg-rose-50/60 font-semibold text-rose-700 hover:border-rose-500 hover:bg-rose-100"
+            disabled={isPending}
+            onClick={onOpenRejectModal}
+          >
+            Tolak Permintaan Sewa
+          </Button>
+        </div>
+      ) : null}
+
+      {/*
+        Tahap 2 — Konfirmasi Tarif.
+
+        Baru di sini nominal ditetapkan. Syaratnya dokumen terverifikasi (lepas
+        kunci) atau supir sudah ditugaskan (dengan sopir), karena setelah ini
+        pelanggan menerima tagihan dan masuk tahap menunggu pembayaran.
+      */}
+      {isQuoting ? (
         <div className="space-y-2.5 pt-1">
           {isDriverBlocked ? (
             <p className="text-micro text-amber-800 bg-amber-50 border border-amber-300 rounded-sm p-2">
-              Pilih supir di kolom kiri sebelum menyetujui pesanan.
+              Pilih supir di kolom kiri sebelum menetapkan tarif.
             </p>
           ) : null}
 
           {isDocumentBlocked ? (
             <p className="text-micro text-amber-800 bg-amber-50 border border-amber-300 rounded-sm p-2">
-              Verifikasi seluruh 3 dokumen lepas kunci di panel kiri sebelum mengonfirmasi tarif.
+              Verifikasi seluruh 3 dokumen lepas kunci di panel kiri sebelum menetapkan tarif.
             </p>
           ) : null}
 
@@ -149,8 +228,13 @@ export function BookingActionSidebar({
             disabled={isPending || isDriverBlocked || isDocumentBlocked}
             onClick={onConfirmBooking}
           >
-            {isPending ? "Memproses..." : "Konfirmasi Tarif & Setujui Booking"}
+            {isPending ? "Memproses..." : "Tetapkan Tarif & Lanjutkan"}
           </Button>
+
+          <p className="text-micro text-ink-soft">
+            Setelah tarif ditetapkan, pesanan masuk tahap <strong>Menunggu Pembayaran</strong> dan
+            pelanggan menerima tagihan.
+          </p>
 
           <Button
             variant="outline"
