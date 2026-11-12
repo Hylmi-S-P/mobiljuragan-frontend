@@ -6,6 +6,7 @@ import type {
   AdminPaymentItem,
   AdminPaymentsResponse,
   Booking,
+  BookingDocumentStatus,
   BookingMode,
   BookingStatus,
   CanonicalBookingStatus,
@@ -13,6 +14,7 @@ import type {
   DriverRoute,
   DriverStatus,
   LineItem,
+  PaymentStatus,
   Vehicle,
   VehicleStatus,
 } from "./types";
@@ -275,7 +277,7 @@ type ApiBooking = {
   driver?: { fullName: string; readiness?: string } | null;
   payment?: {
     id: string;
-    status: any;
+    status: PaymentStatus;
     proofImageUrl?: string | null;
     method?: string | null;
     totalAmount?: string | number | null;
@@ -286,7 +288,7 @@ type ApiBooking = {
     statementLetterUrl: string | null;
     ktpUrl: string | null;
     simUrl: string | null;
-    status: any;
+    status: BookingDocumentStatus;
     rejectionReason: string | null;
     verifiedAt: string | null;
     verifiedBy: string | null;

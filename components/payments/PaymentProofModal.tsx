@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -62,8 +62,14 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
      1 = peringatan pertama, 2 = peringatan terakhir. */
   const [tahapKonfirmasi, setTahapKonfirmasi] = useState<0 | 1 | 2>(0);
 
-  /* Reset form state saat modal tertutup */
-  useEffect(() => {
+  /* Reset form state saat modal tertutup.
+     Dikerjakan saat render, bukan di dalam effect: memanggil setState dari
+     effect memicu render tambahan yang tidak perlu dan ditandai oleh aturan
+     `react-hooks/set-state-in-effect`. Pola ini yang disarankan React untuk
+     menyesuaikan state ketika prop berubah. */
+  const [sebelumnyaTerbuka, setSebelumnyaTerbuka] = useState(open);
+  if (sebelumnyaTerbuka !== open) {
+    setSebelumnyaTerbuka(open);
     if (!open) {
       setDanaDicocokkan(false);
       setKonfirmasiCentang(false);
@@ -72,7 +78,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
       setError(null);
       setImageError(false);
     }
-  }, [open]);
+  }
 
   if (!payment) return null;
 

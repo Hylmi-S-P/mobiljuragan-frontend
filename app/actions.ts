@@ -51,6 +51,7 @@ import {
   apiReleaseTicket,
   apiGetBookingDocuments,
   apiAdminVerifyBookingDocuments,
+  type VehiclePayload,
 } from "@/lib/api";
 import {
   getTicketDetail,
@@ -1016,9 +1017,17 @@ export async function updateFaqPriorityAction(
 export async function saveVehicleAction(
   vehicle: Vehicle,
   mode?: "create" | "update",
-): Promise<ActionState & { data?: any }> {
+): Promise<ActionState & { data?: { id?: string } }> {
   try {
     const isNew = mode ? mode === "create" : vehicle.id.startsWith("v-") || !vehicle.id;
+    const operationalStatus: NonNullable<VehiclePayload["operationalStatus"]> =
+      vehicle.status === "tersedia"
+        ? "AVAILABLE"
+        : vehicle.status === "servis"
+          ? "MAINTENANCE"
+          : vehicle.status === "disewa"
+            ? "BOOKED"
+            : "UNAVAILABLE";
     const payload = {
       name: vehicle.name,
       licensePlate: vehicle.plate,
@@ -1032,13 +1041,7 @@ export async function saveVehicleAction(
       /* Foto ikut dikirim. Sebelumnya hanya menjadi pratinjau di layar lalu
            hilang saat modal ditutup, sehingga unit tidak pernah punya foto. */
       imageUrl: vehicle.imageUrl ?? undefined,
-      operationalStatus: (vehicle.status === "tersedia"
-        ? "AVAILABLE"
-        : vehicle.status === "servis"
-          ? "MAINTENANCE"
-          : vehicle.status === "disewa"
-            ? "BOOKED"
-            : "UNAVAILABLE") as any,
+      operationalStatus,
     };
 
     let result;
