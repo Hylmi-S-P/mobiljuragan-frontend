@@ -596,6 +596,10 @@ export type SupportTicketView = {
   isMine: boolean;
   messageCount: number;
   updatedAt: string;
+  /* Kode pesanan untuk tiket yang dibuka dari aplikasi pelanggan. Null untuk
+     tiket yang dibuat lewat formulir pusat bantuan. */
+  bookingCode: string | null;
+  bookingStatus: string | null;
 };
 
 export type TicketMessageView = {
@@ -630,6 +634,9 @@ type ApiTicket = {
   isMine?: boolean;
   updatedAt: string;
   customer?: { fullName: string } | null;
+  /* Tiket yang lahir dari tombol "Chat dengan CS" di aplikasi membawa kode
+     pesanan, supaya staf tahu ini soal sewa yang mana. */
+  booking?: { id: string; bookingCode: string; status: string } | null;
   _count?: { messages: number };
 };
 
@@ -651,6 +658,8 @@ export async function getSupportTickets(): Promise<SupportTicketView[]> {
     isMine: Boolean(t.isMine),
     messageCount: t._count?.messages ?? 0,
     updatedAt: t.updatedAt,
+    bookingCode: t.booking?.bookingCode ?? null,
+    bookingStatus: t.booking?.status ?? null,
   }));
 }
 

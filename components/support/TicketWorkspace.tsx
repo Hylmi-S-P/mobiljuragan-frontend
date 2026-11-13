@@ -119,6 +119,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
      dibedakan dari yang masih mungkin dibalas pelanggan. */
   const [saringArsip, setSaringArsip] = useState<"semua" | "RESOLVED" | "CLOSED">("semua");
 
+  /* Tiket yang lahir dari tombol "Chat dengan CS" di aplikasi membawa kode
+     pesanan. Staf yang sedang mengurus serah terima ingin melihat hanya
+     percakapan pesanan, tanpa tercampur tiket umum dari pusat bantuan. */
+  const [saringSumber, setSaringSumber] = useState<"semua" | "pesanan">("semua");
+
   const tiketAktif = useMemo(() => tickets.filter((t) => t.status !== "selesai"), [tickets]);
   const tiketArsip = useMemo(
     () =>
@@ -138,7 +143,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   );
 
   const filteredTickets = useMemo(() => {
-    const sumber = tabDaftar === "aktif" ? tiketAktif : tiketArsipTersaring;
+    const sumberAwal = tabDaftar === "aktif" ? tiketAktif : tiketArsipTersaring;
+    const sumber =
+      saringSumber === "pesanan"
+        ? sumberAwal.filter((ticket) => ticket.bookingCode !== null)
+        : sumberAwal;
     const keyword = debouncedQuery.trim().toLowerCase();
     if (keyword.length === 0) return sumber;
     return sumber.filter((ticket) =>
@@ -146,10 +155,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
         ticket.customerLabel,
         ticket.title,
         ticket.category,
+        ticket.bookingCode ?? "",
         formatTicketCategory(ticket.category),
       ].some((field) => field.toLowerCase().includes(keyword)),
     );
-  }, [debouncedQuery, tabDaftar, tiketAktif, tiketArsipTersaring]);
+  }, [debouncedQuery, saringSumber, tabDaftar, tiketAktif, tiketArsipTersaring]);
 
   const activeTicket = tickets.find((ticket) => ticket.id === activeId) ?? null;
   const isResolvedOrClosed = activeTicket?.status === "selesai";
@@ -339,6 +349,29 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
               </div>
             ) : null}
 
+            {/* Saringan sumber: tiket pesanan datang dari tombol "Chat dengan CS"
+                di aplikasi, tiket umum dari formulir pusat bantuan. */}
+            <div className="mb-2 flex flex-wrap gap-1.5" role="group" aria-label="Saring sumber tiket">
+              {[
+                { id: "semua" as const, label: "Semua tiket" },
+                { id: "pesanan" as const, label: "Dari pesanan" },
+              ].map((saring) => (
+                <button
+                  key={saring.id}
+                  type="button"
+                  aria-pressed={saringSumber === saring.id}
+                  onClick={() => setSaringSumber(saring.id)}
+                  className={`rounded-full px-2.5 py-1 text-micro font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
+                    saringSumber === saring.id
+                      ? "bg-navy text-white"
+                      : "border border-rule bg-surface text-ink-soft hover:bg-canvas"
+                  }`}
+                >
+                  {saring.label}
+                </button>
+              ))}
+            </div>
+
             <label htmlFor="ticket-search" className="sr-only">
               Cari tiket
             </label>
@@ -390,6 +423,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                         <span className="mt-0.5 block text-micro tabular-nums text-ink-soft">
                           {ticket.ticketNumber}
                         </span>
+                        {ticket.bookingCode ? (
+                          <span className="mt-1 inline-flex items-center rounded-xs border border-rule-strong bg-canvas px-1.5 py-0.5 text-micro font-semibold tabular-nums text-ink">
+                            Pesanan {ticket.bookingCode}
+                          </span>
+                        ) : null}
                         <span className="mt-1 block truncate text-meta text-ink-soft">
                           {ticket.title}
                         </span>
@@ -409,7 +447,9 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
               <p className="mt-3 text-meta text-ink-soft">
                 {tickets.length === 0
                   ? "Belum ada tiket yang masuk dari pelanggan."
-                  : tabDaftar === "arsip"
+                  : saringSumber === "pesanan"
+                    ? "Belum ada tiket yang dibuka dari pesanan."
+                    : tabDaftar === "arsip"
                     ? saringArsip === "RESOLVED"
                       ? "Tidak ada tiket yang sedang menunggu jawaban pelanggan."
                       : saringArsip === "CLOSED"
@@ -469,6 +509,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                         <span className="text-micro text-ink-soft">
                           {activeTicket.ticketNumber}
                         </span>
+                        {activeTicket.bookingCode ? (
+                          <span className="rounded-xs border border-rule-strong bg-canvas px-1.5 py-0.5 text-micro font-semibold tabular-nums text-ink">
+                            Pesanan {activeTicket.bookingCode}
+                          </span>
+                        ) : null}
                         <span className="text-micro text-ink-soft">
                           {formatTicketCategory(activeTicket.category)}
                         </span>
