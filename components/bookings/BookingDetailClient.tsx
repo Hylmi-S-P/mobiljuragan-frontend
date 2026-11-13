@@ -482,7 +482,6 @@ export function BookingDetailClient({
             document={document}
             status={status}
             rawStatus={rawStatus}
-            quotedAmount={quotedAmount}
             driverDailyRate={driverDailyRate}
             totalCleanBill={totalCleanBill}
             hasAssignedDriver={hasAssignedDriver}

@@ -22,6 +22,14 @@ type Props = {
   onRemoveSurcharge: (itemId: string) => void;
 };
 
+/**
+ * Rincian komponen biaya satu pesanan.
+ *
+ * Satu tabel untuk dua tahap: sebelum dan sesudah tarif resmi ditetapkan. Yang
+ * membedakan hanya catatan kecil di bawah tabel — bentuknya sengaja sama supaya
+ * staf tidak perlu belajar dua tata letak, dan supaya angka yang dibaca di sini
+ * selalu angka yang sama dengan total di panel keputusan.
+ */
 export function BillingLineItemsCard({
   items,
   pricePerDay,
@@ -38,91 +46,10 @@ export function BillingLineItemsCard({
   const hargaSewa = pricePerDay ? pricePerDay * hari : 0;
   const jasaSupir = isDriverService ? driverDailyRate * hari : 0;
   const manualItems = items.filter((item) => item.kind === "penyesuaian");
-  /* Sebelum tarif resmi ditetapkan, pelanggan hanya melihat satu angka perkiraan.
-     Rincian per komponen baru dibuka setelah admin mengonfirmasi tarif, supaya
-     angka perkiraan tidak terbaca sebagai tagihan yang sudah mengikat. */
-  const perkiraan = hargaSewa + jasaSupir;
-
-  if (!tarifTerkonfirmasi) {
-    return (
-      <Panel
-        title="Komponen Biaya"
-        action={
-          canDecide ? (
-            <Button variant="outline" size="sm" onClick={onOpenSurcharge}>
-              + Tambah Surcharge Manual
-            </Button>
-          ) : null
-        }
-      >
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div>
-            <p className="text-micro font-medium uppercase tracking-wider text-ink-soft">
-              Subtotal komponen
-            </p>
-            <p className="mt-0.5 text-subtitle font-bold text-ink tabular-nums">
-              {perkiraan > 0 ? formatRupiah(perkiraan) : "Menunggu harga katalog"}
-            </p>
-          </div>
-          <p className="max-w-sm text-micro text-ink-soft">
-            Angka ini dihitung dari katalog. Rincian resmi muncul setelah admin
-            menetapkan tarif.
-          </p>
-        </div>
-
-        {/* Baris penyesuaian manual tetap bisa ditambah sebelum tarif resmi
-            ditetapkan: diskon, cashback, biaya rute, atau tambahan medan
-            ekstrim semuanya dicatat di sini dengan justifikasi. */}
-        {manualItems.length > 0 ? (
-          <ul className="mt-3 divide-y divide-rule/60 border-t border-rule">
-            {manualItems.map((item) => {
-              const raw = item.amount ?? "";
-              const isNegative = raw.startsWith("-");
-              const numeric = Number(raw.replace(/[^\d]/g, "")) || 0;
-
-              return (
-                <li key={item.id} className="flex items-start justify-between gap-3 py-2">
-                  <div className="min-w-0">
-                    <p className="text-meta font-semibold text-ink">{item.label}</p>
-                    {item.note ? (
-                      <p className="mt-0.5 text-micro text-ink-soft">{item.note}</p>
-                    ) : null}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span
-                      className={`text-meta font-semibold tabular-nums ${
-                        isNegative ? "text-emerald-700" : "text-ink"
-                      }`}
-                    >
-                      {`${isNegative ? "-" : "+"} ${formatRupiah(numeric)}`}
-                    </span>
-                    {canDecide ? (
-                      <button
-                        type="button"
-                        onClick={() => onRemoveSurcharge(item.id)}
-                        className="text-micro text-danger hover:underline"
-                        title="Hapus baris penyesuaian biaya"
-                      >
-                        Hapus
-                      </button>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="mt-3 border-t border-rule pt-2 text-micro text-ink-soft">
-            Belum ada penyesuaian manual.
-          </p>
-        )}
-      </Panel>
-    );
-  }
 
   return (
     <Panel
-      title="Rincian Tagihan & Penyesuaian Biaya"
+      title="Komponen Biaya"
       action={
         canDecide ? (
           <Button variant="outline" size="sm" onClick={onOpenSurcharge}>
@@ -227,8 +154,7 @@ export function BillingLineItemsCard({
             {manualItems.length === 0 ? (
               <tr>
                 <td colSpan={3} className="py-3 text-micro text-ink-soft">
-                  Belum ada penyesuaian manual. Diskon atau tambahan dicatat di sini dengan
-                  justifikasi.
+                  Belum ada penyesuaian manual.
                 </td>
               </tr>
             ) : null}
@@ -245,6 +171,13 @@ export function BillingLineItemsCard({
           </tfoot>
         </table>
       </div>
+
+      {tarifTerkonfirmasi ? null : (
+        <p className="mt-2 text-micro text-ink-soft">
+          Angka ini dihitung dari katalog. Rincian resmi muncul setelah admin menetapkan
+          tarif.
+        </p>
+      )}
     </Panel>
   );
 }

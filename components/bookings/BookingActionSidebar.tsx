@@ -11,7 +11,6 @@ type Props = {
   document?: BookingDocument | null;
   status: BookingStatus;
   rawStatus: CanonicalBookingStatus;
-  quotedAmount: number;
   /* Tarif jasa supir global, dipakai untuk menampilkan rincian perkiraan.
      Angka final tetap dihitung server saat konfirmasi. */
   driverDailyRate: number;
@@ -40,7 +39,6 @@ export function BookingActionSidebar({
   document,
   status,
   rawStatus,
-  quotedAmount,
   driverDailyRate,
   totalCleanBill,
   hasAssignedDriver,
@@ -67,6 +65,18 @@ export function BookingActionSidebar({
     label: rawStatus,
     tone: "neutral" as const,
   };
+
+  /* Jumlah baris penyesuaian manual (diskon, cashback, biaya rute). Ditampilkan
+     sebagai satu baris di panel katalog supaya komponen di atasnya benar-benar
+     berjumlah sama dengan total di bawahnya. */
+  const penyesuaianManual = (booking.lineItems ?? [])
+    .filter((item) => item.kind === "penyesuaian")
+    .reduce((jumlah, item) => {
+      const mentah = item.amount ?? "";
+      const negatif = mentah.startsWith("-");
+      const angka = Number(mentah.replace(/[^\d]/g, "")) || 0;
+      return jumlah + (negatif ? -angka : angka);
+    }, 0);
 
   // Validasi tombol setujui
   const isDriverBlocked = isDriverService && !hasAssignedDriver;
@@ -96,18 +106,18 @@ export function BookingActionSidebar({
       {/* Rincian tarif — hanya pada tahap penetapan tarif.
           Nominalnya tidak bisa diketik: server menghitung dari harga katalog unit
           ditambah tarif supir global. Penyesuaian (diskon, tambahan medan) masuk
-          lewat baris penyesuaian biaya yang punya justifikasi. */}
+          lewat baris penyesuaian biaya yang punya justifikasi.
+
+          Bentuknya sengaja ringkas: judul komponen dan harganya saja, lalu satu
+          angka total di bawah. Rincian berpanjang (satuan per hari, justifikasi)
+          ada di kartu Komponen Biaya, supaya staf tidak melihat dua angka besar
+          berbeda di layar yang sama. */}
       {isQuoting ? (
         <div className="rounded-md border border-rule bg-canvas p-3.5 space-y-2">
           <p className="text-meta font-semibold text-ink">Tarif Dihitung dari Katalog</p>
           <dl className="space-y-1 text-micro text-ink-soft">
             <div className="flex items-baseline justify-between gap-2">
-              <dt>
-                Sewa unit
-                {booking.pricePerDay
-                  ? ` (${formatRupiah(booking.pricePerDay)}/hari × ${booking.dayCount} hari)`
-                  : ""}
-              </dt>
+              <dt>Sewa unit</dt>
               <dd className="tabular-nums font-semibold text-ink">
                 {booking.pricePerDay
                   ? formatRupiah(booking.pricePerDay * (booking.dayCount || 1))
@@ -116,12 +126,7 @@ export function BookingActionSidebar({
             </div>
             {isDriverService ? (
               <div className="flex items-baseline justify-between gap-2">
-                <dt>
-                  Jasa supir
-                  {driverDailyRate > 0
-                    ? ` (${formatRupiah(driverDailyRate)}/hari × ${booking.dayCount} hari)`
-                    : ""}
-                </dt>
+                <dt>Jasa supir</dt>
                 <dd className="tabular-nums font-semibold text-ink">
                   {driverDailyRate > 0
                     ? formatRupiah(driverDailyRate * (booking.dayCount || 1))
@@ -129,9 +134,25 @@ export function BookingActionSidebar({
                 </dd>
               </div>
             ) : null}
+            {penyesuaianManual !== 0 ? (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt>Penyesuaian manual</dt>
+                <dd
+                  className={`tabular-nums font-semibold ${
+                    penyesuaianManual < 0 ? "text-emerald-700" : "text-ink"
+                  }`}
+                >
+                  {`${penyesuaianManual < 0 ? "-" : "+"} ${formatRupiah(
+                    Math.abs(penyesuaianManual),
+                  )}`}
+                </dd>
+              </div>
+            ) : null}
             <div className="flex items-baseline justify-between gap-2 border-t border-rule/60 pt-1">
-              <dt className="font-semibold text-ink">Subtotal</dt>
-              <dd className="tabular-nums font-bold text-ink">{formatRupiah(quotedAmount)}</dd>
+              <dt className="font-semibold text-ink">Total tagihan bersih</dt>
+              <dd className="tabular-nums font-bold text-ink">
+                {totalCleanBill > 0 ? formatRupiah(totalCleanBill) : "Belum ditetapkan"}
+              </dd>
             </div>
           </dl>
         </div>
@@ -153,20 +174,13 @@ export function BookingActionSidebar({
               : "Tetapkan tarif setelah permintaan diterima."}
           </p>
         </div>
-      ) : (
-        <div className="rounded-md border border-rule bg-canvas p-3">
-          <p className="text-micro font-bold uppercase text-ink-soft">Tarif Sewa Dasar Resmi</p>
-          <p className="mt-1 text-subtitle font-bold text-ink tabular-nums">
-            {formatRupiah(quotedAmount)}
-          </p>
-        </div>
-      )}
+      ) : null}
 
       {/* Total Tagihan Bersih (Live Clean Bill).
-          Pada tahap permintaan masuk belum ada tagihan sama sekali, jadi kartu
-          ini tidak ditampilkan agar angka perkiraan tidak disalahartikan
-          sebagai nominal resmi. */}
-      {isRequestIncoming ? null : (
+          Pada tahap permintaan masuk belum ada tagihan sama sekali, dan pada tahap
+          penetapan tarif angkanya sudah menjadi baris penutup di panel katalog —
+          jadi kartu ini hanya muncul setelah tarif resmi tersimpan. */}
+      {isRequestIncoming || isQuoting ? null : (
         <div className="rounded-md border border-rule bg-canvas p-3.5">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-micro font-bold uppercase tracking-wider text-ink-soft">
