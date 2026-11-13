@@ -44,8 +44,10 @@ const STATUS_CONFIG: Record<
   REJECTED: {
     label: "Ditolak (Perlu Perbaikan)",
     tone: "danger",
-    description:
-      "Dokumen belum memenuhi kualifikasi. Pelanggan telah diminta memperbaiki atau melengkapi dokumen melalui aplikasi mobile.",
+    /* Staf tidak perlu penjelasan yang ditujukan ke penyewa: yang perlu diketahui
+       hanya bahwa permintaan revisi sudah terkirim, lalu alasan dan berkas mana
+       yang tertahan. */
+    description: "Permintaan revisi sudah dikirimkan ke pelanggan.",
   },
 };
 
@@ -262,16 +264,9 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                 {document.rejectionReason}
               </div>
             )}
-            {/* Dokumen yang ditolak ditampilkan terpisah supaya admin berikutnya
-                tahu berkas mana yang sedang menunggu perbaikan. */}
-            {currentStatus === "REJECTED" && (document?.rejectionTargets?.length ?? 0) > 0 && (
-              <p className="mt-1.5 text-micro text-ink-soft">
-                <span className="font-semibold text-danger">Perlu difoto ulang: </span>
-                {document!.rejectionTargets!
-                  .map((target) => TARGET_LABEL[target as DocumentTargetKey] ?? target)
-                  .join(", ")}
-              </p>
-            )}
+            {/* Berkas yang ditolak tidak diulang di sini: tiap kartu di bawah
+                sudah menandai keadaannya sendiri, dan ringkasannya ada di kaki
+                panel. Mengulanginya tiga kali hanya menambah teks untuk staf. */}
             {document?.verifiedBy && currentStatus === "VERIFIED" && (
               <p className="text-micro text-ink-soft">
                 Diverifikasi oleh: <span className="font-medium text-ink">{document.verifiedBy}</span>
