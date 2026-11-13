@@ -417,7 +417,11 @@ export function BookingDetailClient({
             dayCount={booking.dayCount}
             isDriverService={isDriverService}
             driverDailyRate={driverDailyRate}
-            quotedAmount={quotedAmount}
+            tarifTerkonfirmasi={
+              booking.quotedAmount !== null &&
+              booking.quotedAmount !== undefined &&
+              Number(booking.quotedAmount) > 0
+            }
             totalCleanBill={totalCleanBill}
             canDecide={canDecide}
             onOpenSurcharge={() => setSurchargeOpen(true)}

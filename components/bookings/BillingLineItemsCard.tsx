@@ -13,7 +13,9 @@ type Props = {
   dayCount: number;
   isDriverService: boolean;
   driverDailyRate: number;
-  quotedAmount: number;
+  /* True hanya bila server sudah menyimpan tarif resmi. Angka perkiraan katalog
+     tidak boleh dipakai sebagai penanda bahwa tarif sudah ditetapkan. */
+  tarifTerkonfirmasi: boolean;
   totalCleanBill: number;
   canDecide: boolean;
   onOpenSurcharge: () => void;
@@ -26,7 +28,7 @@ export function BillingLineItemsCard({
   dayCount,
   isDriverService,
   driverDailyRate,
-  quotedAmount,
+  tarifTerkonfirmasi,
   totalCleanBill,
   canDecide,
   onOpenSurcharge,
@@ -39,7 +41,6 @@ export function BillingLineItemsCard({
   /* Sebelum tarif resmi ditetapkan, pelanggan hanya melihat satu angka perkiraan.
      Rincian per komponen baru dibuka setelah admin mengonfirmasi tarif, supaya
      angka perkiraan tidak terbaca sebagai tagihan yang sudah mengikat. */
-  const tarifTerkonfirmasi = quotedAmount > 0;
   const perkiraan = hargaSewa + jasaSupir;
 
   if (!tarifTerkonfirmasi) {
