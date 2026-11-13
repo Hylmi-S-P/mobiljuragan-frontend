@@ -135,6 +135,8 @@ export type BookingRefund = {
   nominal: number;
   dibatalkanOleh: RefundInitiator;
   alasan: string | null;
+  /** `false` bila pesanan ditutup saat bukti transfer belum diperiksa. */
+  danaTerverifikasi: boolean;
   namaBank: string | null;
   nomorRekening: string | null;
   namaPemilik: string | null;

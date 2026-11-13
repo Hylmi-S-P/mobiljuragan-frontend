@@ -29,6 +29,10 @@ type Props = {
   /* Membuka modal verifikasi pembayaran dari halaman ini. Tanpa ini admin harus
      kembali ke tab "Verifikasi Pembayaran" lalu mencari pesanan yang sama. */
   onOpenPaymentVerification?: () => void;
+  /* Membatalkan pesanan yang sudah dikonfirmasi. Dulu tombol ini hanya ada di
+     modal verifikasi pembayaran; sekarang satu pintu di sini supaya staf tidak
+     mencari tombol pembatalan di dalam layar verifikasi uang. */
+  onOpenCancelModal?: () => void;
 };
 
 export function BookingActionSidebar({
@@ -47,6 +51,7 @@ export function BookingActionSidebar({
   onOpenRejectModal,
   onTransitionStatus,
   onOpenPaymentVerification,
+  onOpenCancelModal,
 }: Props) {
   /* Dua langkah, bukan satu: pesanan diterima dulu, tarifnya ditetapkan kemudian.
      Sebelumnya tombol tunggal mengirim CONFIRMED langsung dari CREATED, dan
@@ -308,6 +313,18 @@ export function BookingActionSidebar({
               </Button>
             </>
           )}
+
+          {onOpenCancelModal ? (
+            <Button
+              variant="outline"
+              size="md"
+              className="w-full border-rose-300 bg-rose-50/60 font-semibold text-rose-700 hover:border-rose-500 hover:bg-rose-100"
+              disabled={isPending}
+              onClick={onOpenCancelModal}
+            >
+              Batalkan Pesanan
+            </Button>
+          ) : null}
         </div>
       ) : null}
 

@@ -121,6 +121,11 @@ export function BookingDetailClient({
   const [surchargeOpen, setSurchargeOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  /* Pembatalan pesanan yang sudah dikonfirmasi. Dipisah dari penolakan karena
+     statusnya berbeda: `CANCELLED` (pesanan berjalan dibatalkan) versus
+     `REJECTED` (permintaan belum pernah diterima). */
+  const [cancelReason, setCancelReason] = useState("");
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const { show, node } = useToast();
 
   const [isPending, startTransition] = useTransition();
@@ -323,6 +328,31 @@ export function BookingDetailClient({
     });
   }
 
+  // Pembatalan pesanan yang sudah dikonfirmasi (tahap bayar / serah terima)
+  function handleCancelBooking() {
+    if (!cancelReason.trim()) {
+      show("Tuliskan alasan pembatalan terlebih dahulu.", "error");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await updateBookingStatusAction(
+        booking.id,
+        "CANCELLED",
+        cancelReason.trim(),
+      );
+
+      if (result.success) {
+        setRawStatus("CANCELLED");
+        setStatus("ditolak");
+        setShowCancelModal(false);
+        show(result.message ?? "Pesanan dibatalkan.");
+      } else {
+        show(result.message ?? "Gagal membatalkan pesanan.", "error");
+      }
+    });
+  }
+
   // Transisi siklus hidup pesanan lanjutan (CONFIRMED -> IN_PROGRESS -> COMPLETED)
   function handleTransitionStatus(nextStatus: CanonicalBookingStatus, note?: string) {
     startTransition(async () => {
@@ -465,6 +495,7 @@ export function BookingDetailClient({
             onOpenPaymentVerification={
               dataPembayaran ? () => setVerifikasiTerbuka(true) : undefined
             }
+            onOpenCancelModal={() => setShowCancelModal(true)}
           />
         </div>
       </div>
@@ -523,6 +554,64 @@ export function BookingDetailClient({
                 onClick={handleRejectBooking}
               >
                 {isPending ? "Menolak..." : "Ya, Tolak Permintaan"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Modal Dialog Konfirmasi Pembatalan Pesanan */}
+      {showCancelModal ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+        >
+          <div className="w-full max-w-md rounded-md border border-rule bg-surface p-5 shadow-lg">
+            <h3 className="text-subtitle font-bold text-ink">Batalkan Pesanan?</h3>
+            <p className="mt-1.5 text-meta text-ink-soft">
+              Pesanan <strong className="text-ink">{booking.code}</strong> atas nama{" "}
+              <strong className="text-ink">{booking.customerName}</strong> akan ditutup dan
+              armadanya kembali ke katalog. Tindakan ini tidak bisa dibatalkan.
+            </p>
+
+            <div className="mt-3.5 space-y-1.5">
+              <label
+                htmlFor="cancel-reason-modal"
+                className="block text-meta font-medium text-ink"
+              >
+                Alasan pembatalan <span className="text-danger">*</span>
+              </label>
+              <AutoGrowTextarea
+                maxHeight={200}
+                id="cancel-reason-modal"
+                maxLength={300}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Contoh: Pelanggan mengonfirmasi batal lewat telepon / indikasi penipuan saat pemeriksaan bukti transfer."
+                className="w-full rounded-sm border border-rule-strong bg-canvas p-2.5 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
+              />
+              <p className="text-right text-micro text-ink-soft">
+                {cancelReason.length}/300 karakter
+              </p>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2.5">
+              <Button
+                variant="outline"
+                size="md"
+                disabled={isPending}
+                onClick={() => setShowCancelModal(false)}
+              >
+                Kembali
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                disabled={isPending || !cancelReason.trim()}
+                onClick={handleCancelBooking}
+              >
+                {isPending ? "Membatalkan..." : "Ya, Batalkan Pesanan"}
               </Button>
             </div>
           </div>

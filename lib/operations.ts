@@ -324,6 +324,7 @@ type ApiBooking = {
     nominal: string | number;
     dibatalkanOleh: RefundInitiator;
     alasan: string | null;
+    danaTerverifikasi: boolean;
     namaBank: string | null;
     nomorRekening: string | null;
     namaPemilik: string | null;
@@ -446,6 +447,7 @@ function mapBooking(b: ApiBooking): Booking {
           nominal: Number(b.refund.nominal),
           dibatalkanOleh: b.refund.dibatalkanOleh,
           alasan: b.refund.alasan ?? null,
+          danaTerverifikasi: b.refund.danaTerverifikasi ?? true,
           namaBank: b.refund.namaBank ?? null,
           nomorRekening: b.refund.nomorRekening ?? null,
           namaPemilik: b.refund.namaPemilik ?? null,
@@ -924,6 +926,7 @@ export async function getRefunds(params?: {
       nominal: string | number;
       dibatalkanOleh: RefundInitiator;
       alasan: string | null;
+      danaTerverifikasi: boolean;
       namaBank: string | null;
       nomorRekening: string | null;
       namaPemilik: string | null;
@@ -949,6 +952,7 @@ export async function getRefunds(params?: {
     nominal: Number(r.nominal),
     dibatalkanOleh: r.dibatalkanOleh,
     alasan: r.alasan ?? null,
+    danaTerverifikasi: r.danaTerverifikasi ?? true,
     namaBank: r.namaBank ?? null,
     nomorRekening: r.nomorRekening ?? null,
     namaPemilik: r.namaPemilik ?? null,

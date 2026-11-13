@@ -160,6 +160,12 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                       {formatDateTimeWit(refund.dicatatPada)}
                     </p>
                     <p className="text-meta text-ink-soft">{ASAL_PEMBATAL[refund.dibatalkanOleh]}</p>
+                    {refund.danaTerverifikasi ? null : (
+                      <p className="text-meta font-semibold text-amber-800">
+                        Bukti transfer belum diverifikasi — cocokkan mutasi bank sebelum
+                        mentransfer balik.
+                      </p>
+                    )}
                     {refund.alasan ? (
                       <p className="text-meta text-ink-soft">Alasan: {refund.alasan}</p>
                     ) : null}
