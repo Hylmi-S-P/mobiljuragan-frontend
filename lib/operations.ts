@@ -549,6 +549,10 @@ export type SupportTicketView = {
   title: string;
   category: string;
   status: string;
+  /* Status mentah dari server. Dipakai tab Arsip untuk memisahkan tiket yang
+     menunggu konfirmasi pelanggan dari tiket yang sudah benar-benar ditutup —
+     keduanya dipetakan ke "selesai" untuk tampilan. */
+  rawStatus: string;
   handledBy?: "AI" | "HUMAN" | string;
   handoverAt?: string | null;
   /* Admin yang sedang memegang tiket. Null berarti belum diambil
@@ -606,6 +610,7 @@ export async function getSupportTickets(): Promise<SupportTicketView[]> {
     title: t.title,
     category: t.category,
     status: TICKET_STATUS_MAP[t.status] ?? "baru",
+    rawStatus: t.status,
     handledBy: t.handledBy,
     handoverAt: t.handoverAt,
     assignedAdminId: t.assignedAdmin?.id ?? null,

@@ -164,7 +164,7 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
             onChange={(e) => setCategorySelect(e.target.value)}
             className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
           >
-            <optgroup label="Preset Kategori Resmi">
+            <optgroup label="Kategori yang sering dipakai">
               {FAQ_CATEGORY_PRESETS.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}

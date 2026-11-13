@@ -18,6 +18,20 @@ type Props = {
 };
 
 /**
+ * Menyamarkan nomor telepon untuk daftar akun.
+ *
+ * Nomor telepon adalah kredensial masuk akun staf (dipakai sebagai username).
+ * Menampilkannya utuh di layar daftar berarti siapa pun yang lewat bisa membacanya
+ * tanpa perlu membuka detail akun. Bagian tengah disembunyikan; nomor utuh tetap
+ * tersedia di modal kelola, tempat admin memang perlu memeriksanya.
+ */
+function samarkanNomor(nomor: string): string {
+  const bersih = nomor.trim();
+  if (bersih.length <= 6) return "•••";
+  return `${bersih.slice(0, 4)}•••${bersih.slice(-3)}`;
+}
+
+/**
  * AdminCardGrid: Grid kartu modular akun pengelola/staf.
  * Menghilangkan tabel lebar yang terpotong di layar kecil, melindungi akun sesi aktif,
  * dan memindahkan aksi sensitif ke dalam modal kelola terpadu.
@@ -73,7 +87,8 @@ export function AdminCardGrid({
                       ) : null}
                     </div>
                     <span className="block font-mono text-micro text-ink-soft">
-                      {account.username}
+                      <span className="font-sans">Telepon: </span>
+                      {samarkanNomor(account.username)}
                     </span>
                   </div>
                 </div>

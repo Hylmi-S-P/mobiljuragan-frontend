@@ -150,7 +150,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
 
       <div className="flex flex-col gap-4">
         <Panel
-          title="Manajemen Akun Pengelola & Staf Operasional"
+          title="Manajemen Akun"
           action={
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="relative">

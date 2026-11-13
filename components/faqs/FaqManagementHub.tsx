@@ -3,6 +3,7 @@
 import { useState, useEffect, useOptimistic, startTransition } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FaqFormModal } from "@/components/modals/FaqFormModal";
+import { FaqCategoryModal } from "@/components/faqs/FaqCategoryModal";
 import { FaqDetailModal } from "@/components/faqs/FaqDetailModal";
 import { FaqCardGrid } from "@/components/faqs/FaqCardGrid";
 import { Button } from "@/components/ui/Button";
@@ -33,6 +34,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
   const [detailFaq, setDetailFaq] = useState<FaqItem | null>(null);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
 
   const { show, node } = useToast();
 
@@ -146,8 +148,16 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-10 w-full rounded-sm border border-rule bg-canvas pl-9 pr-3 text-meta text-ink placeholder:text-ink-soft focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
-                />
+                maxLength={120}
+                  />
               </div>
+
+              <Button
+                variant="outline"
+                onClick={() => setIsCategoryOpen(true)}
+              >
+                Kelola Kategori
+              </Button>
 
               <Button
                 variant="confirm"
@@ -212,6 +222,9 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
           }}
         />
       ) : null}
+
+      {/* Modal Kelola Kategori */}
+      <FaqCategoryModal isOpen={isCategoryOpen} onClose={() => setIsCategoryOpen(false)} />
 
       {/* Modal Tambah / Edit FAQ */}
       {isFormOpen ? (

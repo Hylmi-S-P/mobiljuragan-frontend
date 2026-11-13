@@ -246,7 +246,8 @@ export function VehicleFormModal({
             aria-describedby={errors.name ? `${fieldId}-name-error` : undefined}
             className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
             placeholder="Contoh: AVANZA G PUTIH"
-          />
+          maxLength={120}
+            />
           {errors.name ? (
             <p id={`${fieldId}-name-error`} className="mt-1 text-meta text-danger">
               {errors.name}
@@ -266,7 +267,8 @@ export function VehicleFormModal({
             aria-describedby={errors.plate ? `${fieldId}-plate-error` : undefined}
             className="tabular-nums mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
             placeholder="Contoh: PS1692B"
-          />
+          maxLength={20}
+            />
           {errors.plate ? (
             <p id={`${fieldId}-plate-error`} className="mt-1 text-meta text-danger">
               {errors.plate}

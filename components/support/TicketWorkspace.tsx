@@ -113,11 +113,32 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   }
   const [tabDaftar, setTabDaftar] = useState<"aktif" | "arsip">("aktif");
 
+  /* Tab Arsip memuat dua hal yang berbeda umurnya: tiket yang sudah dijawab dan
+     menunggu konfirmasi pelanggan, serta tiket yang benar-benar ditutup. Tanpa
+     saringan, keduanya tercampur dan tiket yang baru ditutup sistem tidak bisa
+     dibedakan dari yang masih mungkin dibalas pelanggan. */
+  const [saringArsip, setSaringArsip] = useState<"semua" | "RESOLVED" | "CLOSED">("semua");
+
   const tiketAktif = useMemo(() => tickets.filter((t) => t.status !== "selesai"), [tickets]);
-  const tiketArsip = useMemo(() => tickets.filter((t) => t.status === "selesai"), [tickets]);
+  const tiketArsip = useMemo(
+    () =>
+      tickets
+        .filter((t) => t.status === "selesai")
+        /* Yang paling baru dikerjakan muncul lebih dulu: arsip dibaca untuk
+           mencari tiket yang baru saja ditutup, bukan yang paling tua. */
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+    [tickets],
+  );
+  const tiketArsipTersaring = useMemo(
+    () =>
+      saringArsip === "semua"
+        ? tiketArsip
+        : tiketArsip.filter((t) => t.rawStatus === saringArsip),
+    [saringArsip, tiketArsip],
+  );
 
   const filteredTickets = useMemo(() => {
-    const sumber = tabDaftar === "aktif" ? tiketAktif : tiketArsip;
+    const sumber = tabDaftar === "aktif" ? tiketAktif : tiketArsipTersaring;
     const keyword = debouncedQuery.trim().toLowerCase();
     if (keyword.length === 0) return sumber;
     return sumber.filter((ticket) =>
@@ -128,7 +149,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
         formatTicketCategory(ticket.category),
       ].some((field) => field.toLowerCase().includes(keyword)),
     );
-  }, [debouncedQuery, tabDaftar, tiketAktif, tiketArsip]);
+  }, [debouncedQuery, tabDaftar, tiketAktif, tiketArsipTersaring]);
 
   const activeTicket = tickets.find((ticket) => ticket.id === activeId) ?? null;
   const isResolvedOrClosed = activeTicket?.status === "selesai";
@@ -292,6 +313,32 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
               ))}
             </div>
 
+            {/* Saringan arsip: memisahkan tiket yang menunggu konfirmasi pelanggan
+                dari tiket yang sudah ditutup sistem. */}
+            {tabDaftar === "arsip" ? (
+              <div className="mb-2 flex flex-wrap gap-1.5" role="group" aria-label="Saring arsip">
+                {[
+                  { id: "semua" as const, label: "Semua" },
+                  { id: "RESOLVED" as const, label: "Menunggu Pelanggan" },
+                  { id: "CLOSED" as const, label: "Ditutup" },
+                ].map((saring) => (
+                  <button
+                    key={saring.id}
+                    type="button"
+                    aria-pressed={saringArsip === saring.id}
+                    onClick={() => setSaringArsip(saring.id)}
+                    className={`rounded-full px-2.5 py-1 text-micro font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
+                      saringArsip === saring.id
+                        ? "bg-teal text-white"
+                        : "border border-rule bg-surface text-ink-soft hover:bg-canvas"
+                    }`}
+                  >
+                    {saring.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
             <label htmlFor="ticket-search" className="sr-only">
               Cari tiket
             </label>
@@ -301,7 +348,8 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cari tiket"
               className="h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-            />
+            maxLength={100}
+              />
 
             <ul className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
               {filteredTickets.map((ticket) => {

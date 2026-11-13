@@ -216,7 +216,8 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           onChange={(e) => setRanah({ ...ranah, namaBank: e.target.value })}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
                           placeholder="BRI / Mandiri / BCA"
-                        />
+                        maxLength={60}
+                          />
                       </label>
                       <label className="text-meta text-ink-soft">
                         Nomor rekening
@@ -225,7 +226,8 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           onChange={(e) => setRanah({ ...ranah, nomorRekening: e.target.value })}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
                           placeholder="1234567890"
-                        />
+                        maxLength={30}
+                          />
                       </label>
                       <label className="text-meta text-ink-soft">
                         Nama pemilik rekening
@@ -233,7 +235,8 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           value={ranah.namaPemilik}
                           onChange={(e) => setRanah({ ...ranah, namaPemilik: e.target.value })}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
-                        />
+                        maxLength={120}
+                          />
                       </label>
                       <label className="text-meta text-ink-soft">
                         Nominal yang ditransfer
@@ -251,7 +254,8 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           onChange={(e) => setRanah({ ...ranah, catatan: e.target.value })}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
                           placeholder="Contoh: ditransfer 13 Nov, bukti dikirim via WhatsApp"
-                        />
+                        maxLength={500}
+                          />
                       </label>
 
                       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">

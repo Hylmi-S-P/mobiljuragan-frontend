@@ -226,12 +226,13 @@ export function AdminManageModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-            />
+            maxLength={80}
+              />
           </div>
 
           <div>
             <label htmlFor={`${fieldId}-phone`} className="block text-meta font-medium text-ink">
-              Username
+              Nomor telepon (dipakai untuk masuk)
             </label>
             <input
               id={`${fieldId}-phone`}
@@ -241,7 +242,8 @@ export function AdminManageModal({
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-            />
+            maxLength={20}
+              />
           </div>
         </div>
 

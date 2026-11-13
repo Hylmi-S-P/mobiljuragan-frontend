@@ -36,7 +36,7 @@ export const NAV_ENTRIES: NavEntry[] = [
   { label: "Template Dokumen", href: "/documents" },
   { label: "AI HUB", href: "/admin/ai-hub" },
   { label: "Manajemen FAQ", href: "/faqs" },
-  { label: "Manajemen Admin", href: "/admin" },
+  { label: "Manajemen Akun", href: "/admin" },
 ];
 
 export function isNavGroup(entry: NavEntry): entry is NavGroup {
