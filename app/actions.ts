@@ -1556,6 +1556,7 @@ export async function updateRefundAction(
     buktiMediaId?: string;
     catatan?: string;
     status?: "MENUNGGU" | "DIPROSES" | "SELESAI";
+    konfirmasiDana?: boolean;
   },
 ): Promise<ActionState> {
   if (!id) {

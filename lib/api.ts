@@ -1842,6 +1842,8 @@ export type UpdateRefundPayload = {
   buktiMediaId?: string;
   catatan?: string;
   status?: "MENUNGGU" | "DIPROSES" | "SELESAI";
+  /** `true` = uangnya ada di mutasi bank, `false` = tidak ada. */
+  konfirmasiDana?: boolean;
 };
 
 /** Menyimpan data rekening dan/atau menutup baris pengembalian dana. */

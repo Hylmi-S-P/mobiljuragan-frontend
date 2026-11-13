@@ -103,6 +103,21 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
     }
   }
 
+  async function konfirmasiDana(refund: BookingRefund, ada: boolean) {
+    setSedangSimpan(refund.id);
+    try {
+      const hasil = await updateRefundAction(refund.id, { konfirmasiDana: ada });
+      if (hasil.success) {
+        show(hasil.message ?? "Tersimpan.", "success");
+        setTerbuka(null);
+      } else {
+        show(hasil.message ?? "Gagal menyimpan.", "error");
+      }
+    } finally {
+      setSedangSimpan(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Panel>
@@ -160,12 +175,12 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                       {formatDateTimeWit(refund.dicatatPada)}
                     </p>
                     <p className="text-meta text-ink-soft">{ASAL_PEMBATAL[refund.dibatalkanOleh]}</p>
-                    {refund.danaTerverifikasi ? null : (
+                    {!refund.danaTerverifikasi && refund.status !== "SELESAI" ? (
                       <p className="text-meta font-semibold text-amber-800">
                         Bukti transfer belum diverifikasi — cocokkan mutasi bank sebelum
                         mentransfer balik.
                       </p>
-                    )}
+                    ) : null}
                     {refund.alasan ? (
                       <p className="text-meta text-ink-soft">Alasan: {refund.alasan}</p>
                     ) : null}
@@ -266,19 +281,41 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-meta text-ink-soft">
                         {refund.status === "SELESAI" && refund.diselesaikanPada
                           ? `Selesai ${formatDateTimeWit(refund.diselesaikanPada)}`
                           : "Belum ditransfer."}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => bukaForm(refund)}
-                        className="rounded-sm border border-rule bg-surface px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas"
-                      >
-                        {refund.status === "SELESAI" ? "Lihat / ubah catatan" : "Proses pengembalian"}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!refund.danaTerverifikasi && refund.status !== "SELESAI" ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={sedangSimpan === refund.id}
+                              onClick={() => konfirmasiDana(refund, true)}
+                              className="rounded-sm border border-rule bg-surface px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas disabled:opacity-60"
+                            >
+                              Dana sudah masuk
+                            </button>
+                            <button
+                              type="button"
+                              disabled={sedangSimpan === refund.id}
+                              onClick={() => konfirmasiDana(refund, false)}
+                              className="rounded-sm border border-rule bg-surface px-3 py-1.5 text-meta font-medium text-ink-soft hover:bg-canvas disabled:opacity-60"
+                            >
+                              Dana tidak masuk
+                            </button>
+                          </>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => bukaForm(refund)}
+                          className="rounded-sm border border-rule bg-surface px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas"
+                        >
+                          {refund.status === "SELESAI" ? "Lihat / ubah catatan" : "Proses pengembalian"}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
