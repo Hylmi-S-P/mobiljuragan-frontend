@@ -410,7 +410,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                 {tickets.length === 0
                   ? "Belum ada tiket yang masuk dari pelanggan."
                   : tabDaftar === "arsip"
-                    ? "Belum ada tiket yang selesai."
+                    ? saringArsip === "RESOLVED"
+                      ? "Tidak ada tiket yang sedang menunggu jawaban pelanggan."
+                      : saringArsip === "CLOSED"
+                        ? "Belum ada tiket yang ditutup."
+                        : "Belum ada tiket di arsip."
                     : "Tidak ada tiket aktif yang cocok dengan kata kunci itu."}
               </p>
             ) : null}

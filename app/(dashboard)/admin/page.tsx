@@ -3,8 +3,8 @@ import { AdminAccountsTable } from "@/components/admin/AdminAccountsTable";
 import { getAdminAccounts } from "@/lib/api";
 
 export const metadata: Metadata = {
-  title: "Manajemen Admin | MobilJuragan",
-  description: "Pengelolaan akun pengelola dan hak akses portal operasional MobilJuragan Merauke.",
+  title: "Manajemen Akun | MobilJuragan",
+  description: "Pengelolaan akun pengelola dan staf portal operasional MobilJuragan Merauke.",
 };
 
 export const dynamic = "force-dynamic";
