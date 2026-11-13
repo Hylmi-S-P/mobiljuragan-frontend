@@ -6,8 +6,15 @@ import { formatRupiah } from "@/lib/format";
 import type { CanonicalBookingStatus, LineItem } from "@/lib/types";
 
 type Props = {
+  /* Hanya baris penyesuaian manual. Baris sewa dan jasa supir dihitung sistem
+     dari katalog, jadi tidak ikut daftar ini dan tidak bisa dihapus staf. */
   items: LineItem[];
+  pricePerDay: number | null | undefined;
+  dayCount: number;
+  isDriverService: boolean;
+  driverDailyRate: number;
   quotedAmount: number;
+  totalCleanBill: number;
   rawStatus: CanonicalBookingStatus;
   canDecide: boolean;
   onOpenSurcharge: () => void;
@@ -16,12 +23,22 @@ type Props = {
 
 export function BillingLineItemsCard({
   items,
+  pricePerDay,
+  dayCount,
+  isDriverService,
+  driverDailyRate,
   quotedAmount,
+  totalCleanBill,
   rawStatus,
   canDecide,
   onOpenSurcharge,
   onRemoveSurcharge,
 }: Props) {
+  const hari = dayCount || 1;
+  const hargaSewa = pricePerDay ? pricePerDay * hari : 0;
+  const jasaSupir = isDriverService ? driverDailyRate * hari : 0;
+  const manualItems = items.filter((item) => item.kind === "penyesuaian");
+
   return (
     <Panel
       title="Rincian Tagihan & Penyesuaian Biaya"
@@ -49,34 +66,46 @@ export function BillingLineItemsCard({
             </tr>
           </thead>
           <tbody className="divide-y divide-rule/60">
-            {items.map((item) => {
-              /* Ditentukan dari `kind`, bukan dari awalan id. Awalan `li-` dulu
-                 dipakai untuk menandai baris baru, tetapi id berubah menjadi uuid
-                 begitu penyesuaian disimpan ke database — dan nominalnya lalu
-                 salah tampil sebesar tarif sewa. */
-              const isManualSurcharge = item.kind === "penyesuaian";
-              const isSupirBreakdown = item.kind === "supir";
+            {/* Baris sistem: angkanya dari katalog, tidak bisa diubah staf. */}
+            <tr className="hover:bg-canvas/50 transition-colors">
+              <td className="py-3 pr-4">
+                <p className="font-semibold text-ink">Sewa unit</p>
+                <p className="mt-0.5 text-micro text-ink-soft">
+                  Harga katalog armada, dihitung otomatis.
+                </p>
+              </td>
+              <td className="py-3 px-4 text-center tabular-nums text-ink-soft">
+                {pricePerDay ? `${formatRupiah(pricePerDay)}/hari × ${hari} hari` : "—"}
+              </td>
+              <td className="py-3 pl-4 text-right tabular-nums font-semibold text-ink">
+                {pricePerDay ? formatRupiah(hargaSewa) : "Harga katalog belum tersedia"}
+              </td>
+            </tr>
 
-              /* Nominal per baris.
-               *
-               * Baris sewa bisa belum punya angka karena admin belum menetapkan
-               * tarif. Dulu ditampilkan "[nominal]", yang terbaca seperti galat
-               * sistem. Sekarang dikatakan apa adanya. */
-              let subtotalDisplay = "Menunggu tarif admin";
-              if (isSupirBreakdown) {
-                subtotalDisplay = "Termasuk Paket";
-              } else if (isManualSurcharge) {
-                const raw = item.amount ?? "";
-                const isNegative = raw.startsWith("-");
-                const numeric = Number(raw.replace(/[^\d]/g, "")) || 0;
-                subtotalDisplay = `${isNegative ? "-" : "+"} ${formatRupiah(numeric)}`;
-              } else if (quotedAmount > 0) {
-                subtotalDisplay = formatRupiah(quotedAmount);
-              } else if (item.amount) {
-                const numeric = Number(item.amount.replace(/[^\d]/g, "")) || 0;
-                subtotalDisplay =
-                  numeric > 0 ? formatRupiah(numeric) : "Menunggu tarif admin";
-              }
+            {isDriverService ? (
+              <tr className="hover:bg-canvas/50 transition-colors">
+                <td className="py-3 pr-4">
+                  <p className="font-semibold text-ink">Jasa supir</p>
+                  <p className="mt-0.5 text-micro text-ink-soft">
+                    Tarif supir global, dihitung otomatis.
+                  </p>
+                </td>
+                <td className="py-3 px-4 text-center tabular-nums text-ink-soft">
+                  {driverDailyRate > 0
+                    ? `${formatRupiah(driverDailyRate)}/hari × ${hari} hari`
+                    : "—"}
+                </td>
+                <td className="py-3 pl-4 text-right tabular-nums font-semibold text-ink">
+                  {driverDailyRate > 0 ? formatRupiah(jasaSupir) : "Tarif supir belum dimuat"}
+                </td>
+              </tr>
+            ) : null}
+
+            {/* Baris manual: satu-satunya yang boleh ditambah dan dihapus staf. */}
+            {manualItems.map((item) => {
+              const raw = item.amount ?? "";
+              const isNegative = raw.startsWith("-");
+              const numeric = Number(raw.replace(/[^\d]/g, "")) || 0;
 
               return (
                 <tr key={item.id} className="hover:bg-canvas/50 transition-colors">
@@ -88,7 +117,7 @@ export function BillingLineItemsCard({
                           <p className="mt-0.5 text-micro text-ink-soft">{item.note}</p>
                         ) : null}
                       </div>
-                      {isManualSurcharge && canDecide ? (
+                      {canDecide ? (
                         <button
                           type="button"
                           onClick={() => onRemoveSurcharge(item.id)}
@@ -100,28 +129,47 @@ export function BillingLineItemsCard({
                       ) : null}
                     </div>
                   </td>
-
                   <td className="py-3 px-4 text-center tabular-nums text-ink-soft">
                     {item.note?.match(/\d+\s*(hari|jam)/i)?.[0] ?? "1 Paket"}
                   </td>
-
                   <td
                     className={`py-3 pl-4 text-right tabular-nums font-semibold ${
-                      isManualSurcharge
-                        ? item.amount?.startsWith("-")
-                          ? "text-emerald-700"
-                          : "text-ink"
-                        : "text-ink"
+                      isNegative ? "text-emerald-700" : "text-ink"
                     }`}
                   >
-                    {subtotalDisplay}
+                    {`${isNegative ? "-" : "+"} ${formatRupiah(numeric)}`}
                   </td>
                 </tr>
               );
             })}
+
+            {manualItems.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="py-3 text-micro text-ink-soft">
+                  Belum ada penyesuaian manual. Diskon atau tambahan dicatat di sini dengan
+                  justifikasi.
+                </td>
+              </tr>
+            ) : null}
           </tbody>
+          <tfoot>
+            <tr className="border-t border-rule">
+              <td className="py-3 pr-4 text-meta font-bold text-ink" colSpan={2}>
+                Total tagihan bersih
+              </td>
+              <td className="py-3 pl-4 text-right tabular-nums text-subtitle font-bold text-ink">
+                {totalCleanBill > 0 ? formatRupiah(totalCleanBill) : "Belum ditetapkan"}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
+
+      {quotedAmount <= 0 && rawStatus !== "CREATED" ? (
+        <p className="mt-2 text-micro text-ink-soft">
+          Tarif resmi belum ditetapkan. Angka di atas masih perkiraan dari katalog.
+        </p>
+      ) : null}
     </Panel>
   );
 }

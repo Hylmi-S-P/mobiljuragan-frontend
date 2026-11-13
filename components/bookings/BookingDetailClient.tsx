@@ -55,19 +55,11 @@ export function BookingDetailClient({
    * membatalkan, tampilan disegarkan lewat `router.refresh()`.
    */
   const items = useMemo<LineItem[]>(() => {
-    // Sertakan breakdown supir jika pesanan memakai supir
-    const initialItems = [...booking.lineItems];
-    if (isDriverService && !initialItems.some((i) => i.kind === "supir")) {
-      initialItems.push({
-        id: `${booking.id}-supir-breakdown`,
-        kind: "supir",
-        label: "Layanan jasa supir resmi Merauke",
-        amount: null,
-        note: `Termasuk operasional supir (${booking.dayCount} hari)`,
-      });
-    }
-    return initialItems;
-  }, [booking.lineItems, booking.id, booking.dayCount, isDriverService]);
+    /* Baris sewa dan jasa supir tidak lagi ditambahkan di sini: keduanya
+       dihitung sistem dari katalog dan ditampilkan langsung oleh
+       BillingLineItemsCard. Yang tersisa hanya penyesuaian manual. */
+    return [...booking.lineItems];
+  }, [booking.lineItems]);
 
   const [status, setStatus] = useState<BookingStatus>(booking.status);
   const [rawStatus, setRawStatus] = useState<CanonicalBookingStatus>(
@@ -419,7 +411,12 @@ export function BookingDetailClient({
           {/* Modul 5: Kartu Rincian Tagihan & Penyesuaian Biaya */}
           <BillingLineItemsCard
             items={items}
+            pricePerDay={booking.pricePerDay}
+            dayCount={booking.dayCount}
+            isDriverService={isDriverService}
+            driverDailyRate={driverDailyRate}
             quotedAmount={quotedAmount}
+            totalCleanBill={totalCleanBill}
             rawStatus={rawStatus}
             canDecide={canDecide}
             onOpenSurcharge={() => setSurchargeOpen(true)}
