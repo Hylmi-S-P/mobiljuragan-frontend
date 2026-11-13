@@ -37,6 +37,13 @@ const ASAL_PEMBATAL: Record<BookingRefund["dibatalkanOleh"], string> = {
   SISTEM: "Sistem (dikembalikan penuh)",
 };
 
+/** Umur antrean dalam hari, dipakai menandai refund yang rekeningnya tak kunjung diisi. */
+function hariSejak(waktu: string): number {
+  const mulai = new Date(waktu).getTime();
+  if (Number.isNaN(mulai)) return 0;
+  return Math.max(0, Math.floor((Date.now() - mulai) / 86_400_000));
+}
+
 type Props = {
   initialRefunds: BookingRefund[];
   statusAwal: RefundStatus | null;
@@ -179,6 +186,14 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                       <p className="text-meta font-semibold text-amber-800">
                         Bukti transfer belum diverifikasi — cocokkan mutasi bank sebelum
                         mentransfer balik.
+                      </p>
+                    ) : null}
+                    {!refund.nomorRekening && refund.status !== "SELESAI" ? (
+                      <p className="text-meta font-semibold text-amber-800">
+                        Rekening belum diklaim pelanggan
+                        {hariSejak(refund.dicatatPada) >= 3
+                          ? ` — sudah ${hariSejak(refund.dicatatPada)} hari, hubungi pelanggan.`
+                          : "."}
                       </p>
                     ) : null}
                     {refund.alasan ? (
