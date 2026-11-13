@@ -37,8 +37,8 @@ type Props = {
  * sama seperti aturan di kalender armada. Selain itu, status gudang dipakai apa
  * adanya.
  */
-function statusKatalog(vehicle: Vehicle, sedangTersewa: boolean): Vehicle["status"] {
-  if (sedangTersewa) return "disewa";
+function statusKatalog(vehicle: Vehicle, sedangDisewa: boolean): Vehicle["status"] {
+  if (sedangDisewa) return "disewa";
   return vehicle.status;
 }
 
