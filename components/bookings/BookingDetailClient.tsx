@@ -121,6 +121,11 @@ export function BookingDetailClient({
   const [surchargeOpen, setSurchargeOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  /* Rute tidak ditebak dari data lama: kalau pesanan sudah punya rute, itu yang
+     dipakai; kalau belum, admin wajib memilih sebelum tarif ditetapkan. */
+  const [routeScope, setRouteScope] = useState<"DALAM_KOTA" | "LUAR_KOTA" | null>(
+    booking.routeScope ?? null,
+  );
   const { show, node } = useToast();
   const [whatsappUrl, setWhatsappUrl] = useState<string | null>(
     booking.whatsappIntent?.url ?? null,
@@ -287,11 +292,19 @@ export function BookingDetailClient({
       return;
     }
 
+    /* Rute wajib: server menolak konfirmasi tarif tanpa rute, dan rute inilah
+       yang menentukan supir mana yang boleh ditugaskan. */
+    if (!routeScope) {
+      show("Pilih rute perjalanan (dalam kota atau luar kota) dulu.", "error");
+      return;
+    }
+
     startTransition(async () => {
       const result = await updateBookingStatusAction(
         booking.id,
         "CONFIRMED",
         "Tarif disepakati dan dikonfirmasi admin.",
+        routeScope,
       );
 
       if (result.success) {
@@ -445,6 +458,8 @@ export function BookingDetailClient({
             isPending={isPending}
             onAcceptRequest={handleAcceptRequest}
             onConfirmBooking={handleConfirmBooking}
+            routeScope={routeScope}
+            onRouteScopeChange={setRouteScope}
             onOpenRejectModal={() => setShowRejectModal(true)}
             onTransitionStatus={handleTransitionStatus}
             whatsappUrl={whatsappUrl}

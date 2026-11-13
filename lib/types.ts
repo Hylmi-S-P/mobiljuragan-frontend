@@ -83,6 +83,10 @@ export type Booking = {
   serviceType: string;
   pickupRoute: string | null;
   quotedAmount?: number | null;
+  /* Rute perjalanan yang ditetapkan admin saat tarif dikonfirmasi. Wajib
+     sebelum tarif bisa ditetapkan, dan menentukan supir mana yang bisa
+     ditugaskan (dalam kota atau luar kota). */
+  routeScope?: "DALAM_KOTA" | "LUAR_KOTA" | null;
   driverId?: string | null;
   driverName: string | null;
   driverStatus: DriverStatus | null;

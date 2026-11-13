@@ -265,6 +265,7 @@ type ApiBooking = {
   numberGuests: number | null;
   tariffStatus: string;
   quotedAmount: string | number | null;
+  routeScope?: "DALAM_KOTA" | "LUAR_KOTA" | null;
   status: CanonicalBookingStatus;
   customer?: { fullName: string; phoneNumber: string } | null;
   vehicle?: {
@@ -390,6 +391,7 @@ function mapBooking(b: ApiBooking): Booking {
     tariffStatus: b.tariffStatus,
     quotedAmount:
       b.quotedAmount !== null && b.quotedAmount !== undefined ? Number(b.quotedAmount) : null,
+    routeScope: b.routeScope ?? null,
     driverId: b.driverId,
     serviceType: isDriverService ? "Dengan Supir" : "Lepas Kunci",
     pickupRoute: b.pickupLocation,

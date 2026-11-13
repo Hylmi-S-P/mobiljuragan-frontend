@@ -112,6 +112,10 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
   const [previewModalTitle, setPreviewModalTitle] = useState<string>("");
   const [previewFailed, setPreviewFailed] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  /* Menyetujui seluruh dokumen adalah keputusan sekali jalan yang membuka
+     pesanan ke tahap tarif dan pembayaran. Sebelumnya satu klik langsung
+     mengirim persetujuan tanpa ruang untuk membatalkan. */
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionTargets, setRejectionTargets] = useState<DocumentTargetKey[]>([]);
   const { show, dismiss, node } = useToast();
@@ -368,7 +372,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                 <button
                   type="button"
                   disabled={isPending || uploadedCount < 3 || currentStatus === "VERIFIED"}
-                  onClick={() => handleVerify("APPROVE")}
+                  onClick={() => setIsApproveModalOpen(true)}
                   className="rounded-sm bg-teal px-3.5 py-1.5 text-meta font-medium text-white hover:bg-teal/90 disabled:opacity-50"
                 >
                   {isPending ? "Memproses..." : "Setujui Seluruh Dokumen"}
@@ -438,6 +442,54 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
       )}
 
       {/* Modal Input Alasan Penolakan Dokumen */}
+      {isApproveModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+        >
+          <div className="w-full max-w-md rounded-md border border-rule bg-surface p-5 shadow-lg">
+            <h3 className="text-subtitle font-bold text-ink">Setujui Seluruh Dokumen?</h3>
+            <p className="mt-1.5 text-meta text-ink-soft">
+              Ketiga berkas akan ditandai terverifikasi. Setelah ini pesanan masuk tahap penetapan
+              tarif dan pelanggan bisa menerima tagihan. Persetujuan tidak bisa dibatalkan dari
+              layar ini.
+            </p>
+
+            <div className="mt-4 rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
+              <p className="font-semibold text-ink">Berkas yang disetujui</p>
+              <ul className="mt-1.5 space-y-1">
+                <li>KTP</li>
+                <li>SIM (lepas kunci)</li>
+                <li>Surat pernyataan bertanda tangan</li>
+              </ul>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => setIsApproveModalOpen(false)}
+                className="rounded-sm border border-rule px-3.5 py-1.5 text-meta font-medium text-ink-soft hover:bg-canvas disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  setIsApproveModalOpen(false);
+                  handleVerify("APPROVE");
+                }}
+                className="rounded-sm bg-teal px-3.5 py-1.5 text-meta font-medium text-white hover:bg-teal/90 disabled:opacity-50"
+              >
+                {isPending ? "Memproses..." : "Ya, Setujui Semua"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isRejectModalOpen && (
         <div
           role="dialog"
