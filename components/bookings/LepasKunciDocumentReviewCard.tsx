@@ -117,6 +117,9 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
      pesanan ke tahap tarif dan pembayaran. Sebelumnya satu klik langsung
      mengirim persetujuan tanpa ruang untuk membatalkan. */
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+  /* Centang pemeriksaan: persetujuan hanya boleh dikirim setelah staf menyatakan
+     sudah membuka dan memeriksa ketiga berkas, bukan sekadar menekan tombol. */
+  const [sudahDiperiksa, setSudahDiperiksa] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionTargets, setRejectionTargets] = useState<DocumentTargetKey[]>([]);
   const { show, dismiss, node } = useToast();
@@ -363,7 +366,7 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={isPending || uploadedCount === 0}
+                  disabled={isPending || uploadedCount === 0 || currentStatus === "VERIFIED"}
                   onClick={() => setIsRejectModalOpen(true)}
                   className="rounded-sm border border-danger/40 px-3 py-1.5 text-meta font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
                 >
@@ -463,20 +466,38 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
               </ul>
             </div>
 
+            <label className="mt-4 flex items-start gap-2 text-meta text-ink">
+              <input
+                type="checkbox"
+                checked={sudahDiperiksa}
+                onChange={(event) => setSudahDiperiksa(event.target.checked)}
+                disabled={isPending}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-teal"
+              />
+              <span>
+                Saya sudah membuka dan memeriksa ketiga berkas: nama sesuai data
+                pelanggan, foto jelas, dan surat pernyataan bertanda tangan.
+              </span>
+            </label>
+
             <div className="mt-5 flex items-center justify-end gap-2">
               <button
                 type="button"
                 disabled={isPending}
-                onClick={() => setIsApproveModalOpen(false)}
+                onClick={() => {
+                  setIsApproveModalOpen(false);
+                  setSudahDiperiksa(false);
+                }}
                 className="rounded-sm border border-rule px-3.5 py-1.5 text-meta font-medium text-ink-soft hover:bg-canvas disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 type="button"
-                disabled={isPending}
+                disabled={isPending || !sudahDiperiksa}
                 onClick={() => {
                   setIsApproveModalOpen(false);
+                  setSudahDiperiksa(false);
                   handleVerify("APPROVE");
                 }}
                 className="rounded-sm bg-teal px-3.5 py-1.5 text-meta font-medium text-white hover:bg-teal/90 disabled:opacity-50"

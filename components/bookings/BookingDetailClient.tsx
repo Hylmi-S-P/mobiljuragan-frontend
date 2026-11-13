@@ -121,11 +121,6 @@ export function BookingDetailClient({
   const [surchargeOpen, setSurchargeOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
-  /* Rute tidak ditebak dari data lama: kalau pesanan sudah punya rute, itu yang
-     dipakai; kalau belum, admin wajib memilih sebelum tarif ditetapkan. */
-  const [routeScope, setRouteScope] = useState<"DALAM_KOTA" | "LUAR_KOTA" | null>(
-    booking.routeScope ?? null,
-  );
   const { show, node } = useToast();
 
   const [isPending, startTransition] = useTransition();
@@ -286,19 +281,11 @@ export function BookingDetailClient({
       return;
     }
 
-    /* Rute wajib: server menolak konfirmasi tarif tanpa rute, dan rute inilah
-       yang menentukan supir mana yang boleh ditugaskan. */
-    if (!routeScope) {
-      show("Pilih rute perjalanan (dalam kota atau luar kota) dulu.", "error");
-      return;
-    }
-
     startTransition(async () => {
       const result = await updateBookingStatusAction(
         booking.id,
         "CONFIRMED",
         "Tarif disepakati dan dikonfirmasi admin.",
-        routeScope,
       );
 
       if (result.success) {
@@ -379,6 +366,30 @@ export function BookingDetailClient({
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
         {/* Kolom Kiri: Main Content Stack (~65% / col-span-8) */}
         <div className="min-w-0 space-y-4 lg:col-span-8">
+          {/* Bukti transfer yang menunggu pemeriksaan diberi jalan pintas di
+              atas halaman. Tanpa ini admin harus pindah ke tab "Verifikasi
+              Pembayaran", mencari pesanan yang sama, lalu kembali ke sini. */}
+          {dataPembayaran?.status === "PENDING_VERIFICATION" ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-meta font-semibold text-amber-900">
+                  Bukti transfer sudah diunggah, menunggu pemeriksaan
+                </p>
+                <p className="mt-0.5 text-micro text-amber-800">
+                  Periksa mutasi rekening, lalu setujui atau tolak bukti bayar.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 border-amber-400 bg-surface font-semibold text-amber-900 hover:bg-amber-100"
+                onClick={() => setVerifikasiTerbuka(true)}
+              >
+                Periksa Bukti Pembayaran
+              </Button>
+            </div>
+          ) : null}
+
           {/* Modul 1: Bar Visual Timeline Alur Pemesanan */}
           <BookingTimelineBar
             rawStatus={rawStatus}
@@ -449,8 +460,6 @@ export function BookingDetailClient({
             isPending={isPending}
             onAcceptRequest={handleAcceptRequest}
             onConfirmBooking={handleConfirmBooking}
-            routeScope={routeScope}
-            onRouteScopeChange={setRouteScope}
             onOpenRejectModal={() => setShowRejectModal(true)}
             onTransitionStatus={handleTransitionStatus}
             onOpenPaymentVerification={

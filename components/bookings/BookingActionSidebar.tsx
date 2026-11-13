@@ -19,10 +19,6 @@ type Props = {
   hasAssignedDriver: boolean;
   isDriverService: boolean;
   isPending: boolean;
-  /* Rute perjalanan yang dipilih admin pada tahap konfirmasi tarif. Wajib ada
-     sebelum tarif bisa ditetapkan karena server menolak CONFIRMED tanpa rute. */
-  routeScope: "DALAM_KOTA" | "LUAR_KOTA" | null;
-  onRouteScopeChange: (rute: "DALAM_KOTA" | "LUAR_KOTA") => void;
   /* Tahap 1: menerima permintaan masuk (CREATED -> PENDING_CONFIRMATION).
      Dipisah dari penetapan tarif karena keduanya keputusan berbeda: menerima
      pesanan, lalu menetapkan harganya. */
@@ -46,8 +42,6 @@ export function BookingActionSidebar({
   hasAssignedDriver,
   isDriverService,
   isPending,
-  routeScope,
-  onRouteScopeChange,
   onAcceptRequest,
   onConfirmBooking,
   onOpenRejectModal,
@@ -135,10 +129,6 @@ export function BookingActionSidebar({
               <dd className="tabular-nums font-bold text-ink">{formatRupiah(quotedAmount)}</dd>
             </div>
           </dl>
-          <p className="text-micro text-ink-soft">
-            Diskon atau tambahan (mis. medan ekstrem) dicatat lewat tombol Tambah Surcharge
-            Manual, bukan dengan mengubah angka di atas.
-          </p>
         </div>
       ) : isRequestIncoming ? (
         /* Tahap 1: tarif belum ditetapkan. Yang ditampilkan justru acuan harga
@@ -243,53 +233,18 @@ export function BookingActionSidebar({
             </p>
           ) : null}
 
-          {/* Rute perjalanan wajib dipilih di sini. Server menolak konfirmasi
-              tanpa rute, dan pilihan ini yang menentukan supir mana yang boleh
-              ditugaskan (dalam kota vs luar kota). */}
-          <div className="rounded-sm border border-rule bg-canvas p-2.5 space-y-1.5">
-            <p className="text-micro font-semibold text-ink">Rute Perjalanan</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(
-                [
-                  { nilai: "DALAM_KOTA" as const, label: "Dalam Kota" },
-                  { nilai: "LUAR_KOTA" as const, label: "Luar Kota" },
-                ]
-              ).map((rute) => (
-                <button
-                  key={rute.nilai}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => onRouteScopeChange(rute.nilai)}
-                  className={`rounded-sm border px-2 py-1.5 text-micro font-semibold transition-colors ${
-                    routeScope === rute.nilai
-                      ? "border-navy bg-navy text-white"
-                      : "border-rule bg-surface text-ink-soft hover:border-navy hover:text-navy"
-                  }`}
-                >
-                  {rute.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-micro text-ink-soft">
-              Rute menentukan supir mana yang bisa ditugaskan pada pesanan ini.
-            </p>
-          </div>
-
+          {/* Rute tidak lagi dipilih di sini. Biaya rute, diskon, dan cashback
+              semuanya dicatat sebagai baris penyesuaian manual (surcharge) di
+              kartu rincian biaya, sesuai ketentuan kantor. */}
           <Button
             variant="confirm"
             size="md"
             className="w-full"
-            disabled={isPending || isDriverBlocked || isDocumentBlocked || !routeScope}
+            disabled={isPending || isDriverBlocked || isDocumentBlocked}
             onClick={onConfirmBooking}
           >
             {isPending ? "Memproses..." : "Tetapkan Tarif & Lanjutkan"}
           </Button>
-
-          {!routeScope ? (
-            <p className="text-micro text-ink-soft">
-              Pilih rute perjalanan dulu sebelum menetapkan tarif.
-            </p>
-          ) : null}
 
           <p className="text-micro text-ink-soft">
             Setelah tarif ditetapkan, pesanan masuk tahap <strong>Menunggu Pembayaran</strong> dan

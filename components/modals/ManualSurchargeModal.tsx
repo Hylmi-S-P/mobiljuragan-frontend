@@ -205,10 +205,6 @@ export function ManualSurchargeModal({ onClose, onSaved, booking }: Props) {
             {pesanGagal}
           </p>
         ) : null}
-
-        <p className="text-micro text-ink-soft">
-          Surcharge tersimpan di database dan tercatat pada audit log beserta alasannya.
-        </p>
       </div>
     </Modal>
   );
