@@ -310,11 +310,15 @@ export async function loadTicketMessagesAction(ticketId: string): Promise<{
 }
 
 /**
- * Server Action untuk mengubah status tiket bantuan (RESOLVED / CLOSED / OPEN).
+ * Server Action untuk mengubah status tiket bantuan.
+ *
+ * Hanya status yang bukan akhir yang bisa dipilih. Tiket diselesaikan atau
+ * ditutup oleh sistem — bukan oleh staf — supaya percakapan yang belum selesai
+ * tidak hilang dari antrean.
  */
 export async function updateTicketStatusAction(
   ticketId: string,
-  status: "OPEN" | "IN_PROGRESS" | "WAITING_CUSTOMER" | "RESOLVED" | "CLOSED",
+  status: "OPEN" | "IN_PROGRESS" | "WAITING_CUSTOMER",
 ): Promise<ActionState> {
   if (!ticketId) {
     return { success: false, message: "Tiket tidak valid." };
@@ -332,7 +336,7 @@ export async function updateTicketStatusAction(
   revalidatePath("/customer-care");
   return {
     success: true,
-    message: `Status tiket berhasil diubah menjadi ${status === "RESOLVED" ? "Selesai" : status === "CLOSED" ? "Ditutup" : status}.`,
+    message: `Status tiket berhasil diubah menjadi ${status}.`,
   };
 }
 

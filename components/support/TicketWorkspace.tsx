@@ -7,13 +7,11 @@ import {
   loadTicketMessagesAction,
   replyToTicketAction,
   takeOverTicketAction,
-  updateTicketStatusAction,
   claimTicketAction,
   takeoverAssignedTicketAction,
   releaseTicketAction,
 } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { TICKET_STAGE, formatTicketCategory, ticketStageOf } from "@/lib/labels";
@@ -115,15 +113,6 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   }
   const [tabDaftar, setTabDaftar] = useState<"aktif" | "arsip">("aktif");
 
-  {
-    /*
-    Menutup tiket tidak bisa dibatalkan dari layar admin, jadi tombolnya meminta
-    penegasan sekali lagi. Tanpa ini, satu klik tak sengaja langsung memindahkan
-    tiket ke arsip dan pelanggan berhenti mendapat balasan.
-  */
-  }
-  const [konfirmasiTutup, setKonfirmasiTutup] = useState(false);
-
   const tiketAktif = useMemo(() => tickets.filter((t) => t.status !== "selesai"), [tickets]);
   const tiketArsip = useMemo(() => tickets.filter((t) => t.status === "selesai"), [tickets]);
 
@@ -154,26 +143,6 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   const dipegangOrangLain = Boolean(activeTicket?.assignedAdminId) && !activeTicket?.isMine;
   const dipegangSendiri = Boolean(activeTicket?.assignedAdminId) && Boolean(activeTicket?.isMine);
   const tahapAktif = TICKET_STAGE[ticketStageOf(activeTicket?.status ?? "baru")];
-
-  function handleStatusChange(
-    newStatus: "OPEN" | "IN_PROGRESS" | "WAITING_CUSTOMER" | "RESOLVED" | "CLOSED",
-  ) {
-    if (!activeTicket) return;
-    const targetStatusMapped =
-      newStatus === "RESOLVED" || newStatus === "CLOSED" ? "selesai" : "baru";
-
-    startTransition(async () => {
-      const result = await updateTicketStatusAction(activeTicket.id, newStatus);
-      if (result.success) {
-        setTickets((current) =>
-          current.map((t) => (t.id === activeTicket.id ? { ...t, status: targetStatusMapped } : t)),
-        );
-        show(result.message ?? `Status tiket berhasil diubah menjadi ${newStatus}.`);
-      } else {
-        show(result.message ?? "Gagal mengubah status tiket.", "error");
-      }
-    });
-  }
 
   {
     /*
@@ -343,7 +312,6 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                     <button
                       type="button"
                       onClick={() => {
-                        setKonfirmasiTutup(false);
                         pilihTiket(ticket.id);
                       }}
                       aria-current={active ? "true" : undefined}
@@ -456,23 +424,20 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                     </div>
 
                     {/* Aksi di kanan, sejajar judul. Saat judul panjang, tombol
-                        turun ke kanan bawah, bukan ke kiri. */}
+                        turun ke kanan bawah, bukan ke kiri.
+
+                        Tidak ada tombol tutup di sini. Penutupan tiket dijalankan
+                        sistem: asisten AI menanyakan apakah masalahnya sudah
+                        selesai, dan tiket yang tidak dijawab lagi selama 24 jam
+                        ditutup otomatis. Staf yang menutup manual bisa mematikan
+                        percakapan yang sebenarnya belum selesai. */}
                     <div className="flex shrink-0 items-center gap-2">
-                      {!isResolvedOrClosed ? (
-                        <Button
-                          variant="confirm"
-                          size="sm"
-                          disabled={isSending}
-                          onClick={() => setKonfirmasiTutup(true)}
-                        >
-                          Selesaikan &amp; Tutup Tiket
-                        </Button>
-                      ) : (
+                      {isResolvedOrClosed ? (
                         /* Tiket yang sudah ditutup tidak bisa dibuka lagi. Yang bisa
                            dilakukan hanya membuat tiket baru; itu dijelaskan di
                            keterangan bawah percakapan. */
                         <span className="text-micro text-ink-soft">Tiket sudah ditutup</span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -703,50 +668,6 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           </section>
         </div>
       </div>
-
-      {/* Konfirmasi penutupan tiket.
-          Dulu konfirmasi ini menumpuk di dalam header: teks penjelas dan dua
-          tombol berdesakan dalam satu baris, dan tata letak bergeser saat ditekan.
-          Di modal, penjelasannya bisa dibaca utuh sebelum memutuskan. */}
-      <Modal
-        open={konfirmasiTutup}
-        onClose={isSending ? () => {} : () => setKonfirmasiTutup(false)}
-        title="Tutup tiket ini?"
-        description="Tiket yang sudah ditutup tidak bisa dibuka lagi."
-        footer={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => setKonfirmasiTutup(false)}
-              disabled={isSending}
-            >
-              Batal
-            </Button>
-            <Button
-              variant="confirm"
-              onClick={() => {
-                setKonfirmasiTutup(false);
-                handleStatusChange("RESOLVED");
-              }}
-              disabled={isSending}
-            >
-              {isSending ? "Menyelesaikan..." : "Ya, tutup tiket"}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-3">
-          <p className="text-body text-ink">
-            Tiket akan dipindah ke Arsip, dan pelanggan tidak bisa lagi mengirim pesan ke tiket ini.
-          </p>
-          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta text-ink-soft">
-            <p>
-              Tutup tiket hanya kalau pertanyaannya sudah terjawab. Kalau pelanggan masih perlu
-              dibantu, balas dulu lewat kotak balasan di bawah.
-            </p>
-          </div>
-        </div>
-      </Modal>
     </>
   );
 }
