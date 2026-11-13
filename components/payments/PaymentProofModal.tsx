@@ -61,6 +61,10 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
   /* Dua konfirmasi berurutan saat menekan tombol verifikasi. 0 = belum,
      1 = peringatan pertama, 2 = peringatan terakhir. */
   const [tahapKonfirmasi, setTahapKonfirmasi] = useState<0 | 1 | 2>(0);
+  /* Satu konfirmasi tambahan untuk penolakan yang sekaligus membatalkan
+     pesanan: tombolnya berdampingan dengan penolakan biasa, jadi salah tekan
+     akan mematikan pesanan pelanggan tanpa bisa diurungkan. */
+  const [konfirmasiBatal, setKonfirmasiBatal] = useState(false);
 
   /* Reset form state saat modal tertutup.
      Dikerjakan saat render, bukan di dalam effect: memanggil setState dari
@@ -74,6 +78,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
       setDanaDicocokkan(false);
       setKonfirmasiCentang(false);
       setTahapKonfirmasi(0);
+      setKonfirmasiBatal(false);
       setNotes("");
       setError(null);
       setImageError(false);
@@ -89,7 +94,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
     tone: "neutral" as const,
   };
 
-  async function handleVerify(action: "APPROVE" | "REJECT") {
+  async function handleVerify(action: "APPROVE" | "REJECT", cancelBooking = false) {
     if (!payment) return;
     if (action === "REJECT" && !notes.trim()) {
       setError("Mohon isi alasan penolakan pada kolom catatan verifikasi.");
@@ -104,6 +109,14 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
       return;
     }
 
+    /* Pembatalan pesanan tidak bisa diurungkan, jadi butuh satu ketukan
+       tambahan setelah alasan penolakan terisi. */
+    if (action === "REJECT" && cancelBooking && !konfirmasiBatal) {
+      setKonfirmasiBatal(true);
+      setError(null);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setError(null);
@@ -113,11 +126,13 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
         {
           action,
           notes: notes.trim() || undefined,
+          cancelBooking: action === "REJECT" && cancelBooking ? true : undefined,
         },
       );
 
       const updated = (res.data?.data || res.data) as AdminPaymentItem;
       setTahapKonfirmasi(0);
+      setKonfirmasiBatal(false);
       onSuccess?.(updated, action);
       onClose();
     } catch (err: unknown) {
@@ -168,6 +183,27 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
             >
               {isSubmitting ? "Memproses..." : "Verifikasi Pembayaran"}
             </Button>
+          </div>
+
+          {/* Penolakan biasa membiarkan pesanan hidup supaya pelanggan bisa
+              mengunggah ulang. Tombol ini untuk kasus yang tidak boleh
+              ditunggu: indikasi penipuan, nomor tidak bisa dihubungi, atau
+              bukti bayar yang jelas palsu. */}
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={() => handleVerify("REJECT", true)}
+              disabled={isSubmitting}
+              className="text-meta font-medium text-danger underline decoration-dotted underline-offset-2 hover:opacity-80 disabled:opacity-50"
+            >
+              {konfirmasiBatal
+                ? "Yakin? Pesanan akan dibatalkan permanen — klik sekali lagi"
+                : "Tolak & Batalkan Pesanan"}
+            </button>
+            <span className="max-w-md text-right text-micro text-ink-soft">
+              Pakai bila ada indikasi penipuan. Pesanan langsung dibatalkan, armada dan supir
+              dilepas, dan pelanggan tidak bisa mengunggah ulang.
+            </span>
           </div>
         </div>
       ) : (
