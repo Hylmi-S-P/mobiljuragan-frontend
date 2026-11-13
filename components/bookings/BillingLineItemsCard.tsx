@@ -173,10 +173,7 @@ export function BillingLineItemsCard({
       </div>
 
       {tarifTerkonfirmasi ? null : (
-        <p className="mt-2 text-micro text-ink-soft">
-          Angka ini dihitung dari katalog. Rincian resmi muncul setelah admin menetapkan
-          tarif.
-        </p>
+        <p className="mt-2 text-micro text-ink-soft">Harga awal dari katalog.</p>
       )}
     </Panel>
   );

@@ -157,22 +157,22 @@ export function BookingActionSidebar({
           </dl>
         </div>
       ) : isRequestIncoming ? (
-        /* Tahap 1: tarif belum ditetapkan. Yang ditampilkan justru acuan harga
-           katalog, supaya admin tidak menyetujui pesanan tanpa gambaran biaya. */
+        /* Tahap 1: tarif belum ditetapkan. Yang ditampilkan acuan harga katalog,
+           supaya admin tidak menyetujui pesanan tanpa gambaran biaya. Sebutannya
+           "harga awal", bukan "perkiraan": layar ini dipakai staf, bukan pelanggan,
+           jadi tidak perlu bahasa yang meminta maaf atas angka yang belum final. */
         <div className="rounded-md border border-rule bg-canvas p-3">
-          <p className="text-micro font-bold uppercase text-ink-soft">
-            Perkiraan dari Katalog
-          </p>
+          <p className="text-micro font-bold uppercase text-ink-soft">Harga Awal</p>
           <p className="mt-1 text-subtitle font-bold text-ink tabular-nums">
             {booking.pricePerDay
               ? formatRupiah(booking.pricePerDay * (booking.dayCount || 1))
               : "Harga katalog belum tersedia"}
           </p>
-          <p className="mt-0.5 text-micro text-ink-soft">
-            {booking.pricePerDay
-              ? `${formatRupiah(booking.pricePerDay)}/hari × ${booking.dayCount} hari. Tarif resmi ditetapkan pada tahap berikutnya.`
-              : "Tetapkan tarif setelah permintaan diterima."}
-          </p>
+          {booking.pricePerDay ? (
+            <p className="mt-0.5 text-micro text-ink-soft tabular-nums">
+              {`${formatRupiah(booking.pricePerDay)}/hari × ${booking.dayCount} hari`}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
