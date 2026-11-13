@@ -14,6 +14,7 @@ import {
   apiReplyToTicket,
   apiTakeOverTicket,
   apiUpdateBookingStatus,
+  apiUpdateRefund,
   apiAssignDriverToBooking,
   apiCreateDriver,
   apiUpdateDriver,
@@ -1498,5 +1499,46 @@ export async function revokeCustomerSessionsAction(
   } catch (err) {
     if (err instanceof ApiError) return { success: false, message: err.message };
     return { success: false, message: "Gagal mencabut sesi pelanggan." };
+  }
+}
+
+/**
+ * Menyimpan data rekening atau menutup baris pengembalian dana.
+ *
+ * Nominal dihitung ulang server setiap kali pembatalan terjadi; aksi ini hanya
+ * menyimpan hasil transfer yang benar-benar dilakukan kantor, termasuk saat
+ * admin memutuskan potongan berbeda dari aturan bawaan.
+ */
+export async function updateRefundAction(
+  id: string,
+  payload: {
+    nominal?: number;
+    namaBank?: string;
+    nomorRekening?: string;
+    namaPemilik?: string;
+    buktiMediaId?: string;
+    catatan?: string;
+    status?: "MENUNGGU" | "DIPROSES" | "SELESAI";
+  },
+): Promise<ActionState> {
+  if (!id) {
+    return { success: false, message: "Baris pengembalian dana tidak valid." };
+  }
+
+  try {
+    await apiUpdateRefund(id, payload);
+    revalidatePath("/refunds");
+    revalidatePath("/bookings");
+    revalidatePath("/");
+    return {
+      success: true,
+      message:
+        payload.status === "SELESAI"
+          ? "Pengembalian dana ditandai selesai."
+          : "Data pengembalian dana tersimpan.",
+    };
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal menyimpan pengembalian dana." };
   }
 }

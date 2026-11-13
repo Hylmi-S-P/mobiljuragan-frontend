@@ -8,6 +8,7 @@ import type {
   Booking,
   BookingDocumentStatus,
   BookingMode,
+  BookingRefund,
   BookingStatus,
   CanonicalBookingStatus,
   Driver,
@@ -15,6 +16,8 @@ import type {
   DriverStatus,
   LineItem,
   PaymentStatus,
+  RefundInitiator,
+  RefundStatus,
   Vehicle,
   VehicleStatus,
 } from "./types";
@@ -305,6 +308,22 @@ type ApiBooking = {
     justifikasi: string;
     dibatalkanPada: string | null;
   }> | null;
+  /* Catatan pengembalian dana untuk pesanan yang batal/ditolak setelah dibayar. */
+  refund?: {
+    id: string;
+    status: RefundStatus;
+    totalDibayar: string | number;
+    potongan: string | number;
+    nominal: string | number;
+    dibatalkanOleh: RefundInitiator;
+    alasan: string | null;
+    namaBank: string | null;
+    nomorRekening: string | null;
+    namaPemilik: string | null;
+    buktiMediaId: string | null;
+    dicatatPada: string;
+    diselesaikanPada: string | null;
+  } | null;
 };
 
 function countDays(start: string, end: string): number {
@@ -404,6 +423,27 @@ function mapBooking(b: ApiBooking): Booking {
           verifiedBy: b.document.verifiedBy ?? null,
           createdAt: b.document.createdAt,
           updatedAt: b.document.updatedAt,
+        }
+      : null,
+    refund: b.refund
+      ? {
+          id: b.refund.id,
+          bookingId: b.id,
+          bookingCode: b.bookingCode,
+          customerName: b.customer?.fullName ?? "Pelanggan",
+          customerPhone: b.customer?.phoneNumber ?? null,
+          status: b.refund.status,
+          totalDibayar: Number(b.refund.totalDibayar),
+          potongan: Number(b.refund.potongan),
+          nominal: Number(b.refund.nominal),
+          dibatalkanOleh: b.refund.dibatalkanOleh,
+          alasan: b.refund.alasan ?? null,
+          namaBank: b.refund.namaBank ?? null,
+          nomorRekening: b.refund.nomorRekening ?? null,
+          namaPemilik: b.refund.namaPemilik ?? null,
+          buktiMediaId: b.refund.buktiMediaId ?? null,
+          dicatatPada: b.refund.dicatatPada,
+          diselesaikanPada: b.refund.diselesaikanPada ?? null,
         }
       : null,
   };
@@ -834,7 +874,7 @@ export async function verifyPayment(
  *
  * Katalog armada memakai ini untuk menampilkan badge "Disewa". Tanpa data ini,
  * katalog hanya membaca `operationalStatus`, yang menyimpan keadaan unit di
- * gudang dan tidak diperbarui saat ada sewa berjalan Ã¢â‚¬â€ sehingga unit yang
+ * gudang dan tidak diperbarui saat ada sewa berjalan — sehingga unit yang
  * sedang disewa tetap tampil "Tersedia".
  *
  * Kegagalan mengambil data tidak boleh menjatuhkan halaman katalog. Kalau gagal,
@@ -848,4 +888,64 @@ export async function getRentedVehicleIds(): Promise<Set<string>> {
   } catch {
     return new Set();
   }
+}
+
+/**
+ * Antrean pengembalian dana untuk halaman /refunds.
+ *
+ * Dipisahkan dari `getBookings()` karena yang dibutuhkan kantor adalah daftar
+ * kerja (siapa yang harus ditransfer balik), bukan seluruh pesanan. Datanya
+ * dibuat server saat pembatalan, jadi halaman ini tidak pernah menghitung
+ * nominal sendiri.
+ */
+export async function getRefunds(params?: {
+  status?: RefundStatus;
+  search?: string;
+}): Promise<BookingRefund[]> {
+  const query = new URLSearchParams();
+  if (params?.status) query.append("status", params.status);
+  if (params?.search) query.append("search", params.search);
+  query.append("limit", "100");
+
+  const data = await apiGet<{
+    items: Array<{
+      id: string;
+      status: RefundStatus;
+      totalDibayar: string | number;
+      potongan: string | number;
+      nominal: string | number;
+      dibatalkanOleh: RefundInitiator;
+      alasan: string | null;
+      namaBank: string | null;
+      nomorRekening: string | null;
+      namaPemilik: string | null;
+      buktiMediaId: string | null;
+      dicatatPada: string;
+      diselesaikanPada: string | null;
+      booking: {
+        bookingCode: string;
+        customer?: { fullName: string; phoneNumber: string } | null;
+      };
+    }>;
+  }>(`/admin/refunds?${query.toString()}`);
+
+  return (data?.items ?? []).map((r) => ({
+    id: r.id,
+    bookingId: "",
+    bookingCode: r.booking.bookingCode,
+    customerName: r.booking.customer?.fullName ?? "Pelanggan",
+    customerPhone: r.booking.customer?.phoneNumber ?? null,
+    status: r.status,
+    totalDibayar: Number(r.totalDibayar),
+    potongan: Number(r.potongan),
+    nominal: Number(r.nominal),
+    dibatalkanOleh: r.dibatalkanOleh,
+    alasan: r.alasan ?? null,
+    namaBank: r.namaBank ?? null,
+    nomorRekening: r.nomorRekening ?? null,
+    namaPemilik: r.namaPemilik ?? null,
+    buktiMediaId: r.buktiMediaId ?? null,
+    dicatatPada: r.dicatatPada,
+    diselesaikanPada: r.diselesaikanPada ?? null,
+  }));
 }

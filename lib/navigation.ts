@@ -29,6 +29,10 @@ export const NAV_ENTRIES: NavEntry[] = [
     ],
   },
   { label: "Laporan Keuangan", href: "/finance" },
+  /* Uang yang harus dikembalikan ke pelanggan. Diletakkan dekat laporan
+     keuangan karena keduanya soal arus uang, tetapi halamannya terpisah:
+     refund adalah daftar kerja, bukan laporan. */
+  { label: "Pengembalian Dana", href: "/refunds" },
   { label: "Template Dokumen", href: "/documents" },
   { label: "AI HUB", href: "/admin/ai-hub" },
   { label: "Manajemen FAQ", href: "/faqs" },

@@ -1735,3 +1735,97 @@ export async function apiRevokeCustomerSessions(
   }
   return json.data as { message: string };
 }
+
+/* ===========================================================================
+   Pengembalian dana (refund)
+   =========================================================================== */
+
+export type ApiRefundListResponse = {
+  items: Array<{
+    id: string;
+    status: "MENUNGGU" | "DIPROSES" | "SELESAI";
+    totalDibayar: string | number;
+    potongan: string | number;
+    nominal: string | number;
+    dibatalkanOleh: "PELANGGAN" | "ADMIN" | "SISTEM";
+    alasan: string | null;
+    namaBank: string | null;
+    nomorRekening: string | null;
+    namaPemilik: string | null;
+    buktiMediaId: string | null;
+    dicatatPada: string;
+    diselesaikanPada: string | null;
+    booking: {
+      id: string;
+      bookingCode: string;
+      customer?: { fullName: string; phoneNumber: string } | null;
+      vehicle?: { name: string; licensePlate: string } | null;
+    };
+  }>;
+  meta: { page: number; limit: number; total: number; totalPages: number };
+};
+
+/** Antrean pengembalian dana: pesanan batal/ditolak yang uangnya harus dibalik. */
+export async function apiGetRefunds(params?: {
+  status?: "MENUNGGU" | "DIPROSES" | "SELESAI";
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<ApiRefundListResponse> {
+  const token = await getSessionToken();
+  const q = new URLSearchParams();
+  if (params?.status) q.set("status", params.status);
+  if (params?.search) q.set("search", params.search);
+  if (params?.page) q.set("page", String(params.page));
+  if (params?.limit) q.set("limit", String(params.limit));
+
+  const res = await fetch(`${API_BASE_URL}/admin/refunds?${q.toString()}`, {
+    method: "GET",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    cache: "no-store",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "GET_REFUNDS_FAILED",
+      json?.error?.message || "Gagal mengambil antrean pengembalian dana.",
+    );
+  }
+  return json.data as ApiRefundListResponse;
+}
+
+export type UpdateRefundPayload = {
+  nominal?: number;
+  namaBank?: string;
+  nomorRekening?: string;
+  namaPemilik?: string;
+  buktiMediaId?: string;
+  catatan?: string;
+  status?: "MENUNGGU" | "DIPROSES" | "SELESAI";
+};
+
+/** Menyimpan data rekening dan/atau menutup baris pengembalian dana. */
+export async function apiUpdateRefund(id: string, payload: UpdateRefundPayload) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/refunds/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPDATE_REFUND_FAILED",
+      json?.error?.message || "Gagal menyimpan pengembalian dana.",
+    );
+  }
+  return json.data;
+}

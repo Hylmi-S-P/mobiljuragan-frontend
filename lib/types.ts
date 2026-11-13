@@ -96,6 +96,40 @@ export type Booking = {
     totalAmount?: number | null;
   } | null;
   document?: BookingDocument | null;
+  /* Kewajiban mengembalikan uang untuk pesanan yang batal/ditolak setelah
+     dibayar. Null berarti tidak ada yang perlu ditransfer balik. */
+  refund?: BookingRefund | null;
+};
+
+/**
+ * Antrean pengembalian dana.
+ *
+ * Angkanya dihitung server saat pembatalan: pelanggan yang membatalkan sendiri
+ * dipotong tetap, sedangkan pembatalan oleh admin atau sistem dikembalikan
+ * penuh. Dashboard hanya menampilkan dan menutup barisnya.
+ */
+export type RefundStatus = "MENUNGGU" | "DIPROSES" | "SELESAI";
+
+export type RefundInitiator = "PELANGGAN" | "ADMIN" | "SISTEM";
+
+export type BookingRefund = {
+  id: string;
+  bookingId: string;
+  bookingCode: string;
+  customerName: string;
+  customerPhone: string | null;
+  status: RefundStatus;
+  totalDibayar: number;
+  potongan: number;
+  nominal: number;
+  dibatalkanOleh: RefundInitiator;
+  alasan: string | null;
+  namaBank: string | null;
+  nomorRekening: string | null;
+  namaPemilik: string | null;
+  buktiMediaId: string | null;
+  dicatatPada: string;
+  diselesaikanPada: string | null;
 };
 
 export type BookingDocumentStatus =

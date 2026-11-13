@@ -20,6 +20,7 @@ import { VehicleUnitCard } from "./VehicleUnitCard";
 import { DriverAllocationCard } from "./DriverAllocationCard";
 import { LepasKunciDocumentReviewCard } from "./LepasKunciDocumentReviewCard";
 import { BillingLineItemsCard } from "./BillingLineItemsCard";
+import { RefundSummaryCard } from "./RefundSummaryCard";
 import { BookingActionSidebar } from "./BookingActionSidebar";
 import type {
   AdminPaymentItem,
@@ -422,6 +423,11 @@ export function BookingDetailClient({
             onOpenSurcharge={() => setSurchargeOpen(true)}
             onRemoveSurcharge={handleRemoveSurcharge}
           />
+
+          {/* Pesanan yang batal/ditolak setelah dibayar menimbulkan kewajiban
+              mengembalikan uang. Nominalnya dihitung server saat pembatalan,
+              jadi yang ditampilkan di sini adalah angka yang tersimpan. */}
+          {booking.refund ? <RefundSummaryCard refund={booking.refund} /> : null}
         </div>
 
         {/* Kolom Kanan: Sticky Action Sidebar (~35% / col-span-4) */}
