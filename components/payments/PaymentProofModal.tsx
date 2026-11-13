@@ -43,13 +43,6 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
 
   const activeUser = currentAdmin || meUser;
   const adminName = activeUser?.fullName || "Admin MobilJuragan";
-  const rawRole = activeUser?.role || "ADMIN";
-  const adminRole =
-    rawRole === "ADMIN" || rawRole === "super_admin"
-      ? "Super Admin"
-      : rawRole === "STAFF" || rawRole === "staf_operasional"
-        ? "Staf Operasional"
-        : rawRole;
 
   /* Menandai lunas tidak bisa dibatalkan dari layar ini: setelah PAID, tombol
      setujui dan tolak hilang, dan backend menolak perubahan status apa pun. Karena
