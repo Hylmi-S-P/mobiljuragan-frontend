@@ -209,11 +209,18 @@ export function BookingActionSidebar({
             Tarif belum ditetapkan pada langkah ini.
           </p>
 
+          {isDocumentBlocked ? (
+            <p className="text-micro text-amber-800 bg-amber-50 border border-amber-300 rounded-sm p-2">
+              Periksa dan setujui seluruh dokumen lepas kunci di panel kiri sebelum menerima
+              permintaan. Menerima permintaan akan menahan unit dari katalog.
+            </p>
+          ) : null}
+
           <Button
             variant="confirm"
             size="md"
             className="w-full"
-            disabled={isPending}
+            disabled={isPending || isDocumentBlocked}
             onClick={onAcceptRequest}
           >
             {isPending ? "Memproses..." : "Terima Permintaan"}

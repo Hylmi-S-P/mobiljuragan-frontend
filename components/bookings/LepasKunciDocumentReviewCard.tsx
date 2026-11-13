@@ -60,6 +60,28 @@ const TARGET_OPTIONS: { key: DocumentTargetKey; label: string; hint: string }[] 
   { key: "STATEMENT", label: "Form Kesanggupan", hint: "TTD basah" },
 ];
 
+/**
+ * Merapikan target penolakan menjadi array yang pasti.
+ *
+ * Server menyimpan daftar ini sebagai teks JSON, jadi jawaban bisa berbentuk
+ * `["SIM"]` maupun `["SIM"]` yang sudah diparse. Tanpa penyamaan, layar bisa
+ * menandai dokumen yang salah atau gagal menandai yang seharusnya.
+ */
+function targetPenolakan(nilai: unknown): DocumentTargetKey[] {
+  let mentah: unknown = nilai;
+  if (typeof mentah === "string") {
+    try {
+      mentah = JSON.parse(mentah);
+    } catch {
+      mentah = [];
+    }
+  }
+  if (!Array.isArray(mentah)) return [];
+  return mentah.filter((item): item is DocumentTargetKey =>
+    TARGET_OPTIONS.some((opsi) => opsi.key === item),
+  );
+}
+
 /* Catatan cepat = jalan pintas menulis, bukan label terpisah. Yang dikirim ke
    pelanggan tetap satu kalimat di kolom catatan, dan admin boleh mengubahnya.
    Dikelompokkan supaya admin tidak memindai satu daftar panjang. */
@@ -168,6 +190,30 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
   const hasKtp = Boolean(document?.ktpUrl);
   const hasSim = Boolean(document?.simUrl);
   const uploadedCount = [hasStatement, hasKtp, hasSim].filter(Boolean).length;
+  const rejectedTargets =
+    currentStatus === "REJECTED" ? targetPenolakan(document?.rejectionTargets) : [];
+
+  /* Titik di tiap kartu menjawab "berkas ini sudah benar atau belum", bukan
+     sekadar "sudah diunggah". Sebelumnya semua berkas bertitik hijau begitu
+     terunggah, sehingga admin sulit melihat berkas mana yang justru ditolak:
+     semua tampak beres padahal satu di antaranya diminta difoto ulang. */
+  function statusBerkas(target: DocumentTargetKey, ada: boolean) {
+    if (!ada) return { warna: "bg-rule-strong", teks: "Belum diunggah" };
+    if (currentStatus === "VERIFIED") return { warna: "bg-teal", teks: "Sudah diperiksa" };
+    if (currentStatus === "REJECTED") {
+      return rejectedTargets.includes(target)
+        ? { warna: "bg-danger", teks: "Perlu difoto ulang" }
+        : { warna: "bg-teal", teks: "Sudah benar" };
+    }
+    return { warna: "bg-amber-500", teks: "Belum diperiksa" };
+  }
+
+  const berkasSurat = statusBerkas("STATEMENT", hasStatement);
+  const berkasKtp = statusBerkas("KTP", hasKtp);
+  const berkasSim = statusBerkas("SIM", hasSim);
+  const labelDitolak = rejectedTargets
+    .map((target) => TARGET_LABEL[target as DocumentTargetKey] ?? target)
+    .join(", ");
 
   function handleVerify(action: "APPROVE" | "REJECT", reason?: string, targets?: string[]) {
     startTransition(async () => {
@@ -244,13 +290,22 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                     Surat Pernyataan
                   </span>
                   <span
-                    className={`inline-block h-2 w-2 rounded-full ${
-                      hasStatement ? "bg-teal" : "bg-rule-strong"
-                    }`}
+                    className={`inline-block h-2 w-2 rounded-full ${berkasSurat.warna}`}
                   />
                 </div>
                 <p className="mt-1 text-meta font-medium text-ink">Form Kesanggupan</p>
                 <p className="mt-0.5 text-micro text-ink-soft">Wajib tanda tangan basah penyewa</p>
+                <p
+                  className={`mt-1 text-micro font-medium ${
+                    berkasSurat.warna === "bg-danger"
+                      ? "text-danger"
+                      : berkasSurat.warna === "bg-teal"
+                        ? "text-ink"
+                        : "text-ink-soft"
+                  }`}
+                >
+                  {berkasSurat.teks}
+                </p>
               </div>
 
               <div className="mt-3 flex items-center gap-2">
@@ -278,13 +333,22 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                     Identitas KTP
                   </span>
                   <span
-                    className={`inline-block h-2 w-2 rounded-full ${
-                      hasKtp ? "bg-teal" : "bg-rule-strong"
-                    }`}
+                    className={`inline-block h-2 w-2 rounded-full ${berkasKtp.warna}`}
                   />
                 </div>
                 <p className="mt-1 text-meta font-medium text-ink">Foto Fisik e-KTP Asli</p>
                 <p className="mt-0.5 text-micro text-ink-soft">Nama harus sesuai data pemesan</p>
+                <p
+                  className={`mt-1 text-micro font-medium ${
+                    berkasKtp.warna === "bg-danger"
+                      ? "text-danger"
+                      : berkasKtp.warna === "bg-teal"
+                        ? "text-ink"
+                        : "text-ink-soft"
+                  }`}
+                >
+                  {berkasKtp.teks}
+                </p>
               </div>
 
               <div className="mt-3 flex items-center gap-2">
@@ -312,13 +376,22 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                     Lisensi SIM A
                   </span>
                   <span
-                    className={`inline-block h-2 w-2 rounded-full ${
-                      hasSim ? "bg-teal" : "bg-rule-strong"
-                    }`}
+                    className={`inline-block h-2 w-2 rounded-full ${berkasSim.warna}`}
                   />
                 </div>
                 <p className="mt-1 text-meta font-medium text-ink">Foto Fisik SIM A Aktif</p>
                 <p className="mt-0.5 text-micro text-ink-soft">Masa berlaku masih aktif</p>
+                <p
+                  className={`mt-1 text-micro font-medium ${
+                    berkasSim.warna === "bg-danger"
+                      ? "text-danger"
+                      : berkasSim.warna === "bg-teal"
+                        ? "text-ink"
+                        : "text-ink-soft"
+                  }`}
+                >
+                  {berkasSim.teks}
+                </p>
               </div>
 
               <div className="mt-3 flex items-center gap-2">
@@ -360,7 +433,9 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
               )}
               {currentStatus === "REJECTED" && (
                 <span className="text-micro text-danger font-medium">
-                  Dokumen ditolak. Menunggu revisi pelanggan ({uploadedCount}/3 berkas).
+                  {labelDitolak
+                    ? `Dokumen ditolak: ${labelDitolak}. Menunggu unggah ulang dari pelanggan.`
+                    : "Dokumen ditolak. Menunggu revisi pelanggan."}
                 </span>
               )}
               <div className="flex items-center gap-2">
@@ -375,7 +450,12 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
 
                 <button
                   type="button"
-                  disabled={isPending || uploadedCount < 3 || currentStatus === "VERIFIED"}
+                  disabled={
+                    isPending ||
+                    uploadedCount < 3 ||
+                    currentStatus === "VERIFIED" ||
+                    currentStatus === "REJECTED"
+                  }
                   onClick={() => setIsApproveModalOpen(true)}
                   className="rounded-sm bg-teal px-3.5 py-1.5 text-meta font-medium text-white hover:bg-teal/90 disabled:opacity-50"
                 >

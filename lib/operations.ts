@@ -11,6 +11,7 @@ import type {
   BookingRefund,
   BookingStatus,
   CanonicalBookingStatus,
+  DocumentRejectionTarget,
   Driver,
   DriverRoute,
   DriverStatus,
@@ -21,6 +22,31 @@ import type {
   Vehicle,
   VehicleStatus,
 } from "./types";
+
+const TARGET_PENOLAKAN_SAH: DocumentRejectionTarget[] = ["KTP", "SIM", "STATEMENT"];
+
+/**
+ * Merapikan daftar dokumen yang ditolak menjadi array yang pasti.
+ *
+ * Kolomnya berupa teks JSON di basis data, jadi bisa datang sebagai array
+ * (setelah dirapikan server), sebagai string `["SIM"]` (baris lama), atau
+ * kosong. Tanpa penyamaan di sini, layar membandingkan string dengan `includes`
+ * dan bisa menandai dokumen yang salah.
+ */
+function normalisasiTargetPenolakan(nilai: unknown): DocumentRejectionTarget[] {
+  let mentah: unknown = nilai;
+  if (typeof mentah === "string") {
+    try {
+      mentah = JSON.parse(mentah);
+    } catch {
+      mentah = [];
+    }
+  }
+  if (!Array.isArray(mentah)) return [];
+  return mentah.filter((item): item is DocumentRejectionTarget =>
+    TARGET_PENOLAKAN_SAH.includes(item as DocumentRejectionTarget),
+  );
+}
 
 /**
  * Pemanggil API Express untuk data operasional, khusus dipakai Server Component.
@@ -300,6 +326,8 @@ type ApiBooking = {
     simUrl: string | null;
     status: BookingDocumentStatus;
     rejectionReason: string | null;
+    /** Teks JSON dari server; dirapikan oleh `normalisasiTargetPenolakan`. */
+    rejectionTargets?: unknown;
     verifiedAt: string | null;
     verifiedBy: string | null;
     createdAt: string;
@@ -428,6 +456,10 @@ function mapBooking(b: ApiBooking): Booking {
           simUrl: b.document.simUrl ?? null,
           status: b.document.status,
           rejectionReason: b.document.rejectionReason ?? null,
+          /* Server menyimpan target penolakan sebagai teks JSON. Bentuk array
+             dijaga di sini supaya layar tidak pernah menerima string dan
+             membandingkannya dengan `includes` yang menghasilkan tebakan. */
+          rejectionTargets: normalisasiTargetPenolakan(b.document.rejectionTargets),
           verifiedAt: b.document.verifiedAt ?? null,
           verifiedBy: b.document.verifiedBy ?? null,
           createdAt: b.document.createdAt,
