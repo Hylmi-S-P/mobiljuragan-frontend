@@ -105,7 +105,7 @@ export default async function OverviewPage() {
           iconBgColor="bg-navy/10 text-navy"
         />
 
-        {/* 4. Total Pemasukan dengan Sparkline Tren Omzet */}
+        {/* 4. Total Pemasukan dengan Sparkline Tren Pemasukan */}
         <ComparisonMetricCard
           title={LABEL_TOTAL_PEMASUKAN}
           value={

@@ -8,29 +8,26 @@ type Props = {
   vehicle: Vehicle;
 };
 
+/*
+ * Bagian "Armada" pada detail pesanan.
+ *
+ * Dulu kartu ini berjudul "Kendaraan yang Dipilih" dan menampilkan kotak kategori
+ * besar, seolah pelanggan baru saja memilih unit di layar ini. Yang dibutuhkan
+ * admin hanyalah dua hal: unit apa yang dipakai dan plat nomornya. Sisanya
+ * (kategori, transmisi) cukup satu baris kecil.
+ */
 export function VehicleUnitCard({ vehicle }: Props) {
   return (
-    <Panel title="Kendaraan yang Dipilih">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3.5">
-          {/* Unit Visual Category Box */}
-          <div className="flex h-12 w-14 shrink-0 flex-col items-center justify-center rounded-md border border-rule bg-canvas text-center">
-            <span className="text-micro font-bold uppercase tracking-wider text-teal">
-              {vehicle.category ?? "Armada"}
-            </span>
-          </div>
-
-          <div className="min-w-0">
-            <h3 className="text-body font-bold text-ink">{vehicle.name}</h3>
-            <p className="mt-0.5 text-meta text-ink-soft">
-              Kategori {vehicle.category ?? "MPV"} • Transmisi {vehicle.transmission ?? "Manual"}
-            </p>
-          </div>
+    <Panel title="Armada">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-body font-bold text-ink">{vehicle.name}</h3>
+          <p className="mt-0.5 text-meta text-ink-soft">
+            {vehicle.category ?? "Armada"} · Transmisi {vehicle.transmission ?? "Manual"}
+          </p>
         </div>
 
-        <div className="shrink-0">
-          <PlateBadge plate={vehicle.plate} region="Merauke" size="md" />
-        </div>
+        <PlateBadge plate={vehicle.plate} region="Merauke" size="md" />
       </div>
     </Panel>
   );

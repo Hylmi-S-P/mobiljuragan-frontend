@@ -23,10 +23,10 @@ type Props = {
 };
 
 /**
- * Grafik omzet beberapa bulan terakhir.
+ * Grafik pemasukan beberapa bulan terakhir.
  *
  * Klik satu batang untuk membuka rincian minggu pada bulan itu. Ini yang diminta
- * Ami poin 16: "grafik omzet tahun ini, klik bulan → detail mingguan".
+ * Ami poin 16: "grafik pemasukan tahun ini, klik bulan → detail mingguan".
  *
  * Bulan tanpa pemasukan tetap ditampilkan sebagai batang nol, bukan dihilangkan.
  * Kalau dihilangkan, grafik terbaca seolah datanya rusak, padahal memang belum
@@ -60,7 +60,7 @@ export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }:
   /* Judul mengikuti rentang yang sedang dipakai. "12 bulan terakhir" tidak lagi
      selalu benar begitu rentangnya bisa diperkecil. */
   const rentang = jumlahBulan ?? data.length;
-  const judul = rentang === 1 ? "Omzet Bulan Ini" : `Omzet ${rentang} Bulan Terakhir`;
+  const judul = rentang === 1 ? "Pemasukan Bulan Ini" : `Pemasukan ${rentang} Bulan Terakhir`;
 
   return (
     <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
@@ -109,7 +109,7 @@ export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }:
                   <div className="rounded-sm border border-rule bg-surface px-3 py-2 shadow-md">
                     <p className="text-micro font-semibold text-ink">{d.labelPenuh}</p>
                     <p className="text-meta text-ink-soft">
-                      Omzet: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
+                      Pemasukan: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
                     </p>
                     <p className="text-meta text-ink-soft">
                       Transaksi lunas: <strong className="text-ink">{d.bookings}</strong>

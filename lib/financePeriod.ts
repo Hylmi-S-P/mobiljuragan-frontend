@@ -1,5 +1,5 @@
 /*
- * Pilihan rentang bulan untuk grafik omzet di laporan keuangan.
+ * Pilihan rentang bulan untuk grafik pemasukan di laporan keuangan.
  *
  * Berkas ini sengaja terpisah dari `lib/operations.ts`. Berkas itu memakai
  * `server-only` karena membaca token dari cookie, sedangkan pemilih rentang

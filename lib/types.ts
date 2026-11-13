@@ -1,6 +1,6 @@
 export type BookingMode = "lepas_kunci" | "dengan_supir";
 
-export type VehicleStatus = "tersedia" | "disewa" | "servis" | "tidak_tersedia";
+export type VehicleStatus = "tersedia" | "disewa" | "servis" | "pemeriksaan" | "tidak_tersedia";
 
 export type Vehicle = {
   id: string;
@@ -14,7 +14,9 @@ export type Vehicle = {
   category: string | null;
   transmission: string | null;
   seats: number | null;
-  pricePerDay: number;
+  /* Tarif sewa harian dari katalog. Null berarti admin belum mengisi tarif;
+     layar harus mengatakannya apa adanya, bukan menampilkan angka karangan. */
+  pricePerDay: number | null;
   usage: string | null;
   allowedModes: BookingMode[];
 };
@@ -30,7 +32,12 @@ export type CanonicalBookingStatus =
   | "CANCELLED";
 
 export type BookingStatus =
-  "perlu_konfirmasi_tarif" | "perlu_alokasi_sopir" | "tarif_terkonfirmasi" | "ditolak";
+  | "perlu_konfirmasi_tarif"
+  | "perlu_alokasi_sopir"
+  | "tarif_terkonfirmasi"
+  | "sewa_berjalan"
+  | "selesai"
+  | "ditolak";
 
 export type LineItem = {
   id: string;

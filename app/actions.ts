@@ -46,6 +46,7 @@ import {
   apiCreateVehicle,
   apiUpdateVehicle,
   apiDeleteVehicle,
+  apiCompleteVehicleService,
   ApiError,
   apiClaimTicket,
   apiTakeoverTicket,
@@ -1021,6 +1022,10 @@ export async function saveVehicleAction(
 ): Promise<ActionState & { data?: { id?: string } }> {
   try {
     const isNew = mode ? mode === "create" : vehicle.id.startsWith("v-") || !vehicle.id;
+    /* Unit dalam masa pemeriksaan tidak boleh diubah statusnya dari form ini:
+       statusnya hanya berubah lewat "Selesai Inspeksi". Kalau dikirim, backend
+       menolaknya 409 dan seluruh penyimpanan ikut gagal. */
+    const sedangPemeriksaan = vehicle.status === "pemeriksaan";
     const operationalStatus: NonNullable<VehiclePayload["operationalStatus"]> =
       vehicle.status === "tersedia"
         ? "AVAILABLE"
@@ -1038,11 +1043,11 @@ export async function saveVehicleAction(
           ? "AUTOMATIC"
           : vehicle.transmission?.toUpperCase() || "MANUAL",
       seatingCapacity: vehicle.seats ?? 7,
-      pricePerDay: Number(vehicle.pricePerDay) || 400000,
+      pricePerDay: Number(vehicle.pricePerDay) || 0,
       /* Foto ikut dikirim. Sebelumnya hanya menjadi pratinjau di layar lalu
            hilang saat modal ditutup, sehingga unit tidak pernah punya foto. */
       imageUrl: vehicle.imageUrl ?? undefined,
-      operationalStatus,
+      ...(sedangPemeriksaan ? {} : { operationalStatus }),
     };
 
     let result;
@@ -1087,6 +1092,37 @@ export async function deleteVehicleAction(id: string): Promise<ActionState> {
       return { success: false, message: err.message };
     }
     return { success: false, message: "Gagal menghapus armada pada backend." };
+  }
+}
+
+/**
+ * Server Action untuk menutup masa pemeriksaan armada.
+ *
+ * Catatan wajib diisi: tanpa catatan, tidak ada jejak kondisi unit saat
+ * dikembalikan pelanggan, dan riwayat inspeksi hanya berisi stempel waktu.
+ */
+export async function completeVehicleServiceAction(
+  id: string,
+  note: string,
+): Promise<ActionState> {
+  const catatan = note.trim();
+  if (!id) {
+    return { success: false, message: "ID armada tidak valid." };
+  }
+  if (catatan.length < 3) {
+    return { success: false, message: "Catatan inspeksi wajib diisi minimal 3 karakter." };
+  }
+
+  try {
+    await apiCompleteVehicleService(id, catatan);
+    revalidatePath("/fleet/catalog");
+    revalidatePath("/fleet/calendar");
+    return { success: true, message: "Masa pemeriksaan ditutup. Unit kembali tersedia." };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Gagal menutup masa pemeriksaan armada." };
   }
 }
 
@@ -1399,7 +1435,7 @@ export async function cancelBookingLineItemAction(
 /**
  * Memuat ulang ringkasan keuangan dengan rentang bulan tertentu.
  *
- * Dipakai pemilih periode di tab Omzet. Datanya diambil di server, bukan di
+ * Dipakai pemilih periode di tab Pemasukan. Datanya diambil di server, bukan di
  * browser, karena token sesi hanya ada di cookie HttpOnly dan endpoint finance
  * dijaga peran ADMIN/STAFF. Hanya grafik yang ikut berubah — kartu ringkasan
  * dan tabel armada tetap memakai rentang `range` seperti sebelumnya.

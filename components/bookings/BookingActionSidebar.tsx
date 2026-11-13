@@ -30,7 +30,6 @@ type Props = {
   onConfirmBooking: () => void;
   onOpenRejectModal: () => void;
   onTransitionStatus: (status: CanonicalBookingStatus, note?: string) => void;
-  whatsappUrl: string | null;
   /* Membuka modal verifikasi pembayaran dari halaman ini. Tanpa ini admin harus
      kembali ke tab "Verifikasi Pembayaran" lalu mencari pesanan yang sama. */
   onOpenPaymentVerification?: () => void;
@@ -53,7 +52,6 @@ export function BookingActionSidebar({
   onConfirmBooking,
   onOpenRejectModal,
   onTransitionStatus,
-  whatsappUrl,
   onOpenPaymentVerification,
 }: Props) {
   /* Dua langkah, bukan satu: pesanan diterima dulu, tarifnya ditetapkan kemudian.
@@ -396,20 +394,6 @@ export function BookingActionSidebar({
           <p className="mt-0.5 text-micro text-ink">
             Tidak ada tindakan operasional lebih lanjut yang diperlukan.
           </p>
-        </div>
-      ) : null}
-
-      {/* WhatsApp Intent Link */}
-      {whatsappUrl ? (
-        <div className="border-t border-rule/60 pt-3">
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-sm border border-[#25D366] bg-[#25D366]/10 text-body font-semibold text-[#128C7E] hover:bg-[#25D366]/20 transition-colors"
-          >
-            Buka Pesan WhatsApp Konfirmasi
-          </a>
         </div>
       ) : null}
     </aside>

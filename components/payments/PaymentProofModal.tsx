@@ -56,7 +56,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
      itu persetujuan dibuat dua tahap — admin harus menyatakan sudah mencocokkan
      dana lebih dulu, baru tombolnya aktif. */
   const [danaDicocokkan, setDanaDicocokkan] = useState(false);
-  /* Konfirmasi saat mencentang "Terbayar". */
+  /* Konfirmasi saat mencentang "Dana sudah masuk". */
   const [konfirmasiCentang, setKonfirmasiCentang] = useState(false);
   /* Dua konfirmasi berurutan saat menekan tombol verifikasi. 0 = belum,
      1 = peringatan pertama, 2 = peringatan terakhir. */
@@ -167,7 +167,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
               className="mt-0.5 h-4 w-4 shrink-0 rounded-xs border border-rule-strong cursor-pointer"
             />
             <span className="leading-snug break-words">
-              <strong className="font-semibold text-navy">Terbayar</strong> — saya sudah memeriksa
+              <strong className="font-semibold text-navy">Dana sudah masuk</strong> — saya sudah memeriksa
               mutasi di aplikasi keuangan dan dana benar-benar masuk sebesar nominal tagihan.
             </span>
           </label>
@@ -394,7 +394,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
           </div>
         </div>
       </Modal>
-      {/* Konfirmasi centang "Terbayar".
+      {/* Konfirmasi centang "Dana sudah masuk".
           Ami meminta centang memunculkan confirmation modal lebih dulu, karena
           centang ini pernyataan bahwa dana sudah diperiksa langsung di aplikasi
           keuangan, bukan sekadar melihat bukti transfer. */}

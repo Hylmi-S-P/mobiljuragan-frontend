@@ -30,7 +30,7 @@ type Props = {
   initialResponse?: AdminPaymentsResponse;
 };
 
-type TabFilter = "semua" | "menunggu" | "terbayar" | "ditolak";
+type TabFilter = "semua" | "menunggu" | "dibayar" | "ditolak";
 
 export function PaymentVerificationHub({ initialResponse }: Props) {
   const queryClient = useQueryClient();
@@ -67,7 +67,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
       const params: Record<string, string> = { limit: "100" };
       if (activeTab === "menunggu") {
         params.status = "PENDING_VERIFICATION";
-      } else if (activeTab === "terbayar") {
+      } else if (activeTab === "dibayar") {
         params.status = "PAID";
       } else if (activeTab === "ditolak") {
         params.status = "FAILED";
@@ -107,7 +107,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
     return rawItems.filter((item) => {
       // Filter tab
       if (activeTab === "menunggu" && item.status !== "PENDING_VERIFICATION") return false;
-      if (activeTab === "terbayar" && item.status !== "PAID") return false;
+      if (activeTab === "dibayar" && item.status !== "PAID") return false;
       if (
         activeTab === "ditolak" &&
         item.status !== "FAILED" &&
@@ -191,14 +191,14 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
 
             <button
               type="button"
-              onClick={() => setActiveTab("terbayar")}
+              onClick={() => setActiveTab("dibayar")}
               className={`rounded-xs px-3 py-1.5 text-meta font-medium transition-colors ${
-                activeTab === "terbayar"
+                activeTab === "dibayar"
                   ? "bg-surface font-semibold text-ink shadow-xs"
                   : "text-ink-soft hover:bg-surface/50 hover:text-ink"
               }`}
             >
-              Terbayar {counts.paid > 0 ? `(${counts.paid})` : ""}
+              Dibayar {counts.paid > 0 ? `(${counts.paid})` : ""}
             </button>
 
             <button
@@ -311,7 +311,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                           {formatRupiah(payment.totalAmount)}
                         </span>
                         <span className="text-micro text-ink-soft tabular-nums">
-                          {PAYMENT_METHOD_LABEL[payment.method] || payment.method} · Tarif: {formatRupiah(payment.baseAmount)}
+                          {PAYMENT_METHOD_LABEL[payment.method] || payment.method} Â· Tarif: {formatRupiah(payment.baseAmount)}
                         </span>
                       </div>
                     </TableCell>

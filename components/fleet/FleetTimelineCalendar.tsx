@@ -102,10 +102,12 @@ export function FleetTimelineCalendar({ calendar }: Props) {
   const hariIni = useMemo(() => awalHariIni(), []);
 
   /* Default "tersedia": saat halaman dibuka, yang tampil hanya unit yang benar-benar
-     bisa disewa. Unit lain tetap terjangkau lewat kartu ringkasan di atas. */
+     bisa disewa. Unit lain tetap terjangkau lewat saringan di bawah. */
   const [saringan, setSaringan] = useState<RingkasanKunci>("tersedia");
   const [durasiHari, setDurasiHari] = useState<number>(0);
-  const [tampilan, setTampilan] = useState<"kartu" | "jadwal">("kartu");
+  /* Halaman ini alat kerja, bukan dasbor. Admin datang untuk melihat jadwal, jadi
+     jadwal yang dibuka lebih dulu; tampilan kartu tetap tersedia sebagai pilihan. */
+  const [tampilan, setTampilan] = useState<"kartu" | "jadwal">("jadwal");
 
   const denganStatus = useMemo(
     () =>
@@ -142,37 +144,37 @@ export function FleetTimelineCalendar({ calendar }: Props) {
     return cocokStatus.filter((v) => v.tersediaRentang);
   }, [denganStatus, saringan, durasiHari]);
 
-  const kartuRingkasan: Array<{ kunci: RingkasanKunci; label: string; nilai: number; ket: string; warna: string }> = [
-    { kunci: "semua", label: "Total armada", nilai: jumlah.semua, ket: "kendaraan terdaftar", warna: "bg-navy" },
-    { kunci: "tersedia", label: "Tersedia", nilai: jumlah.tersedia, ket: "siap disewa", warna: "bg-teal" },
-    { kunci: "disewa", label: "Disewa", nilai: jumlah.disewa, ket: "punya jadwal bulan ini", warna: "bg-navy" },
-    { kunci: "servis", label: "Servis", nilai: jumlah.servis, ket: "sedang perawatan", warna: "bg-gold" },
+  /* Saringan ringkas. Dulu ini empat kartu besar berisi angka; kartu itu memakan
+     hampir setengah layar sebelum jadwal terlihat, padahal angka yang sama sudah
+     terbaca dari daftar di bawah. Sekarang tinggal chip dengan jumlah kecil. */
+  const saringanChip: Array<{ kunci: RingkasanKunci; label: string; nilai: number }> = [
+    { kunci: "semua", label: "Semua", nilai: jumlah.semua },
+    { kunci: "tersedia", label: "Tersedia", nilai: jumlah.tersedia },
+    { kunci: "disewa", label: "Disewa", nilai: jumlah.disewa },
+    { kunci: "servis", label: "Servis", nilai: jumlah.servis },
   ];
 
   return (
     <div className="space-y-4">
-      {/* Ringkasan sekaligus saringan. Kartu ini bukan sekadar angka: mengkliknya
-          menyaring daftar di bawah, sehingga unit yang tidak sedang tersedia tetap
-          terjangkau tanpa memenuhi halaman sejak awal. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {kartuRingkasan.map((kartu) => {
-          const aktif = saringan === kartu.kunci;
+      <div className="flex flex-wrap items-center gap-2">
+        {saringanChip.map((chip) => {
+          const aktif = saringan === chip.kunci;
           return (
             <button
-              key={kartu.kunci}
+              key={chip.kunci}
               type="button"
-              onClick={() => setSaringan(kartu.kunci)}
+              onClick={() => setSaringan(chip.kunci)}
               aria-pressed={aktif}
-              className={`rounded-card border bg-surface p-4 text-left shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
-                aktif ? "border-navy ring-1 ring-navy/20" : "border-rule hover:border-navy/40"
+              className={`rounded-full border px-3 py-1 text-meta transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
+                aktif
+                  ? "border-navy bg-navy text-white"
+                  : "border-rule bg-surface text-ink-soft hover:border-navy/40"
               }`}
             >
-              <span className="flex items-center gap-1.5 text-meta text-ink-soft">
-                <span className={`h-2 w-2 rounded-full ${kartu.warna}`} />
-                {kartu.label}
+              {chip.label}
+              <span className={`ml-1.5 tabular-nums ${aktif ? "text-white/80" : "text-ink-soft"}`}>
+                {chip.nilai}
               </span>
-              <span className="mt-1 block text-2xl font-bold tabular-nums text-ink">{kartu.nilai}</span>
-              <span className="mt-0.5 block text-micro text-ink-soft">{kartu.ket}</span>
             </button>
           );
         })}
@@ -227,7 +229,7 @@ export function FleetTimelineCalendar({ calendar }: Props) {
         <div className="rounded-md border border-rule bg-canvas px-4 py-6 text-center">
           <p className="text-body font-semibold text-ink">Tidak ada unit yang cocok</p>
           <p className="mt-1 text-meta text-ink-soft">
-            Coba pilih kartu ringkasan lain, atau longgarkan pilihan durasi sewa.
+            Coba pilih saringan lain, atau longgarkan pilihan durasi sewa.
           </p>
         </div>
       ) : tampilan === "kartu" ? (

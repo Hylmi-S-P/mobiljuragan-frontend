@@ -36,7 +36,6 @@ export async function getNavCounts(): Promise<{ counts: NavCounts; details: NavD
     const antreanPesanan = bookings.filter(
       (booking) => booking.status === "perlu_konfirmasi_tarif",
     ).length;
-
     /* Dua jenis tiket yang sama-sama menunggu admin:
        - "baru": belum pernah disentuh sama sekali.
        - "menunggu_pelanggan": tim sudah membalas, pelanggan membalas lagi, jadi
@@ -51,14 +50,18 @@ export async function getNavCounts(): Promise<{ counts: NavCounts; details: NavD
 
     const hasil: NavCounts = {};
     const rincian: NavDetails = {};
-    if (antreanPesanan > 0) hasil["/bookings"] = antreanPesanan;
+    /* Satu angka untuk menu Pemesanan Masuk, berisi dua pekerjaan yang sama-sama
+       menunggu admin: pesanan yang perlu dikonfirmasi tarifnya dan bukti transfer
+       yang perlu diverifikasi. Sebelumnya angkanya hanya menghitung pesanan,
+       sehingga bukti transfer yang menumpuk tidak terlihat dari sidebar. */
+    const totalPemesanan = antreanPesanan + pendingBayar;
+    if (totalPemesanan > 0) hasil["/bookings"] = totalPemesanan;
     if (totalTiket > 0) {
       hasil["/customer-care"] = totalTiket;
       rincian["/customer-care"] = { baru: tiketBaru, dibalas: tiketDibalas };
     }
     if (pendingBayar > 0) {
       hasil["/payments"] = pendingBayar;
-      hasil["/bookings?tab=pembayaran"] = pendingBayar;
     }
     return { counts: hasil, details: rincian };
   } catch {

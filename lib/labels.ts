@@ -16,6 +16,9 @@ export const VEHICLE_STATUS: Record<VehicleStatus, { label: string; tone: ChipTo
   tersedia: { label: "Tersedia", tone: "available" },
   disewa: { label: "Disewa", tone: "busy" },
   servis: { label: "Servis", tone: "vehicleService" },
+  /* Masa pemeriksaan setelah sewa selesai. Unit belum boleh disewakan lagi
+     sampai admin menyatakan inspeksi selesai. */
+  pemeriksaan: { label: "Pemeriksaan", tone: "pending" },
   tidak_tersedia: { label: "Tidak Tersedia", tone: "vehicleUnavailable" },
 };
 
@@ -43,8 +46,29 @@ export const BOOKING_STATUS: Record<
     tone: "available",
     canonical: "CONFIRMED",
   },
+  sewa_berjalan: {
+    label: "Sewa Berjalan",
+    tone: "busy",
+    canonical: "IN_PROGRESS",
+  },
+  selesai: { label: "Selesai", tone: "neutral", canonical: "COMPLETED" },
   ditolak: { label: "Ditolak", tone: "danger", canonical: "REJECTED" },
 };
+
+/**
+ * Urutan tab rekap pesanan.
+ *
+ * Diurutkan menurut perjalanan pesanan, bukan abjad: yang paling menahan
+ * pekerjaan lebih dulu, lalu yang sudah lewat. "Semua" diletakkan paling akhir
+ * karena dipakai untuk mencari, bukan untuk bekerja.
+ */
+export const BOOKING_STATUS_ORDER: BookingStatus[] = [
+  "perlu_konfirmasi_tarif",
+  "tarif_terkonfirmasi",
+  "sewa_berjalan",
+  "selesai",
+  "ditolak",
+];
 
 export const DRIVER_STATUS: Record<DriverStatus, { label: string; tone: ChipTone }> = {
   siaga: { label: "Siaga", tone: "available" },
@@ -172,11 +196,13 @@ export const FAQ_CATEGORY_PRESETS = [
 
 export type FaqCategoryPreset = (typeof FAQ_CATEGORY_PRESETS)[number];
 
-/* Konfigurasi label dan tone visual untuk status pembayaran */
+/* Konfigurasi label dan tone visual untuk status pembayaran.
+   "Dibayar" dipakai, bukan kata lama yang berbunyi seperti pujian: yang dicatat
+   adalah keadaan pembayaran, bukan penegasan bahwa uangnya sudah diterima. */
 export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; tone: ChipTone }> = {
   UNPAID: { label: "Belum Bayar", tone: "neutral" },
   PENDING_VERIFICATION: { label: "Menunggu Verifikasi", tone: "pending" },
-  PAID: { label: "Terbayar", tone: "available" },
+  PAID: { label: "Dibayar", tone: "available" },
   FAILED: { label: "Ditolak", tone: "danger" },
   REFUNDED: { label: "Dikembalikan", tone: "service" },
 };
@@ -185,7 +211,7 @@ export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; tone: ChipTo
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   QRIS: "QRIS Dinamis",
   BANK_TRANSFER: "Transfer Bank",
-  CASH: "Tunai di Tempat (COD)",
+  CASH: "Tunai di Kantor",
 };
 
 /* Golongan SIM yang bisa dipilih. Urutannya dari yang paling ringan ke paling

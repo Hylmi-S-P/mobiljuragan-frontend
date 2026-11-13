@@ -2,7 +2,13 @@
 
 import { useState, useTransition } from "react";
 
-import { saveVehicleAction, deleteVehicleAction, unggahFotoKendaraanAction } from "@/app/actions";
+import {
+  saveVehicleAction,
+  deleteVehicleAction,
+  unggahFotoKendaraanAction,
+  completeVehicleServiceAction,
+} from "@/app/actions";
+import { CompleteServiceModal } from "@/components/modals/CompleteServiceModal";
 import { DeleteVehicleModal } from "@/components/modals/DeleteVehicleModal";
 import { VehicleFormModal } from "@/components/modals/VehicleFormModal";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +46,7 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [formTarget, setFormTarget] = useState<{ vehicleId: string | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [serviceTarget, setServiceTarget] = useState<string | null>(null);
   const { show, node } = useToast();
   /* Nilai pending tidak ditampilkan; yang dipakai hanya startTransition. */
   const [, startTransition] = useTransition();
@@ -50,6 +57,26 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
   const deleting = deleteTarget
     ? vehicles.find((vehicle) => vehicle.id === deleteTarget)
     : undefined;
+  const melayani = serviceTarget
+    ? vehicles.find((vehicle) => vehicle.id === serviceTarget)
+    : undefined;
+
+  function handleCompleteService(note: string) {
+    if (!melayani) return;
+    const target = melayani;
+    setServiceTarget(null);
+    startTransition(async () => {
+      const result = await completeVehicleServiceAction(target.id, note);
+      if (result.success) {
+        setVehicles((current) =>
+          current.map((vehicle) =>
+            vehicle.id === target.id ? { ...vehicle, status: "tersedia" } : vehicle,
+          ),
+        );
+      }
+      show(result.message ?? "Masa pemeriksaan ditutup.", result.success ? "success" : "error");
+    });
+  }
 
   return (
     <>
@@ -137,18 +164,31 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                       <div>
                         <span className="block text-micro text-ink-soft">Tarif Dasar / Hari</span>
                         <span className="text-body font-bold tabular-nums text-ink">
-                          {formatRupiah(vehicle.pricePerDay ?? 400000)}
+                          {vehicle.pricePerDay ? formatRupiah(vehicle.pricePerDay) : "Belum diisi"}
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setFormTarget({ vehicleId: vehicle.id })}
-                        className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
-                      >
-                        <IconPencil className="h-3.5 w-3.5" />
-                        Kelola
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {/* Unit yang baru dikembalikan pelanggan berstatus pemeriksaan.
+                            Tombol ini satu-satunya jalan mengembalikannya ke katalog. */}
+                        {statusTampil === "pemeriksaan" ? (
+                          <button
+                            type="button"
+                            onClick={() => setServiceTarget(vehicle.id)}
+                            className="inline-flex items-center gap-1.5 rounded-sm border border-gold bg-gold/10 px-3 py-1.5 text-meta font-semibold text-ink hover:bg-gold/20 transition-colors"
+                          >
+                            Selesai Inspeksi
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => setFormTarget({ vehicleId: vehicle.id })}
+                          className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-canvas px-3 py-1.5 text-meta font-medium text-ink hover:border-navy hover:text-navy transition-colors"
+                        >
+                          <IconPencil className="h-3.5 w-3.5" />
+                          Kelola
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -282,6 +322,14 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
               }
             });
           }}
+        />
+      ) : null}
+
+      {melayani ? (
+        <CompleteServiceModal
+          vehicle={melayani}
+          onClose={() => setServiceTarget(null)}
+          onConfirm={handleCompleteService}
         />
       ) : null}
     </>

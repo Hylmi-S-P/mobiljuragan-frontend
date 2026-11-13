@@ -19,7 +19,7 @@ type Props = {
 };
 
 /**
- * Grafik perbandingan omzet tahun ke tahun (4 tahun terakhir).
+ * Grafik perbandingan pemasukan tahun ke tahun (4 tahun terakhir).
  *
  * Sengaja tanpa rincian bulanan. Halimah paragraf 33 menyatakan tujuannya hanya
  * melihat beda antar tahun: "ga perlu detail sampe ke per bulan nya jg ada,
@@ -37,7 +37,7 @@ export function YearOverYearChart({ yearOverYear }: Props) {
     [yearOverYear],
   );
 
-  /* Tahun terakhir dengan omzet dipakai sebagai pembanding, bukan tahun berjalan.
+  /* Tahun terakhir dengan pemasukan dipakai sebagai pembanding, bukan tahun berjalan.
      Kalau memakai tahun berjalan yang masih nol, persentasenya jadi tidak berarti. */
   const tahunBeromzet = data.filter((d) => d.revenue > 0);
   const tahunTerakhir = tahunBeromzet[tahunBeromzet.length - 1] ?? null;
@@ -55,7 +55,7 @@ export function YearOverYearChart({ yearOverYear }: Props) {
         <div>
           <h3 className="text-subtitle font-bold text-ink">Perbandingan Tahun ke Tahun</h3>
           <p className="text-meta text-ink-soft">
-            Total omzet per tahun, {data.length} tahun terakhir.
+            Total pemasukan per tahun, {data.length} tahun terakhir.
           </p>
         </div>
         {selisih !== null ? (
@@ -103,7 +103,7 @@ export function YearOverYearChart({ yearOverYear }: Props) {
                   <div className="rounded-sm border border-rule bg-surface px-3 py-2 shadow-md">
                     <p className="text-micro font-semibold text-ink">Tahun {d.tahun}</p>
                     <p className="text-meta text-ink-soft">
-                      Omzet: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
+                      Pemasukan: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
                     </p>
                     <p className="text-meta text-ink-soft">
                       Transaksi lunas: <strong className="text-ink">{d.bookings}</strong>
@@ -123,7 +123,7 @@ export function YearOverYearChart({ yearOverYear }: Props) {
 
       {tahunBeromzet.length === 0 ? (
         <p className="mt-2 text-micro text-ink-soft">
-          Belum ada omzet tercatat pada {data.length} tahun terakhir.
+          Belum ada pemasukan tercatat pada {data.length} tahun terakhir.
         </p>
       ) : null}
     </div>

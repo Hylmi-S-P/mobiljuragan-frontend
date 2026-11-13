@@ -26,7 +26,7 @@ export function FinancialSummaryCard({ initialData }: Props) {
   const [data, setData] = useState<FinanceSummary>(initialData);
   const { summary, monthlyTrends, weeklyBreakdown, yearOverYear, rentalTypes } = data;
 
-  /* Rentang grafik omzet. Rentangnya disimpan di sini karena hanya tab Omzet
+  /* Rentang grafik pemasukan. Rentangnya disimpan di sini karena hanya tab Pemasukan
      yang memakainya, dan nilainya harus ikut terkirim saat pengguna berpindah
      lalu kembali ke tab itu. */
   const [bulan, setBulan] = useState<JumlahBulanOmzet>(
@@ -146,7 +146,7 @@ export function FinancialSummaryCard({ initialData }: Props) {
       <Tabs
         items={[
           { id: "ringkasan", label: "Ringkasan" },
-          { id: "omzet", label: "Omzet Tahunan" },
+          { id: "omzet", label: "Pemasukan Tahunan" },
           { id: "yoy", label: "Tahun ke Tahun" },
           { id: "model", label: "Model Sewa" },
         ]}

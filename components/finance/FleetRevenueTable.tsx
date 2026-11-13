@@ -12,8 +12,8 @@ type Props = {
  * FleetRevenueTable: Grid kartu modular pendapatan per unit armada CV. Mobil Juragan Merauke.
  *
  * Persentase kontribusi tiap unit sengaja tidak ditampilkan. Angka itu tidak dipakai
- * mengambil keputusan apa pun, sedangkan total omzet unitnya sudah tertera jelas.
- * Yang tetap ada: nama unit, plat, kategori, total omzet, jumlah sewa selesai, dan
+ * mengambil keputusan apa pun, sedangkan total pemasukan unitnya sudah tertera jelas.
+ * Yang tetap ada: nama unit, plat, kategori, total pemasukan, jumlah sewa selesai, dan
  * penanda sewa aktif.
  */
 export function FleetRevenueTable({ fleetBreakdown }: Props) {
@@ -53,10 +53,10 @@ export function FleetRevenueTable({ fleetBreakdown }: Props) {
                 </span>
               </div>
 
-              {/* Hero Omzet Unit */}
+              {/* Hero Pemasukan Unit */}
               <div className="mt-3.5 rounded-sm border border-rule/60 bg-canvas/50 p-3">
                 <span className="block text-micro font-medium text-ink-soft uppercase tracking-wider">
-                  Total Omzet
+                  Total Pemasukan
                 </span>
                 <p className="text-subtitle font-bold text-ink tabular-nums mt-0.5">
                   {formatRupiah(unit.totalRevenue)}

@@ -127,9 +127,6 @@ export function BookingDetailClient({
     booking.routeScope ?? null,
   );
   const { show, node } = useToast();
-  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(
-    booking.whatsappIntent?.url ?? null,
-  );
 
   const [isPending, startTransition] = useTransition();
 
@@ -241,9 +238,6 @@ export function BookingDetailClient({
         const chosen = availableDrivers.find((d) => d.id === driverId);
         setAssignedDriverName(chosen ? chosen.label : "Supir Ditugaskan");
         show(result.message ?? `Supir resmi ${chosen?.label ?? ""} berhasil ditugaskan.`);
-        if ((result as { data?: { whatsappIntent?: { url: string } } }).data?.whatsappIntent?.url) {
-          setWhatsappUrl((result as { data?: { whatsappIntent?: { url: string } } }).data!.whatsappIntent!.url);
-        }
       } else {
         show(result.message ?? "Gagal menugaskan supir resmi.", "error");
       }
@@ -311,9 +305,6 @@ export function BookingDetailClient({
         setRawStatus("CONFIRMED");
         setStatus("tarif_terkonfirmasi");
         show(result.message ?? "Tarif sewa resmi berhasil dikonfirmasi.");
-        if ((result as { data?: { whatsappIntent?: { url: string } } }).data?.whatsappIntent?.url) {
-          setWhatsappUrl((result as { data?: { whatsappIntent?: { url: string } } }).data!.whatsappIntent!.url);
-        }
       } else {
         show(result.message ?? "Gagal mengonfirmasi pesanan.", "error");
       }
@@ -357,9 +348,6 @@ export function BookingDetailClient({
       if (result.success) {
         setRawStatus(nextStatus);
         show(result.message ?? `Status berhasil diperbarui ke ${nextStatus}.`);
-        if ((result as { data?: { whatsappIntent?: { url: string } } }).data?.whatsappIntent?.url) {
-          setWhatsappUrl((result as { data?: { whatsappIntent?: { url: string } } }).data!.whatsappIntent!.url);
-        }
       } else {
         show(result.message ?? "Gagal memperbarui status sewa.", "error");
       }
@@ -400,7 +388,7 @@ export function BookingDetailClient({
           {/* Modul 2: Kartu Informasi Pelanggan & Pemesanan */}
           <CustomerInfoCard booking={booking} />
 
-          {/* Modul 3: Kartu Kendaraan yang Dipilih */}
+          {/* Modul 3: Bagian Armada (nama unit + plat nomor) */}
           <VehicleUnitCard vehicle={vehicle} />
 
           {/* Modul 4: Kartu Alokasi Operasional Supir atau Verifikasi Dokumen Lepas Kunci */}
@@ -431,7 +419,6 @@ export function BookingDetailClient({
             driverDailyRate={driverDailyRate}
             quotedAmount={quotedAmount}
             totalCleanBill={totalCleanBill}
-            rawStatus={rawStatus}
             canDecide={canDecide}
             onOpenSurcharge={() => setSurchargeOpen(true)}
             onRemoveSurcharge={handleRemoveSurcharge}
@@ -462,7 +449,6 @@ export function BookingDetailClient({
             onRouteScopeChange={setRouteScope}
             onOpenRejectModal={() => setShowRejectModal(true)}
             onTransitionStatus={handleTransitionStatus}
-            whatsappUrl={whatsappUrl}
             onOpenPaymentVerification={
               dataPembayaran ? () => setVerifikasiTerbuka(true) : undefined
             }
@@ -492,7 +478,7 @@ export function BookingDetailClient({
                 htmlFor="reject-reason-modal"
                 className="block text-meta font-medium text-ink"
               >
-                Alasan Penolakan Resmi <span className="text-danger">*</span>
+                Alasan penolakan <span className="text-danger">*</span>
               </label>
               <AutoGrowTextarea
             maxHeight={200}
@@ -532,7 +518,7 @@ export function BookingDetailClient({
 
       {/* Verifikasi Pembayaran dari halaman detail. `key` mengikat state modal
           ke pembayaran yang sedang dibuka, sama seperti di antrean pembayaran,
-          supaya centang "Terbayar" tidak terbawa ke pesanan lain. */}
+          supaya centang "Dana sudah masuk" tidak terbawa ke pesanan lain. */}
       <PaymentProofModal
         key={dataPembayaran?.id ?? "tanpa-pembayaran"}
         open={verifikasiTerbuka && Boolean(dataPembayaran)}

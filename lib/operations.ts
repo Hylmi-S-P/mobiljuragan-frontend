@@ -67,6 +67,9 @@ const VEHICLE_STATUS: Record<string, VehicleStatus> = {
   AVAILABLE: "tersedia",
   BOOKED: "disewa",
   MAINTENANCE: "servis",
+  /* Masa pemeriksaan setelah sewa berakhir. Unit sengaja tidak kembali ke
+     katalog sampai admin menutupnya lewat "Selesai Inspeksi". */
+  IN_SERVICE: "pemeriksaan",
   UNAVAILABLE: "tidak_tersedia",
 };
 
@@ -99,7 +102,10 @@ type ApiVehicle = {
 function statusTampil(v: ApiVehicle): VehicleStatus {
   const dasar = VEHICLE_STATUS[v.operationalStatus] ?? "tidak_tersedia";
 
-  if (dasar === "servis" || dasar === "tidak_tersedia") {
+  /* Servis, pemeriksaan, dan tidak tersedia adalah keadaan gudang yang sengaja
+     dipilih admin, jadi menang atas "disewa": unit yang sedang diperiksa tidak
+     boleh tampil seolah sedang disewa pelanggan. */
+  if (dasar === "servis" || dasar === "pemeriksaan" || dasar === "tidak_tersedia") {
     return dasar;
   }
 
@@ -118,7 +124,7 @@ function mapVehicle(v: ApiVehicle): Vehicle {
        Diseragamkan di sini supaya semua komponen menerima bentuk yang sama. */
     transmission: normalisasiTransmisi(v.transmission),
     seats: v.seatingCapacity,
-    pricePerDay: v.pricePerDay ?? 400000,
+    pricePerDay: v.pricePerDay ?? null,
     imageUrl: v.imageUrl ?? null,
     /*
      * `usage` tidak dikirim backend, jadi dibiarkan null daripada dikarang.
@@ -230,8 +236,8 @@ const BOOKING_STATUS_MAP: Record<CanonicalBookingStatus, BookingStatus> = {
   PENDING_CONFIRMATION: "perlu_konfirmasi_tarif",
   CONFIRMED: "tarif_terkonfirmasi",
   REJECTED: "ditolak",
-  IN_PROGRESS: "tarif_terkonfirmasi",
-  COMPLETED: "tarif_terkonfirmasi",
+  IN_PROGRESS: "sewa_berjalan",
+  COMPLETED: "selesai",
   CANCELLED: "ditolak",
 };
 
@@ -641,7 +647,7 @@ export async function getTicketDetail(
 /* Laporan Keuangan */
 
 export type FinanceSummary = {
-  /* Rentang bulan yang dipakai backend untuk grafik omzet. Dikirim balik supaya
+  /* Rentang bulan yang dipakai backend untuk grafik pemasukan. Dikirim balik supaya
      tampilan tidak perlu menebak nilai default mana yang sedang berlaku. */
   bulan?: number;
 
@@ -653,7 +659,7 @@ export type FinanceSummary = {
   };
 
   /* Perbandingan model sewa. Angkanya dihitung dari pembayaran lunas, sama
-     seperti omzet total, sehingga persentasenya selalu berjumlah 100%. */
+     seperti pemasukan total, sehingga persentasenya selalu berjumlah 100%. */
   rentalTypes?: {
     withoutDriver: { count: number; revenue: number; percentage: number };
     withDriver: { count: number; revenue: number; percentage: number };

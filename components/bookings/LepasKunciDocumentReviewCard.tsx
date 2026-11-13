@@ -4,6 +4,7 @@ import { useToast } from "@/components/ui/useToast";
 import { useState, useTransition } from "react";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip, type ChipTone } from "@/components/ui/StatusChip";
+import { IconClose } from "@/components/ui/icons";
 import { verifyBookingDocumentsAction } from "@/app/actions";
 import { isPdfUrl, resolveDocumentUrl } from "@/lib/documentUrl";
 import type { Booking, BookingDocument, BookingDocumentStatus } from "@/lib/types";
@@ -391,14 +392,21 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
         >
           <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-md border border-rule bg-surface p-4 shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-rule">
-              <h3 className="text-subtitle font-bold text-ink">{previewModalTitle}</h3>
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-rule">
+              <h3 className="min-w-0 truncate text-subtitle font-bold text-ink">
+                {previewModalTitle}
+              </h3>
+              {/* Satu tombol tutup saja, di kanan atas. Sebelumnya ada dua
+                  ("Tutup" di kepala dan "Kembali" di kaki modal) yang melakukan
+                  hal yang sama. */}
               <button
                 type="button"
                 onClick={closePreview}
-                className="rounded-sm px-2 py-1 text-meta text-ink-soft hover:bg-canvas hover:text-ink"
+                aria-label="Tutup pratinjau"
+                title="Tutup"
+                className="shrink-0 rounded-sm p-1.5 text-ink-soft hover:bg-canvas hover:text-ink"
               >
-                Tutup
+                <IconClose className="h-4 w-4" />
               </button>
             </div>
 
@@ -426,16 +434,6 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                   className="h-[65vh] w-full rounded border border-rule"
                 />
               )}
-            </div>
-
-            <div className="mt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={closePreview}
-                className="rounded-sm border border-rule bg-surface px-4 py-1.5 text-meta font-medium text-ink hover:bg-canvas"
-              >
-                Kembali
-              </button>
             </div>
           </div>
         </div>

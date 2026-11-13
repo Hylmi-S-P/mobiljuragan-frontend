@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useId, useState } from "react";
 
@@ -48,8 +48,10 @@ export function VehicleFormModal({
     vehicle?.transmission ?? VEHICLE_TRANSMISSION_OPTIONS[0],
   );
   const [priceInput, setPriceInput] = useState<string>(() => {
-    const p = vehicle?.pricePerDay ?? 400000;
-    return p > 0 ? p.toLocaleString("id-ID") : "400.000";
+    /* Unit baru dibuka dengan isian kosong. Dulu terisi 400.000 sebagai contoh,
+       dan angka contoh itu ikut tersimpan bila admin menekan simpan tanpa sadar. */
+    const p = vehicle?.pricePerDay ?? 0;
+    return p > 0 ? p.toLocaleString("id-ID") : "";
   });
   const [seatsInput, setSeatsInput] = useState<string>(String(vehicle?.seats ?? 7));
   const [status, setStatus] = useState<VehicleStatus>(vehicle?.status ?? "tersedia");

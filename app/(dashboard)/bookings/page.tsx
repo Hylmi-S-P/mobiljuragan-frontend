@@ -19,7 +19,9 @@ type PageProps = {
 
 export default async function BookingsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const initialTab = resolvedSearchParams?.tab === "pembayaran" ? "pembayaran" : "pesanan";
+  /* Tab divalidasi di komponen hub; di sini cukup diteruskan apa adanya supaya
+     tautan lama (?tab=pesanan) tetap mendarat di tab yang benar. */
+  const initialTab = resolvedSearchParams?.tab;
 
   let payments: AdminPaymentsResponse = {
     items: [],

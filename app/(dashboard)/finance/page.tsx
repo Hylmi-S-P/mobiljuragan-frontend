@@ -7,7 +7,7 @@ import { bacaBulanOmzet } from "@/lib/financePeriod";
 export const metadata: Metadata = {
   title: "Laporan Keuangan | MobilJuragan",
   description:
-    "Laporan omzet pemasukan dan pendapatan per unit armada CV. Mobil Juragan Express Transport Merauke.",
+    "Laporan pemasukan dan pendapatan per unit armada CV. Mobil Juragan Express Transport Merauke.",
 };
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export default async function FinancePage({ searchParams }: PageProps) {
       {/* Ringkasan Finansial & Visualisasi */}
       <FinancialSummaryCard initialData={financeData} />
 
-      {/* Rincian Omzet per Armada */}
+      {/* Rincian Pemasukan per Armada */}
       <FleetRevenueTable fleetBreakdown={financeData.fleetBreakdown} />
     </div>
   );

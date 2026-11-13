@@ -1239,8 +1239,42 @@ export async function apiUpdateVehicle(id: string, payload: Partial<VehiclePaylo
   return json.data;
 }
 
-export async function apiDeleteVehicle(id: string) {
+/**
+ * Menutup masa pemeriksaan armada setelah sewa selesai.
+ *
+ * Unit yang baru dikembalikan pelanggan berstatus IN_SERVICE dan tidak muncul di
+ * katalog sampai admin menyatakan inspeksi selesai. Catatan wajib diisi karena
+ * menjadi satu-satunya jejak kondisi unit saat diterima kembali.
+ */
+export async function apiCompleteVehicleService(id: string, note: string) {
   const token = await getSessionToken();
+
+  const res = await fetch(
+    `${API_BASE_URL}/admin/vehicles/${encodeURIComponent(id)}/service/complete`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ note }),
+    },
+  );
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "COMPLETE_SERVICE_FAILED",
+      json?.error?.message || "Gagal menutup masa pemeriksaan armada.",
+      json?.error?.details,
+    );
+  }
+
+  return json.data;
+}
+
+export async function apiDeleteVehicle(id: string) {  const token = await getSessionToken();
 
   const res = await fetch(`${API_BASE_URL}/admin/vehicles/${encodeURIComponent(id)}`, {
     method: "DELETE",

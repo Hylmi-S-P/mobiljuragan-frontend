@@ -17,9 +17,9 @@ const WARNA = {
 /**
  * Perbandingan model sewa: lepas kunci dan dengan supir.
  *
- * Angkanya dihitung dari pembayaran yang sudah lunas, sama seperti omzet total
+ * Angkanya dihitung dari pembayaran yang sudah lunas, sama seperti pemasukan total
  * di kartu ringkasan. Kalau dihitung dari status pesanan selesai, donut bisa
- * menampilkan omzet yang tidak cocok dengan kartu di atasnya.
+ * menampilkan pemasukan yang tidak cocok dengan kartu di atasnya.
  *
  * Transaksi nol tetap ditampilkan sebagai bagian tersendiri supaya admin tahu
  * model mana yang belum pernah dipakai, bukan mengira datanya hilang.
@@ -59,7 +59,7 @@ export function RentalModelChart({ rentalTypes }: Props) {
       <div className="flex flex-col gap-1 border-b border-rule pb-3">
         <h3 className="text-subtitle font-bold text-ink">Model Sewa</h3>
         <p className="text-meta text-ink-soft">
-          Perbandingan omzet lepas kunci dan dengan supir dari pembayaran lunas.
+          Perbandingan pemasukan lepas kunci dan dengan supir dari pembayaran lunas.
         </p>
       </div>
 
@@ -91,7 +91,7 @@ export function RentalModelChart({ rentalTypes }: Props) {
                       <div className="rounded-sm border border-rule bg-surface px-3 py-2 shadow-md">
                         <p className="text-micro font-semibold text-ink">{d.label}</p>
                         <p className="text-meta text-ink-soft">
-                          Omzet: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
+                          Pemasukan: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
                         </p>
                         <p className="text-meta text-ink-soft">
                           Transaksi lunas: <strong className="text-ink">{d.count}</strong>

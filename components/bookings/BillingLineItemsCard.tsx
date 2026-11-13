@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { formatRupiah } from "@/lib/format";
-import type { CanonicalBookingStatus, LineItem } from "@/lib/types";
+import type { LineItem } from "@/lib/types";
 
 type Props = {
   /* Hanya baris penyesuaian manual. Baris sewa dan jasa supir dihitung sistem
@@ -15,7 +15,6 @@ type Props = {
   driverDailyRate: number;
   quotedAmount: number;
   totalCleanBill: number;
-  rawStatus: CanonicalBookingStatus;
   canDecide: boolean;
   onOpenSurcharge: () => void;
   onRemoveSurcharge: (itemId: string) => void;
@@ -29,7 +28,6 @@ export function BillingLineItemsCard({
   driverDailyRate,
   quotedAmount,
   totalCleanBill,
-  rawStatus,
   canDecide,
   onOpenSurcharge,
   onRemoveSurcharge,
@@ -38,6 +36,32 @@ export function BillingLineItemsCard({
   const hargaSewa = pricePerDay ? pricePerDay * hari : 0;
   const jasaSupir = isDriverService ? driverDailyRate * hari : 0;
   const manualItems = items.filter((item) => item.kind === "penyesuaian");
+  /* Sebelum tarif resmi ditetapkan, pelanggan hanya melihat satu angka perkiraan.
+     Rincian per komponen baru dibuka setelah admin mengonfirmasi tarif, supaya
+     angka perkiraan tidak terbaca sebagai tagihan yang sudah mengikat. */
+  const tarifTerkonfirmasi = quotedAmount > 0;
+  const perkiraan = hargaSewa + jasaSupir;
+
+  if (!tarifTerkonfirmasi) {
+    return (
+      <Panel title="Perkiraan Biaya">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <p className="text-micro font-medium uppercase tracking-wider text-ink-soft">
+              Perkiraan total
+            </p>
+            <p className="mt-0.5 text-subtitle font-bold text-ink tabular-nums">
+              {perkiraan > 0 ? formatRupiah(perkiraan) : "Menunggu harga katalog"}
+            </p>
+          </div>
+          <p className="max-w-sm text-micro text-ink-soft">
+            Angka ini perkiraan dari katalog. Rincian resmi muncul setelah admin
+            menetapkan tarif.
+          </p>
+        </div>
+      </Panel>
+    );
+  }
 
   return (
     <Panel
@@ -164,12 +188,6 @@ export function BillingLineItemsCard({
           </tfoot>
         </table>
       </div>
-
-      {quotedAmount <= 0 && rawStatus !== "CREATED" ? (
-        <p className="mt-2 text-micro text-ink-soft">
-          Tarif resmi belum ditetapkan. Angka di atas masih perkiraan dari katalog.
-        </p>
-      ) : null}
     </Panel>
   );
 }
