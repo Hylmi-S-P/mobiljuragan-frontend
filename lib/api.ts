@@ -286,10 +286,10 @@ export async function apiTakeOverTicket(ticketId: string) {
   return json.data;
 }
 // Memperbarui status pemesanan sewa (konfirmasi tarif, penolakan, pelunasan, serah terima, selesai).
+// Nominal tarif tidak lagi dikirim: server menghitungnya dari katalog dan tarif supir global.
 export async function apiUpdateBookingStatus(
   id: string,
   status: CanonicalBookingStatus,
-  quotedAmount?: number,
   note?: string,
 ) {
   const token = await getSessionToken();
@@ -302,7 +302,6 @@ export async function apiUpdateBookingStatus(
     },
     body: JSON.stringify({
       status,
-      ...(quotedAmount !== undefined ? { quotedAmount } : {}),
       ...(note ? { note } : {}),
     }),
   });

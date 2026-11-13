@@ -2,9 +2,8 @@
 
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { formatRupiah, formatRupiahDots, parseRupiahDots } from "@/lib/format";
+import { formatRupiah } from "@/lib/format";
 import { BOOKING_STATUS } from "@/lib/labels";
-import { TARIFF_PENDING_NOTE } from "@/lib/uiText";
 import type { Booking, BookingDocument, BookingStatus, CanonicalBookingStatus } from "@/lib/types";
 
 type Props = {
@@ -13,7 +12,9 @@ type Props = {
   status: BookingStatus;
   rawStatus: CanonicalBookingStatus;
   quotedAmount: number;
-  onQuotedAmountChange: (amount: number) => void;
+  /* Tarif jasa supir global, dipakai untuk menampilkan rincian perkiraan.
+     Angka final tetap dihitung server saat konfirmasi. */
+  driverDailyRate: number;
   totalCleanBill: number;
   hasAssignedDriver: boolean;
   isDriverService: boolean;
@@ -37,7 +38,7 @@ export function BookingActionSidebar({
   status,
   rawStatus,
   quotedAmount,
-  onQuotedAmountChange,
+  driverDailyRate,
   totalCleanBill,
   hasAssignedDriver,
   isDriverService,
@@ -89,34 +90,51 @@ export function BookingActionSidebar({
       </div>
 
 
-      {/* Form Input Nominal Tarif Sewa Resmi — hanya pada tahap penetapan tarif */}
+      {/* Rincian tarif — hanya pada tahap penetapan tarif.
+          Nominalnya tidak bisa diketik: server menghitung dari harga katalog unit
+          ditambah tarif supir global. Penyesuaian (diskon, tambahan medan) masuk
+          lewat baris penyesuaian biaya yang punya justifikasi. */}
       {isQuoting ? (
         <div className="rounded-md border border-rule bg-canvas p-3.5 space-y-2">
-          <label htmlFor="sidebar-quoted-amount" className="block text-meta font-semibold text-ink">
-            Nominal Tarif Sewa Dasar
-          </label>
+          <p className="text-meta font-semibold text-ink">Tarif Dihitung dari Katalog</p>
+          <dl className="space-y-1 text-micro text-ink-soft">
+            <div className="flex items-baseline justify-between gap-2">
+              <dt>
+                Sewa unit
+                {booking.pricePerDay
+                  ? ` (${formatRupiah(booking.pricePerDay)}/hari × ${booking.dayCount} hari)`
+                  : ""}
+              </dt>
+              <dd className="tabular-nums font-semibold text-ink">
+                {booking.pricePerDay
+                  ? formatRupiah(booking.pricePerDay * (booking.dayCount || 1))
+                  : "Harga katalog belum tersedia"}
+              </dd>
+            </div>
+            {isDriverService ? (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt>
+                  Jasa supir
+                  {driverDailyRate > 0
+                    ? ` (${formatRupiah(driverDailyRate)}/hari × ${booking.dayCount} hari)`
+                    : ""}
+                </dt>
+                <dd className="tabular-nums font-semibold text-ink">
+                  {driverDailyRate > 0
+                    ? formatRupiah(driverDailyRate * (booking.dayCount || 1))
+                    : "Tarif supir belum dimuat"}
+                </dd>
+              </div>
+            ) : null}
+            <div className="flex items-baseline justify-between gap-2 border-t border-rule/60 pt-1">
+              <dt className="font-semibold text-ink">Subtotal</dt>
+              <dd className="tabular-nums font-bold text-ink">{formatRupiah(quotedAmount)}</dd>
+            </div>
+          </dl>
           <p className="text-micro text-ink-soft">
-            {booking.pricePerDay
-              ? `Awal dari katalog: ${formatRupiah(booking.pricePerDay)}/hari × ${booking.dayCount} hari. Silakan sesuaikan bila perlu.`
-              : "Harga katalog unit ini tidak tersedia. Isi nominal secara manual."}
+            Diskon atau tambahan (mis. medan ekstrem) dicatat lewat tombol Tambah Surcharge
+            Manual, bukan dengan mengubah angka di atas.
           </p>
-          <div className="relative flex items-center">
-            <span className="inline-flex h-11 items-center rounded-l-sm border border-r-0 border-rule-strong bg-rule/20 px-3.5 text-body font-bold text-ink">
-              Rp
-            </span>
-            <input
-              id="sidebar-quoted-amount"
-              type="text"
-              inputMode="numeric"
-              value={quotedAmount ? formatRupiahDots(quotedAmount) : ""}
-              onChange={(e) => {
-                const parsed = parseRupiahDots(e.target.value);
-                onQuotedAmountChange(Math.min(100000000, parsed));
-              }}
-              placeholder="Contoh: 750.000"
-              className="tabular-nums h-11 w-full rounded-r-sm border border-rule-strong bg-surface px-3 text-body font-bold text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-            />
-          </div>
         </div>
       ) : isRequestIncoming ? (
         /* Tahap 1: tarif belum ditetapkan. Yang ditampilkan justru acuan harga

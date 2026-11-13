@@ -74,26 +74,41 @@ export function BookingDetailClient({
     booking.rawStatus ?? "CREATED",
   );
   /**
-   * Tarif dasar awal.
-   *
-   * Urutannya: nominal yang sudah tersimpan di server → harga katalog × jumlah
-   * hari → 0 (belum ditetapkan).
-   *
-   * Sebelumnya cabang kedua memakai konstanta 500.000/750.000 per hari, sehingga
-   * pesanan baru selalu tampil dengan angka karangan: HILUX 2 hari muncul
-   * 1.000.000 padahal katalog 850.000/hari = 1.700.000. Angka itu ikut terkirim
-   * kalau admin langsung menyetujui, jadi bukan sekadar tampilan.
-   *
-   * Bila harga katalog tidak diketahui, sengaja dibiarkan 0 agar admin mengisi
-   * sendiri — menebak lebih berbahaya daripada mengosongkan.
+   * Tarif jasa supir global dibaca dari server, bukan ditulis di kode.
+   * Angka final tetap dihitung server saat konfirmasi; nilai di sini hanya
+   * perkiraan yang ditampilkan sebelum admin menekan tombol konfirmasi.
    */
-  const [quotedAmount, setQuotedAmount] = useState<number>(() => {
+  const { data: tarifGlobal } = useQuery({
+    queryKey: ["tariffSettings"],
+    queryFn: async (): Promise<{ driverDailyRate: number }> => {
+      const res = await apiClient.get("/admin/fleet/tariff-settings");
+      return (res.data?.data ?? res.data) as { driverDailyRate: number };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const driverDailyRate = tarifGlobal?.driverDailyRate ?? 0;
+
+  /**
+   * Tarif pesanan.
+   *
+   * Sebelum konfirmasi, angkanya perkiraan dari katalog: harga sewa unit ×
+   * jumlah hari, ditambah jasa supir bila pesanan memakai supir. Setelah
+   * dikonfirmasi, yang dipakai adalah nominal yang tersimpan di server supaya
+   * layar tidak pernah menampilkan angka berbeda dari yang ditagihkan.
+   */
+  const quotedAmount = useMemo(() => {
     if (booking.quotedAmount !== null && booking.quotedAmount !== undefined) {
       return Number(booking.quotedAmount);
     }
+
     const hargaKatalog = Number(booking.pricePerDay ?? 0);
-    return hargaKatalog > 0 ? hargaKatalog * (booking.dayCount || 1) : 0;
-  });
+    if (hargaKatalog <= 0) return 0;
+
+    const hari = booking.dayCount || 1;
+    const jasaSupir = booking.mode === "dengan_supir" ? driverDailyRate * hari : 0;
+    return hargaKatalog * hari + jasaSupir;
+  }, [booking.quotedAmount, booking.pricePerDay, booking.dayCount, booking.mode, driverDailyRate]);
   const [selectedDriverId, setSelectedDriverId] = useState<string>(
     booking.driverId ?? "",
   );
@@ -254,7 +269,6 @@ export function BookingDetailClient({
       const result = await updateBookingStatusAction(
         booking.id,
         "PENDING_CONFIRMATION",
-        undefined,
         "Permintaan sewa diterima. Menunggu penetapan tarif oleh admin.",
       );
 
@@ -284,7 +298,6 @@ export function BookingDetailClient({
       const result = await updateBookingStatusAction(
         booking.id,
         "CONFIRMED",
-        totalCleanBill,
         "Tarif disepakati dan dikonfirmasi admin.",
       );
 
@@ -312,7 +325,6 @@ export function BookingDetailClient({
       const result = await updateBookingStatusAction(
         booking.id,
         "REJECTED",
-        undefined,
         rejectReason.trim(),
       );
 
@@ -333,7 +345,6 @@ export function BookingDetailClient({
       const result = await updateBookingStatusAction(
         booking.id,
         nextStatus,
-        undefined,
         note,
       );
 
@@ -424,7 +435,7 @@ export function BookingDetailClient({
             status={status}
             rawStatus={rawStatus}
             quotedAmount={quotedAmount}
-            onQuotedAmountChange={setQuotedAmount}
+            driverDailyRate={driverDailyRate}
             totalCleanBill={totalCleanBill}
             hasAssignedDriver={hasAssignedDriver}
             isDriverService={isDriverService}

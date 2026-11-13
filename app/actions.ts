@@ -412,7 +412,6 @@ export async function releaseTicketAction(ticketId: string): Promise<ActionState
 export async function updateBookingStatusAction(
   bookingId: string,
   status: CanonicalBookingStatus,
-  quotedAmount?: number,
   note?: string,
 ): Promise<ActionState & { data?: unknown }> {
   if (!bookingId) {
@@ -420,7 +419,7 @@ export async function updateBookingStatusAction(
   }
 
   try {
-    const data = await apiUpdateBookingStatus(bookingId, status, quotedAmount, note);
+    const data = await apiUpdateBookingStatus(bookingId, status, note);
     revalidatePath("/bookings");
     revalidatePath(`/bookings/${bookingId}`);
     revalidatePath("/");
