@@ -369,7 +369,9 @@ export function BookingActionSidebar({
         <div className="rounded-md border border-rule bg-canvas p-3 space-y-2.5">
           <p className="text-meta font-semibold text-ink">Pengembalian &amp; Penyelesaian</p>
           <p className="text-micro text-ink-soft">
-            Periksa kondisi fisik unit, tingkat BBM, dan lepaskan supir kembali ke status Siaga di kantor Merauke.
+            Sewa selesai otomatis begitu jadwalnya berakhir. Tombol di bawah hanya untuk
+            pengembalian lebih awal: periksa kondisi fisik unit, tingkat BBM, lalu lepaskan
+            supir kembali ke status Siaga.
           </p>
           <Button
             variant="confirm"
@@ -379,11 +381,11 @@ export function BookingActionSidebar({
             onClick={() =>
               onTransitionStatus(
                 "COMPLETED",
-                "Unit armada dikembalikan dalam kondisi baik. Sewa selesai.",
+                "Unit armada dikembalikan lebih awal dalam kondisi baik. Sewa selesai.",
               )
             }
           >
-            {isPending ? "Memproses..." : "Selesaikan Sewa & Kembalikan Armada"}
+            {isPending ? "Memproses..." : "Selesaikan Lebih Awal (Unit Dikembalikan)"}
           </Button>
         </div>
       ) : null}
