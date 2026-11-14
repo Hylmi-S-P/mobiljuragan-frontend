@@ -90,6 +90,8 @@ export async function GET(
       /* Berkas legal perusahaan bisa berubah tanpa pemberitahuan, jadi jangan
          disimpan peramban lebih lama dari sesi ini. */
       "Cache-Control": "private, no-store",
+      /* Peramban tidak boleh menebak tipe isi dari ekstensi. */
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

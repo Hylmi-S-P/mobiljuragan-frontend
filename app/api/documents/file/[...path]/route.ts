@@ -41,10 +41,20 @@ export async function GET(
     return new NextResponse(null, { status: upstream.status });
   }
 
-  return new NextResponse(await upstream.arrayBuffer(), {
+  /*
+   * Badan respons diteruskan sebagai aliran, bukan `arrayBuffer()`. Berkas
+   * dokumen bisa beberapa megabita, dan menyalinnya utuh ke memori per
+   * permintaan hanya membuang RAM tanpa manfaat.
+   *
+   * `no-store` dipakai karena KTP/SIM adalah berkas pribadi: di komputer kantor
+   * yang dipakai bergantian, cache peramban membuat berkas bisa dibuka orang
+   * berikutnya tanpa melewati pemeriksaan sesi.
+   */
+  return new NextResponse(upstream.body, {
     headers: {
       "Content-Type": upstream.headers.get("content-type") ?? "application/octet-stream",
-      "Cache-Control": "private, max-age=300",
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }
