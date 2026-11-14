@@ -48,6 +48,9 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
 
     onSave({
       id: driver?.id ?? `d-${Date.now()}`,
+      /* Supir baru belum punya UUID sampai server menyimpannya; nilai sementara
+         ini hanya dipakai di daftar lokal dan diganti setelah data dimuat ulang. */
+      uuid: driver?.uuid ?? "",
       label: label.trim(),
       route,
       contact: trimmedContact.length > 0 ? trimmedContact : null,

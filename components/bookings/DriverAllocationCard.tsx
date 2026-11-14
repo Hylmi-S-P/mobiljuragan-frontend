@@ -29,24 +29,32 @@ export function DriverAllocationCard({
 }: Props) {
   const isDriverService = booking.mode === "dengan_supir";
 
-  // Filter supir berstatus 'siaga' dan urutkan sesuai kecocokan rute
-  const eligibleDrivers = useMemo(() => {
-    const siagaOnly = availableDrivers.filter((d) => d.status === "siaga");
-    const routeMatched = siagaOnly.filter((d) =>
-      isLuarKota ? d.route === "luar_kota" : d.route === "dalam_kota",
-    );
-    // Jika ada supir dengan rute cocok, prioritaskan; jika tidak, tampilkan seluruh supir siaga
-    return routeMatched.length > 0 ? routeMatched : siagaOnly;
-  }, [availableDrivers, isLuarKota]);
-
-  // Supir aktif yang saat ini ditugaskan
+  // Supir aktif yang saat ini ditugaskan. Dicocokkan lewat UUID karena pesanan
+  // menyimpan UUID, sedangkan `d.id` adalah slug `externalId`.
   const assignedDriver = useMemo(() => {
     return (
       availableDrivers.find(
-        (d) => d.id === selectedDriverId || (assignedDriverName && d.label === assignedDriverName),
+        (d) =>
+          d.uuid === selectedDriverId ||
+          d.id === selectedDriverId ||
+          (assignedDriverName && d.label === assignedDriverName),
       ) ?? null
     );
   }, [availableDrivers, selectedDriverId, assignedDriverName]);
+
+  // Filter supir berstatus 'siaga' dan urutkan sesuai kecocokan rute. Supir yang
+  // sedang memegang pesanan ini tetap ditampilkan; tanpa itu, setelah ditugaskan
+  // namanya hilang dari daftar dan staf tidak bisa memastikan siapa yang dipilih.
+  const eligibleDrivers = useMemo(() => {
+    const bisaDipilih = availableDrivers.filter(
+      (d) => d.status === "siaga" || d.uuid === selectedDriverId || d.id === selectedDriverId,
+    );
+    const routeMatched = bisaDipilih.filter((d) =>
+      isLuarKota ? d.route === "luar_kota" : d.route === "dalam_kota",
+    );
+    // Jika ada supir dengan rute cocok, prioritaskan; jika tidak, tampilkan seluruh supir yang bisa dipilih
+    return routeMatched.length > 0 ? routeMatched : bisaDipilih;
+  }, [availableDrivers, isLuarKota, selectedDriverId]);
 
   const activeDriverLabel = assignedDriver?.label || (assignedDriverName?.trim() ? assignedDriverName : null);
   const hasAssignedDriver = Boolean(activeDriverLabel);
@@ -96,7 +104,11 @@ export function DriverAllocationCard({
           <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center">
             <select
               id="driver-select-card"
-              value={selectedDriverId}
+              /* Nilai pilihan memakai slug `driver.id`, sedangkan `selectedDriverId`
+                 bisa berisi UUID dari pesanan. Yang ditampilkan adalah slug supaya
+                 supir yang sudah ditugaskan tetap terpilih, bukan kembali ke
+                 placeholder setelah halaman dimuat ulang. */
+              value={assignedDriver?.id ?? selectedDriverId}
               onChange={(e) => {
                 const val = e.target.value;
                 onAssignDriver(val);

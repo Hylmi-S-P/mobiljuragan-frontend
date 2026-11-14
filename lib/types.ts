@@ -175,6 +175,10 @@ export type DriverRoute = "dalam_kota" | "luar_kota";
 
 export type Driver = {
   id: string;
+  /* UUID supir di database. `id` di atas adalah slug `externalId` yang dipakai
+     URL, sedangkan pesanan menyimpan UUID. Tanpa field ini, mencocokkan supir
+     yang ditugaskan ke sebuah pesanan selalu gagal. */
+  uuid: string;
   label: string;
   route: DriverRoute;
   contact: string | null;
