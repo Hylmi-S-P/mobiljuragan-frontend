@@ -927,7 +927,7 @@ export async function verifyPayment(
 }
 
 /**
- * Id unit yang sedang tersewa saat ini.
+ * Id unit yang sedang disewa saat ini.
  *
  * Katalog armada memakai ini untuk menampilkan badge "Disewa". Tanpa data ini,
  * katalog hanya membaca `operationalStatus`, yang menyimpan keadaan unit di

@@ -24,7 +24,7 @@ import { VEHICLE_STATUS } from "@/lib/labels";
 
 type Props = {
   initialVehicles: Vehicle[];
-  /* Id unit yang sedang tersewa saat ini. Dipakai untuk menurunkan badge
+  /* Id unit yang sedang disewa saat ini. Dipakai untuk menurunkan badge
      "Disewa". Kalau kosong (mis. pengambilan data gagal), badge mengikuti
      status operasional seperti sebelumnya. */
   rentedVehicleIds?: string[];
@@ -33,7 +33,7 @@ type Props = {
 /**
  * Status yang ditampilkan di kartu katalog.
  *
- * Unit yang sedang tersewa selalu tampil "Disewa", apa pun status gudangnya —
+ * Unit yang sedang disewa selalu tampil "Disewa", apa pun status gudangnya —
  * sama seperti aturan di kalender armada. Selain itu, status gudang dipakai apa
  * adanya.
  */

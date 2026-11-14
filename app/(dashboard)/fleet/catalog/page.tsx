@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function FleetCatalogPage() {
-  /* Dua permintaan berjalan bersamaan: daftar unit dan unit yang sedang tersewa.
+  /* Dua permintaan berjalan bersamaan: daftar unit dan unit yang sedang disewa.
      Keduanya tidak saling bergantung, jadi tidak perlu berurutan. */
   const [vehicles, rentedIds] = await Promise.all([getAllVehicles(), getRentedVehicleIds()]);
 
