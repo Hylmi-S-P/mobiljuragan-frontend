@@ -6,8 +6,10 @@ import { useQuery } from "@tanstack/react-query";
 import {
   assignDriverAction,
   cancelBookingLineItemAction,
+  recordCashPaymentAction,
   updateBookingStatusAction,
 } from "@/app/actions";
+import { formatRupiah } from "@/lib/format";
 import { ManualSurchargeModal } from "@/components/modals/ManualSurchargeModal";
 import { PaymentProofModal } from "@/components/payments/PaymentProofModal";
 import { Button } from "@/components/ui/Button";
@@ -126,6 +128,8 @@ export function BookingDetailClient({
      `REJECTED` (permintaan belum pernah diterima). */
   const [cancelReason, setCancelReason] = useState("");
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showCashModal, setShowCashModal] = useState(false);
+  const [cashNotes, setCashNotes] = useState("");
   const { show, node } = useToast();
 
   const [isPending, startTransition] = useTransition();
@@ -353,6 +357,21 @@ export function BookingDetailClient({
     });
   }
 
+  // Mencatat pembayaran tunai yang diterima di kantor.
+  function handleRecordCash() {
+    startTransition(async () => {
+      const result = await recordCashPaymentAction(booking.id, cashNotes.trim() || undefined);
+
+      if (result.success) {
+        setShowCashModal(false);
+        setCashNotes("");
+        show(result.message ?? "Pembayaran tunai dicatat.");
+      } else {
+        show(result.message ?? "Gagal mencatat pembayaran tunai.", "error");
+      }
+    });
+  }
+
   // Transisi siklus hidup pesanan lanjutan (CONFIRMED -> IN_PROGRESS -> COMPLETED)
   function handleTransitionStatus(nextStatus: CanonicalBookingStatus, note?: string) {
     startTransition(async () => {
@@ -495,6 +514,7 @@ export function BookingDetailClient({
               dataPembayaran ? () => setVerifikasiTerbuka(true) : undefined
             }
             onOpenCancelModal={() => setShowCancelModal(true)}
+            onOpenCashModal={() => setShowCashModal(true)}
           />
         </div>
       </div>
@@ -611,6 +631,57 @@ export function BookingDetailClient({
                 onClick={handleCancelBooking}
               >
                 {isPending ? "Membatalkan..." : "Ya, Batalkan Pesanan"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Modal Pencatatan Pembayaran Tunai */}
+      {showCashModal ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+        >
+          <div className="w-full max-w-md rounded-md border border-rule bg-surface p-5 shadow-lg">
+            <h3 className="text-subtitle font-bold text-ink">Catat Pembayaran Tunai?</h3>
+            <p className="mt-1.5 text-meta text-ink-soft">
+              Pesanan <strong className="text-ink">{booking.code}</strong> sebesar{" "}
+              <strong className="text-ink">{formatRupiah(totalCleanBill)}</strong> akan ditandai
+              lunas. Catat hanya setelah uang tunai benar-benar diterima di kantor.
+            </p>
+
+            <div className="mt-3.5 space-y-1.5">
+              <label
+                htmlFor="cash-notes-modal"
+                className="block text-meta font-medium text-ink"
+              >
+                Catatan (opsional)
+              </label>
+              <AutoGrowTextarea
+                maxHeight={200}
+                id="cash-notes-modal"
+                maxLength={300}
+                value={cashNotes}
+                onChange={(e) => setCashNotes(e.target.value)}
+                placeholder="Contoh: Diterima kasir Rp 2.000.000 untuk sewa dua hari."
+                className="w-full rounded-sm border border-rule-strong bg-canvas p-2.5 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
+              />
+              <p className="text-right text-micro text-ink-soft">{cashNotes.length}/300 karakter</p>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2.5">
+              <Button
+                variant="outline"
+                size="md"
+                disabled={isPending}
+                onClick={() => setShowCashModal(false)}
+              >
+                Kembali
+              </Button>
+              <Button variant="confirm" size="md" disabled={isPending} onClick={handleRecordCash}>
+                {isPending ? "Mencatat..." : "Ya, Tandai Lunas"}
               </Button>
             </div>
           </div>

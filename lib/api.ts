@@ -1869,3 +1869,32 @@ export async function apiUpdateRefund(id: string, payload: UpdateRefundPayload) 
   }
   return json.data;
 }
+
+/**
+ * Mencatat pembayaran tunai yang diterima di kantor.
+ *
+ * Pelanggan tidak bisa memilih tunai dari aplikasi, jadi uang tunai hanya masuk
+ * lewat aksi staf/admin setelah uangnya benar-benar diterima.
+ */
+export async function apiRecordCashPayment(bookingId: string, notes?: string) {
+  const token = await getSessionToken();
+
+  const res = await fetch(`${API_BASE_URL}/admin/payments/cash`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ bookingId, ...(notes ? { notes } : {}) }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "RECORD_CASH_PAYMENT_FAILED",
+      json?.error?.message || "Gagal mencatat pembayaran tunai.",
+    );
+  }
+  return json.data;
+}

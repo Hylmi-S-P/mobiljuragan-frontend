@@ -15,6 +15,7 @@ import {
   apiTakeOverTicket,
   apiUpdateBookingStatus,
   apiUpdateRefund,
+  apiRecordCashPayment,
   apiAssignDriverToBooking,
   apiCreateDriver,
   apiUpdateDriver,
@@ -1582,5 +1583,32 @@ export async function updateRefundAction(
   } catch (err) {
     if (err instanceof ApiError) return { success: false, message: err.message };
     return { success: false, message: "Gagal menyimpan pengembalian dana." };
+  }
+}
+
+/**
+ * Mencatat pembayaran tunai yang diterima di kantor.
+ *
+ * Pelanggan tidak bisa memilih tunai dari aplikasi, jadi staf mencatatnya
+ * sendiri setelah uangnya benar-benar diterima.
+ */
+export async function recordCashPaymentAction(
+  bookingId: string,
+  notes?: string,
+): Promise<ActionState> {
+  if (!bookingId) {
+    return { success: false, message: "Pesanan tidak valid." };
+  }
+
+  try {
+    await apiRecordCashPayment(bookingId, notes);
+    revalidatePath("/bookings");
+    revalidatePath(`/bookings/${bookingId}`);
+    revalidatePath("/payments");
+    revalidatePath("/");
+    return { success: true, message: "Pembayaran tunai dicatat. Pesanan lunas." };
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal mencatat pembayaran tunai." };
   }
 }

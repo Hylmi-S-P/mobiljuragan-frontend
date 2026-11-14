@@ -235,14 +235,14 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
                       {payment.method === "QRIS"
                         ? "Pembayaran Otomatis QRIS"
                         : payment.method === "CASH"
-                          ? "Pembayaran Tunai di Tempat (COD)"
+                          ? "Pembayaran Tunai di Kantor"
                           : "Tidak Ada Gambar Bukti"}
                     </p>
                     <p className="mt-1 max-w-[28ch] text-micro">
                       {payment.method === "QRIS"
                         ? "Verifikasi mutasi QRIS Gopay Merchant diverifikasi melalui webhook atau pencocokan nominal pas."
                         : payment.method === "CASH"
-                          ? "Pelanggan membayar secara tunai saat serah terima unit di Merauke."
+                          ? "Uang tunai diterima dan dicatat staf di kantor, bukan dipilih pelanggan dari aplikasi."
                           : "Pelanggan belum mengunggah gambar struk transfer."}
                     </p>
                   </div>
