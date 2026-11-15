@@ -90,6 +90,9 @@ export type Booking = {
   serviceType: string;
   pickupRoute: string | null;
   quotedAmount?: number | null;
+  /* Total yang dikunci saat admin menetapkan tarif: subtotal katalog ditambah
+     seluruh penyesuaian yang masih berlaku. Null selama tarif belum ditetapkan. */
+  finalAmount?: number | null;
   driverId?: string | null;
   driverName: string | null;
   driverStatus: DriverStatus | null;

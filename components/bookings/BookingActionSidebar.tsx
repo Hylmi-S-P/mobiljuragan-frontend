@@ -32,9 +32,6 @@ type Props = {
      modal verifikasi pembayaran; sekarang satu pintu di sini supaya staf tidak
      mencari tombol pembatalan di dalam layar verifikasi uang. */
   onOpenCancelModal?: () => void;
-  /* Mencatat uang tunai yang diterima di kantor. Pelanggan tidak bisa memilih
-     tunai dari aplikasi, jadi jalur ini satu-satunya untuk pembayaran tunai. */
-  onOpenCashModal?: () => void;
 };
 
 export function BookingActionSidebar({
@@ -53,7 +50,6 @@ export function BookingActionSidebar({
   onTransitionStatus,
   onOpenPaymentVerification,
   onOpenCancelModal,
-  onOpenCashModal,
 }: Props) {
   /* Dua langkah, bukan satu: pesanan diterima dulu, tarifnya ditetapkan kemudian.
      Sebelumnya tombol tunggal mengirim CONFIRMED langsung dari CREATED, dan
@@ -318,18 +314,6 @@ export function BookingActionSidebar({
               >
                 Verifikasi Pembayaran
               </Button>
-
-              {onOpenCashModal ? (
-                <Button
-                  variant="outline"
-                  size="md"
-                  className="w-full"
-                  disabled={isPending}
-                  onClick={onOpenCashModal}
-                >
-                  Catat Pembayaran Tunai
-                </Button>
-              ) : null}
             </>
           ) : (
             <>
