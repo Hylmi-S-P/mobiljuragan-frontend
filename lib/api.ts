@@ -291,7 +291,6 @@ export async function apiUpdateBookingStatus(
   id: string,
   status: CanonicalBookingStatus,
   note?: string,
-  routeScope?: "DALAM_KOTA" | "LUAR_KOTA",
 ) {
   const token = await getSessionToken();
 
@@ -304,9 +303,6 @@ export async function apiUpdateBookingStatus(
     body: JSON.stringify({
       status,
       ...(note ? { note } : {}),
-      /* Rute wajib dikirim saat tarif dikonfirmasi: server menolak CONFIRMED
-         tanpa rute karena alokasi supir menyaring berdasarkan rute. */
-      ...(routeScope ? { routeScope } : {}),
     }),
   });
 

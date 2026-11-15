@@ -420,14 +420,13 @@ export async function updateBookingStatusAction(
   bookingId: string,
   status: CanonicalBookingStatus,
   note?: string,
-  routeScope?: "DALAM_KOTA" | "LUAR_KOTA",
 ): Promise<ActionState & { data?: unknown }> {
   if (!bookingId) {
     return { success: false, message: "Kode pemesanan tidak valid." };
   }
 
   try {
-    const data = await apiUpdateBookingStatus(bookingId, status, note, routeScope);
+    const data = await apiUpdateBookingStatus(bookingId, status, note);
     revalidatePath("/bookings");
     revalidatePath(`/bookings/${bookingId}`);
     revalidatePath("/");

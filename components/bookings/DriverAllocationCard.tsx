@@ -42,18 +42,19 @@ export function DriverAllocationCard({
     );
   }, [availableDrivers, selectedDriverId, assignedDriverName]);
 
-  // Filter supir berstatus 'siaga' dan urutkan sesuai kecocokan rute. Supir yang
-  // sedang memegang pesanan ini tetap ditampilkan; tanpa itu, setelah ditugaskan
-  // namanya hilang dari daftar dan staf tidak bisa memastikan siapa yang dipilih.
+  // Rute hanya spesialisasi supir, bukan syarat penugasan: rute perjalanan
+  // penyewa tidak terdefinisi otomatis dan dinilai staf yang bertugas. Karena
+  // itu semua supir siaga tetap bisa dipilih; yang rutenya cocok ditaruh paling
+  // atas supaya pilihan paling relevan terlihat lebih dulu. Supir yang sedang
+  // memegang pesanan ini juga tetap ditampilkan, kalau tidak namanya hilang dari
+  // daftar setelah ditugaskan dan staf tidak bisa memastikan siapa yang dipilih.
   const eligibleDrivers = useMemo(() => {
     const bisaDipilih = availableDrivers.filter(
       (d) => d.status === "siaga" || d.uuid === selectedDriverId || d.id === selectedDriverId,
     );
-    const routeMatched = bisaDipilih.filter((d) =>
-      isLuarKota ? d.route === "luar_kota" : d.route === "dalam_kota",
-    );
-    // Jika ada supir dengan rute cocok, prioritaskan; jika tidak, tampilkan seluruh supir yang bisa dipilih
-    return routeMatched.length > 0 ? routeMatched : bisaDipilih;
+    const cocokRute = (d: Driver) =>
+      isLuarKota ? d.route === "luar_kota" : d.route === "dalam_kota";
+    return [...bisaDipilih].sort((a, b) => Number(cocokRute(b)) - Number(cocokRute(a)));
   }, [availableDrivers, isLuarKota, selectedDriverId]);
 
   const activeDriverLabel = assignedDriver?.label || (assignedDriverName?.trim() ? assignedDriverName : null);
@@ -117,11 +118,17 @@ export function DriverAllocationCard({
               className="h-11 w-full rounded-sm border border-rule-strong bg-surface px-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy sm:max-w-md"
             >
               <option value="">-- Pilih Supir Siaga --</option>
-              {eligibleDrivers.map((driver) => (
-                <option key={driver.id} value={driver.id}>
-                  {driver.label} ({driver.route === "luar_kota" ? "Luar Kota" : "Dalam Kota"})
-                </option>
-              ))}
+              {eligibleDrivers.map((driver) => {
+                const cocokRute = isLuarKota
+                  ? driver.route === "luar_kota"
+                  : driver.route === "dalam_kota";
+                return (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.label} ({driver.route === "luar_kota" ? "Luar Kota" : "Dalam Kota"})
+                    {cocokRute ? "" : " — beda rute"}
+                  </option>
+                );
+              })}
             </select>
 
             {isPending ? (
@@ -133,7 +140,7 @@ export function DriverAllocationCard({
 
           {eligibleDrivers.length === 0 ? (
             <p className="mt-1.5 text-micro text-amber-700">
-              Perhatian: Tidak ada supir siaga untuk rute ini di roster operasional.
+              Perhatian: Tidak ada supir berstatus siaga di roster operasional.
             </p>
           ) : null}
         </div>
