@@ -35,6 +35,7 @@ import {
   apiClearAiGatewayLogs,
   apiParseKnowledgeFile,
   apiUnggahFotoKendaraan,
+  apiUnggahMedia,
   apiCreateBookingLineItem,
   apiCancelBookingLineItem,
   apiUnggahTemplate,
@@ -428,6 +429,7 @@ export async function updateBookingStatusAction(
     const data = await apiUpdateBookingStatus(bookingId, status, note);
     revalidatePath("/bookings");
     revalidatePath(`/bookings/${bookingId}`);
+    revalidatePath("/refunds");
     revalidatePath("/");
     revalidatePath("/fleet/calendar");
     return {
@@ -1584,6 +1586,32 @@ export async function updateRefundAction(
   } catch (err) {
     if (err instanceof ApiError) return { success: false, message: err.message };
     return { success: false, message: "Gagal menyimpan pengembalian dana." };
+  }
+}
+
+/** Mengunggah foto bukti transfer pengembalian dana (opsional). */
+export async function unggahBuktiRefundAction(
+  formData: FormData,
+): Promise<ActionState & { mediaId?: string; url?: string }> {
+  const berkas = formData.get("berkas");
+  if (!(berkas instanceof File) || berkas.size === 0) {
+    return { success: false, message: "Pilih berkas gambar terlebih dahulu." };
+  }
+
+  try {
+    const uploaded = await apiUnggahMedia(berkas, "PAYMENT_PROOF");
+    if (!uploaded.id) {
+      return { success: false, message: "Server tidak mengembalikan ID media." };
+    }
+    return {
+      success: true,
+      message: "Bukti transfer berhasil diunggah.",
+      mediaId: uploaded.id,
+      url: uploaded.url,
+    };
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal mengunggah bukti transfer." };
   }
 }
 

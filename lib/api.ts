@@ -1866,3 +1866,36 @@ export async function apiUpdateRefund(id: string, payload: UpdateRefundPayload) 
   return json.data;
 }
 
+/** Mengunggah berkas media (misalnya bukti transfer pengembalian dana). */
+export async function apiUnggahMedia(
+  berkas: File,
+  kategori: "PAYMENT_PROOF" | "FLEET_PHOTO" = "PAYMENT_PROOF",
+): Promise<{ id: string; url: string }> {
+  const token = await getSessionToken();
+
+  const form = new FormData();
+  form.append("file", berkas, berkas.name);
+  form.append("kategori", kategori);
+
+  const res = await fetch(`${API_BASE_URL}/media`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: form,
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "UPLOAD_MEDIA_FAILED",
+      json?.error?.message || "Gagal mengunggah berkas media.",
+      json?.error?.details,
+    );
+  }
+
+  return {
+    id: String(json?.data?.id ?? ""),
+    url: String(json?.data?.url ?? ""),
+  };
+}
+

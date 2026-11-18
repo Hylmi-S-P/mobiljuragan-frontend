@@ -1,4 +1,4 @@
-import { getAdminPayments, getBookings, getSupportTickets } from "@/lib/operations";
+import { getAdminPayments, getBookings, getRefundSummary, getSupportTickets } from "@/lib/operations";
 
 /**
  * Angka kecil di sidebar untuk pekerjaan yang menunggu tindakan admin.
@@ -27,10 +27,11 @@ export type NavDetails = Record<string, NavDetail>;
 
 export async function getNavCounts(): Promise<{ counts: NavCounts; details: NavDetails }> {
   try {
-    const [bookings, tickets, payments] = await Promise.all([
+    const [bookings, tickets, payments, refundSummary] = await Promise.all([
       getBookings(),
       getSupportTickets(),
       getAdminPayments({ status: "PENDING_VERIFICATION", limit: 100 }).catch(() => null),
+      getRefundSummary().catch(() => null),
     ]);
 
     const antreanPesanan = bookings.filter(
@@ -62,6 +63,11 @@ export async function getNavCounts(): Promise<{ counts: NavCounts; details: NavD
     }
     if (pendingBayar > 0) {
       hasil["/payments"] = pendingBayar;
+    }
+    const antreanRefund =
+      (refundSummary?.menunggu?.jumlah ?? 0) + (refundSummary?.diproses?.jumlah ?? 0);
+    if (antreanRefund > 0) {
+      hasil["/refunds"] = antreanRefund;
     }
     return { counts: hasil, details: rincian };
   } catch {

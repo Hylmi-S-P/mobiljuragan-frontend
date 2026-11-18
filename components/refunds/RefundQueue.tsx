@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/useToast";
-import { updateRefundAction } from "@/app/actions";
+import { unggahBuktiRefundAction, updateRefundAction } from "@/app/actions";
 import { formatRupiah, formatDateTimeWit } from "@/lib/format";
+import { tautanMedia } from "@/lib/media";
 import type { BookingRefund, RefundStatus } from "@/lib/types";
 
 /**
@@ -59,10 +61,12 @@ type Ranah = {
 };
 
 export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
+  const router = useRouter();
   const { show } = useToast();
   const [aktif, setAktif] = useState<"SEMUA" | RefundStatus>(statusAwal ?? "SEMUA");
   const [terbuka, setTerbuka] = useState<string | null>(null);
   const [sedangSimpan, setSedangSimpan] = useState<string | null>(null);
+  const [berkasBukti, setBerkasBukti] = useState<File | null>(null);
   const [ranah, setRanah] = useState<Ranah>({
     namaBank: "",
     nomorRekening: "",
@@ -78,6 +82,7 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
 
   function bukaForm(refund: BookingRefund) {
     setTerbuka(refund.id);
+    setBerkasBukti(null);
     setRanah({
       namaBank: refund.namaBank ?? "",
       nomorRekening: refund.nomorRekening ?? "",
@@ -90,11 +95,24 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
   async function kirim(refund: BookingRefund, status?: RefundStatus) {
     setSedangSimpan(refund.id);
     try {
+      let buktiMediaId: string | undefined;
+      if (berkasBukti) {
+        const formData = new FormData();
+        formData.append("berkas", berkasBukti);
+        const unggah = await unggahBuktiRefundAction(formData);
+        if (!unggah.success || !unggah.mediaId) {
+          show(unggah.message ?? "Gagal mengunggah bukti transfer.", "error");
+          return;
+        }
+        buktiMediaId = unggah.mediaId;
+      }
+
       const hasil = await updateRefundAction(refund.id, {
         namaBank: ranah.namaBank.trim() || undefined,
         nomorRekening: ranah.nomorRekening.trim() || undefined,
         namaPemilik: ranah.namaPemilik.trim() || undefined,
         nominal: ranah.nominal.trim() ? Number(ranah.nominal) : undefined,
+        buktiMediaId,
         catatan: ranah.catatan.trim() || undefined,
         status,
       });
@@ -102,6 +120,8 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
       if (hasil.success) {
         show(hasil.message ?? "Tersimpan.", "success");
         setTerbuka(null);
+        setBerkasBukti(null);
+        router.refresh();
       } else {
         show(hasil.message ?? "Gagal menyimpan.", "error");
       }
@@ -117,6 +137,7 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
       if (hasil.success) {
         show(hasil.message ?? "Tersimpan.", "success");
         setTerbuka(null);
+        router.refresh();
       } else {
         show(hasil.message ?? "Gagal menyimpan.", "error");
       }
@@ -269,8 +290,17 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           onChange={(e) => setRanah({ ...ranah, catatan: e.target.value })}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
                           placeholder="Contoh: ditransfer 13 Nov, bukti dikirim via WhatsApp"
-                        maxLength={500}
-                          />
+                          maxLength={500}
+                        />
+                      </label>
+                      <label className="text-meta text-ink-soft sm:col-span-2">
+                        Foto bukti transfer (opsional)
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setBerkasBukti(e.target.files?.[0] ?? null)}
+                          className="mt-1 block w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink file:mr-3 file:rounded-xs file:border-0 file:bg-ink/10 file:px-2.5 file:py-1 file:text-meta file:font-medium file:text-ink"
+                        />
                       </label>
 
                       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
@@ -305,11 +335,23 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                     </div>
                   ) : (
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-meta text-ink-soft">
-                        {refund.status === "SELESAI" && refund.diselesaikanPada
-                          ? `Selesai ${formatDateTimeWit(refund.diselesaikanPada)}`
-                          : "Belum ditransfer."}
-                      </p>
+                      <div className="space-y-1">
+                        <p className="text-meta text-ink-soft">
+                          {refund.status === "SELESAI" && refund.diselesaikanPada
+                            ? `Selesai ${formatDateTimeWit(refund.diselesaikanPada)}`
+                            : "Belum ditransfer."}
+                        </p>
+                        {refund.buktiUrl ? (
+                          <a
+                            href={tautanMedia(refund.buktiUrl) ?? "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-meta font-medium text-teal hover:underline"
+                          >
+                            Lihat bukti transfer
+                          </a>
+                        ) : null}
+                      </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {!refund.danaTerverifikasi && refund.status !== "SELESAI" ? (
                           <>

@@ -46,6 +46,11 @@ export const BOOKING_STATUS: Record<
     tone: "available",
     canonical: "CONFIRMED",
   },
+  siap_serah_terima: {
+    label: "Siap Serah Terima",
+    tone: "available",
+    canonical: "CONFIRMED",
+  },
   sewa_berjalan: {
     label: "Sewa Berjalan",
     tone: "busy",
@@ -65,6 +70,7 @@ export const BOOKING_STATUS: Record<
 export const BOOKING_STATUS_ORDER: BookingStatus[] = [
   "perlu_konfirmasi_tarif",
   "tarif_terkonfirmasi",
+  "siap_serah_terima",
   "sewa_berjalan",
   "selesai",
   "ditolak",

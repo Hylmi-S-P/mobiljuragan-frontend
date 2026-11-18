@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   assignDriverAction,
   cancelBookingLineItemAction,
@@ -47,6 +47,7 @@ export function BookingDetailClient({
 }: Props) {
   const isDriverService = booking.mode === "dengan_supir";
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   /*
    * Daftar item tagihan hanya DIBACA, tidak lagi diubah di sisi klien.
@@ -388,6 +389,11 @@ export function BookingDetailClient({
     action: "APPROVE" | "REJECT",
   ) {
     setVerifikasiTerbuka(false);
+    queryClient.invalidateQueries({ queryKey: ["paymentByBooking", booking.id] });
+    queryClient.invalidateQueries({ queryKey: ["adminPayments"] });
+    if (action === "APPROVE" && rawStatus === "CONFIRMED") {
+      setStatus("siap_serah_terima");
+    }
     /* `router.refresh()` mengambil ulang `booking.payment` dari server, sehingga
        sidebar langsung berubah dari "Verifikasi Pembayaran" menjadi tombol
        "Serahkan Armada" tanpa perlu memuat ulang halaman. */
@@ -434,6 +440,7 @@ export function BookingDetailClient({
           {/* Modul 1: Bar Visual Timeline Alur Pemesanan */}
           <BookingTimelineBar
             rawStatus={rawStatus}
+            paymentStatus={dataPembayaran?.status ?? booking.payment?.status ?? null}
             rejectionReason={rawStatus === "REJECTED" ? rejectReason || null : null}
           />
 
@@ -489,7 +496,20 @@ export function BookingDetailClient({
         {/* Kolom Kanan: Sticky Action Sidebar (~35% / col-span-4) */}
         <div className="min-w-0 lg:col-span-4 lg:sticky lg:top-6 lg:self-start max-h-[calc(100vh-3rem)] overflow-y-auto">
           <BookingActionSidebar
-            booking={booking}
+            booking={
+              dataPembayaran
+                ? {
+                    ...booking,
+                    payment: {
+                      id: dataPembayaran.id,
+                      status: dataPembayaran.status,
+                      proofImageUrl: dataPembayaran.proofImageUrl ?? booking.payment?.proofImageUrl,
+                      method: dataPembayaran.method,
+                      totalAmount: dataPembayaran.totalAmount,
+                    },
+                  }
+                : booking
+            }
             document={document}
             status={status}
             rawStatus={rawStatus}

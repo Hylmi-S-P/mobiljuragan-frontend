@@ -293,7 +293,14 @@ export function BookingActionSidebar({
       {/* Lifecycle Advance Actions */}
       {isConfirmed ? (
         <div className="rounded-md border border-rule bg-canvas p-3 space-y-2.5">
-          <p className="text-meta font-semibold text-ink">Serah Terima Armada</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-meta font-semibold text-ink">
+              {isPaymentBlocked ? "Menunggu Pembayaran" : "Siap Serah Terima"}
+            </p>
+            <StatusChip tone={isPaymentBlocked ? "pending" : "available"}>
+              {isPaymentBlocked ? "Belum Lunas" : "Siap Serah Terima"}
+            </StatusChip>
+          </div>
 
           {isPaymentBlocked ? (
             <>

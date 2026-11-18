@@ -275,6 +275,10 @@ const BOOKING_STATUS_MAP: Record<CanonicalBookingStatus, BookingStatus> = {
 function resolveBookingStatus(b: ApiBooking): BookingStatus {
   const dasar = BOOKING_STATUS_MAP[b.status] ?? "perlu_konfirmasi_tarif";
 
+  if (b.status === "CONFIRMED" && b.payment?.status === "PAID") {
+    return "siap_serah_terima";
+  }
+
   const butuhSupir = b.rentalType === "WITH_DRIVER";
   const sudahDikonfirmasi = dasar === "tarif_terkonfirmasi";
   const supirBelumAda = b.driverId === null || b.driverId === undefined;
@@ -358,6 +362,7 @@ type ApiBooking = {
     nomorRekening: string | null;
     namaPemilik: string | null;
     buktiMediaId: string | null;
+    buktiUrl?: string | null;
     dicatatPada: string;
     diselesaikanPada: string | null;
   } | null;
@@ -486,6 +491,7 @@ function mapBooking(b: ApiBooking): Booking {
           nomorRekening: b.refund.nomorRekening ?? null,
           namaPemilik: b.refund.namaPemilik ?? null,
           buktiMediaId: b.refund.buktiMediaId ?? null,
+          buktiUrl: b.refund.buktiUrl ?? null,
           dicatatPada: b.refund.dicatatPada,
           diselesaikanPada: b.refund.diselesaikanPada ?? null,
         }
@@ -979,6 +985,7 @@ export async function getRefunds(params?: {
       nomorRekening: string | null;
       namaPemilik: string | null;
       buktiMediaId: string | null;
+      buktiUrl?: string | null;
       dicatatPada: string;
       diselesaikanPada: string | null;
       booking: {
@@ -1005,7 +1012,18 @@ export async function getRefunds(params?: {
     nomorRekening: r.nomorRekening ?? null,
     namaPemilik: r.namaPemilik ?? null,
     buktiMediaId: r.buktiMediaId ?? null,
+    buktiUrl: r.buktiUrl ?? null,
     dicatatPada: r.dicatatPada,
     diselesaikanPada: r.diselesaikanPada ?? null,
   }));
+}
+
+export type RefundSummary = {
+  menunggu: { status: RefundStatus; jumlah: number; totalNominal: number };
+  diproses: { status: RefundStatus; jumlah: number; totalNominal: number };
+  selesai: { status: RefundStatus; jumlah: number; totalNominal: number };
+};
+
+export async function getRefundSummary(): Promise<RefundSummary | null> {
+  return apiGet<RefundSummary>("/admin/refunds/summary");
 }

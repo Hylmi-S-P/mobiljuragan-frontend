@@ -23,6 +23,7 @@ const ACTION_BUTTON_TEXT: Record<BookingStatus, string> = {
   perlu_konfirmasi_tarif: "Konfirmasi Tarif",
   perlu_alokasi_sopir: "Pilih Supir",
   tarif_terkonfirmasi: "Cek Status Pesanan",
+  siap_serah_terima: "Serahkan Armada",
   sewa_berjalan: "Pantau Sewa",
   selesai: "Lihat Riwayat",
   ditolak: "Lihat Alasan",
@@ -60,7 +61,16 @@ export function BookingCardGrid({ initialBookings, vehicles, statusFilter }: Pro
   const filtered = useMemo(() => {
     const keyword = debouncedQuery.trim().toLowerCase();
     return initialBookings.filter((booking) => {
-      if (statusFilter !== "semua" && booking.status !== statusFilter) return false;
+      if (statusFilter === "tarif_terkonfirmasi") {
+        if (
+          booking.status !== "tarif_terkonfirmasi" &&
+          booking.status !== "perlu_alokasi_sopir"
+        ) {
+          return false;
+        }
+      } else if (statusFilter !== "semua" && booking.status !== statusFilter) {
+        return false;
+      }
       if (keyword.length === 0) return true;
       const vehicle = vehicleById(booking.vehicleId);
       return [

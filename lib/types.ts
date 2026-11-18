@@ -35,6 +35,7 @@ export type BookingStatus =
   | "perlu_konfirmasi_tarif"
   | "perlu_alokasi_sopir"
   | "tarif_terkonfirmasi"
+  | "siap_serah_terima"
   | "sewa_berjalan"
   | "selesai"
   | "ditolak";
@@ -140,6 +141,7 @@ export type BookingRefund = {
   nomorRekening: string | null;
   namaPemilik: string | null;
   buktiMediaId: string | null;
+  buktiUrl?: string | null;
   dicatatPada: string;
   diselesaikanPada: string | null;
 };

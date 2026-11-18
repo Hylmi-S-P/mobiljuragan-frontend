@@ -1,9 +1,10 @@
 "use client";
 
-import type { CanonicalBookingStatus } from "@/lib/types";
+import type { CanonicalBookingStatus, PaymentStatus } from "@/lib/types";
 
 type Props = {
   rawStatus: CanonicalBookingStatus;
+  paymentStatus?: PaymentStatus | null;
   rejectionReason?: string | null;
 };
 
@@ -13,7 +14,7 @@ type Stage = {
   canonical: CanonicalBookingStatus;
 };
 
-const STAGES: Stage[] = [
+const BASE_STAGES: Stage[] = [
   { id: 1, label: "Permintaan Masuk", canonical: "CREATED" },
   { id: 2, label: "Konfirmasi Tarif", canonical: "PENDING_CONFIRMATION" },
   { id: 3, label: "Menunggu Pembayaran", canonical: "CONFIRMED" },
@@ -38,10 +39,20 @@ function getStageIndex(rawStatus: CanonicalBookingStatus): number {
   }
 }
 
-export function BookingTimelineBar({ rawStatus, rejectionReason }: Props) {
+export function BookingTimelineBar({ rawStatus, paymentStatus, rejectionReason }: Props) {
   const isRejected = rawStatus === "REJECTED";
   const isCancelled = rawStatus === "CANCELLED";
   const isTerminated = isRejected || isCancelled;
+  const isReadyForHandover =
+    (rawStatus === "CONFIRMED" && paymentStatus === "PAID") ||
+    rawStatus === "IN_PROGRESS" ||
+    rawStatus === "COMPLETED";
+
+  const stages = BASE_STAGES.map((stage) =>
+    stage.id === 3 && isReadyForHandover
+      ? { ...stage, label: "Siap Serah Terima" }
+      : stage,
+  );
 
   const currentStep = getStageIndex(rawStatus);
 
@@ -88,7 +99,7 @@ export function BookingTimelineBar({ rawStatus, rejectionReason }: Props) {
       ) : (
         <div className="relative pt-1 pb-2">
           <div className="grid grid-cols-5 gap-2">
-            {STAGES.map((stage) => {
+            {stages.map((stage) => {
               const isPast = stage.id < currentStep;
               const isCurrent = stage.id === currentStep;
               const isFuture = stage.id > currentStep;

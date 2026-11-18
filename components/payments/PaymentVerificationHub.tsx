@@ -275,7 +275,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
                     <TableCell className="text-left">
                       <div className="min-w-0">
                         <Link
-                          href={`/bookings`}
+                          href={`/bookings/${encodeURIComponent(payment.booking?.bookingCode || payment.bookingId)}`}
                           className="font-semibold text-teal hover:underline"
                         >
                           {payment.booking?.bookingCode || payment.bookingId}
