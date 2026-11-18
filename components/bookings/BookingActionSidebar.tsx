@@ -88,6 +88,7 @@ export function BookingActionSidebar({
      supaya alasannya terlihat sebelum admin menekan apa pun. */
   const statusPembayaran = booking.payment?.status ?? null;
   const isPaymentBlocked = statusPembayaran !== "PAID";
+  const isPaymentPendingVerification = statusPembayaran === "PENDING_VERIFICATION";
 
   return (
     <aside className="rounded-lg border border-rule bg-surface p-4 shadow-card space-y-4">
@@ -336,15 +337,23 @@ export function BookingActionSidebar({
           )}
 
           {onOpenCancelModal ? (
-            <Button
-              variant="outline"
-              size="md"
-              className="w-full border-rose-300 bg-rose-50/60 font-semibold text-rose-700 hover:border-rose-500 hover:bg-rose-100"
-              disabled={isPending}
-              onClick={onOpenCancelModal}
-            >
-              Batalkan Pesanan
-            </Button>
+            <div className="space-y-1.5">
+              <Button
+                variant="outline"
+                size="md"
+                className="w-full border-rose-300 bg-rose-50/60 font-semibold text-rose-700 hover:border-rose-500 hover:bg-rose-100"
+                disabled={isPending || isPaymentPendingVerification}
+                onClick={onOpenCancelModal}
+              >
+                Batalkan Pesanan
+              </Button>
+              {isPaymentPendingVerification ? (
+                <p className="text-micro text-amber-800">
+                  Pembatalan dikunci selama bukti bayar menunggu pemeriksaan. Verifikasi bukti
+                  pembayaran terlebih dahulu.
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}

@@ -184,15 +184,15 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                     <p className="text-meta text-ink-soft">{ASAL_PEMBATAL[refund.dibatalkanOleh]}</p>
                     {!refund.danaTerverifikasi && refund.status !== "SELESAI" ? (
                       <p className="text-meta font-semibold text-amber-800">
-                        Bukti transfer belum diverifikasi — cocokkan mutasi bank sebelum
-                        mentransfer balik.
+                        Bukti transfer belum diverifikasi: cocokkan mutasi bank dan konfirmasi dana
+                        masuk sebelum mentransfer balik.
                       </p>
                     ) : null}
                     {!refund.nomorRekening && refund.status !== "SELESAI" ? (
                       <p className="text-meta font-semibold text-amber-800">
                         Rekening belum diklaim pelanggan
                         {hariSejak(refund.dicatatPada) >= 3
-                          ? ` — sudah ${hariSejak(refund.dicatatPada)} hari, hubungi pelanggan.`
+                          ? `, sudah ${hariSejak(refund.dicatatPada)} hari. Hubungi pelanggan.`
                           : "."}
                       </p>
                     ) : null}
@@ -276,17 +276,21 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
                         <button
                           type="button"
-                          disabled={sedangSimpan === refund.id}
+                          disabled={sedangSimpan === refund.id || !refund.danaTerverifikasi}
                           onClick={() => kirim(refund)}
-                          className="rounded-sm border border-rule bg-surface px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas disabled:opacity-60"
+                          className="rounded-sm border border-rule bg-surface px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           Simpan data rekening
                         </button>
                         <button
                           type="button"
-                          disabled={sedangSimpan === refund.id || refund.status === "SELESAI"}
+                          disabled={
+                            sedangSimpan === refund.id ||
+                            refund.status === "SELESAI" ||
+                            !refund.danaTerverifikasi
+                          }
                           onClick={() => kirim(refund, "SELESAI")}
-                          className="rounded-sm bg-ink px-3 py-1.5 text-meta font-semibold text-surface hover:opacity-90 disabled:opacity-50"
+                          className="rounded-sm bg-ink px-3 py-1.5 text-meta font-semibold text-surface hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Tandai sudah ditransfer
                         </button>
@@ -329,8 +333,9 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                         ) : null}
                         <button
                           type="button"
+                          disabled={!refund.danaTerverifikasi && refund.status !== "SELESAI"}
                           onClick={() => bukaForm(refund)}
-                          className="rounded-sm border border-rule bg-surface px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas"
+                          className="rounded-sm border border-rule bg-surface px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {refund.status === "SELESAI" ? "Lihat / ubah catatan" : "Proses pengembalian"}
                         </button>
