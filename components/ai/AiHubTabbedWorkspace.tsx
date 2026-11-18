@@ -36,6 +36,7 @@ export function AiHubTabbedWorkspace({
   categories = [],
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("telemetry");
+  const [liveActiveDocCount, setLiveActiveDocCount] = useState(activeDocCount);
 
   return (
     <div>
@@ -67,7 +68,7 @@ export function AiHubTabbedWorkspace({
             <span className="h-2 w-2 rounded-full bg-gold" />
             Refrensi Dokumen (RAG)
             <span className="rounded-full bg-rule px-1.5 py-0.2 text-micro font-bold text-ink-soft">
-              {activeDocCount}
+              {liveActiveDocCount}
             </span>
           </button>
 
@@ -111,11 +112,15 @@ export function AiHubTabbedWorkspace({
         </div>
 
         <div className={activeTab === "rag" ? "space-y-6" : "hidden"}>
-          <KnowledgeBaseManager initialDocuments={documents} initialCategories={categories} />
+          <KnowledgeBaseManager
+            initialDocuments={documents}
+            initialCategories={categories}
+            onActiveCountChange={setLiveActiveDocCount}
+          />
         </div>
 
         <div className={activeTab === "sandbox" ? "space-y-6" : "hidden"}>
-          <SystemPromptDrawer initialConfig={config} activeDocCount={activeDocCount} />
+          <SystemPromptDrawer initialConfig={config} activeDocCount={liveActiveDocCount} />
           <AiChatSandbox
             initialTemperature={config.temperature}
             initialMaxTokens={config.maxTokens}

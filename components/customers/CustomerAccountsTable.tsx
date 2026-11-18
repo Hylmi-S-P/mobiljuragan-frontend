@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/useToast";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -8,7 +9,9 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import {
   correctCustomerNameAction,
+  getCustomerDetailAction,
   revokeCustomerSessionsAction,
+  setCustomerActiveAction,
   unlockCustomerAction,
 } from "@/app/actions";
 import { formatDateTimeWit } from "@/lib/format";
@@ -40,13 +43,26 @@ export function CustomerAccountsTable({
   initialItems: CustomerAccount[];
   initialTotal: number;
 }) {
+  const router = useRouter();
   const { show, node } = useToast();
-  const [items] = useState(initialItems);
+  const items = initialItems;
   const [filter, setFilter] = useState<"semua" | "curiga" | "tanpaSandi">("semua");
   const [koreksiUntuk, setKoreksiUntuk] = useState<CustomerAccount | null>(null);
   const [detail, setDetail] = useState<{ user: CustomerAccount; riwayat: IdentityAuditItem[] } | null>(
     null,
   );
+  const [loadingRiwayatId, setLoadingRiwayatId] = useState<string | null>(null);
+
+  async function bukaRiwayatIdentitas(item: CustomerAccount) {
+    setLoadingRiwayatId(item.id);
+    const res = await getCustomerDetailAction(item.id);
+    setLoadingRiwayatId(null);
+    if (res.success) {
+      setDetail({ user: res.user, riwayat: res.riwayat });
+    } else {
+      show(res.message || "Gagal memuat riwayat identitas.", "error");
+    }
+  }
 
   const terfilter = items.filter((item) => {
     if (filter === "curiga") return item.perluDiperiksa;
@@ -110,7 +126,14 @@ export function CustomerAccountsTable({
                   {terfilter.map((item) => (
                     <tr key={item.id} className="border-b border-rule/60 align-top">
                       <td className="py-2.5 pr-3">
-                        <div className="font-medium text-ink">{item.fullName}</div>
+                        <div className="flex items-center gap-1.5 font-medium text-ink">
+                          <span>{item.fullName}</span>
+                          {!item.isActive ? (
+                            <span className="rounded-xs bg-danger/10 px-1.5 py-0.5 text-[10px] font-semibold text-danger">
+                              Nonaktif
+                            </span>
+                          ) : null}
+                        </div>
                         <div className="text-micro text-ink-soft">{item.phoneNumber}</div>
                         {item.perluDiperiksa ? (
                           <div className="mt-1 inline-flex items-center gap-1 rounded-xs bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
@@ -125,7 +148,9 @@ export function CustomerAccountsTable({
                           <span className="text-ink-soft">Belum</span>
                         )}
                         {item.lockedUntil ? (
-                          <div className="text-micro text-danger">Terkunci s.d. {formatDateTimeWit(item.lockedUntil)}</div>
+                          <div className="text-micro text-danger">
+                            Terkunci s.d. {formatDateTimeWit(item.lockedUntil)}
+                          </div>
                         ) : null}
                       </td>
                       <td className="py-2.5 pr-3">
@@ -143,6 +168,14 @@ export function CustomerAccountsTable({
                         <div className="flex flex-wrap items-center justify-end gap-1.5">
                           <button
                             type="button"
+                            disabled={loadingRiwayatId === item.id}
+                            onClick={() => bukaRiwayatIdentitas(item)}
+                            className="rounded-sm border border-rule px-2 py-1 text-micro font-medium text-ink hover:bg-canvas disabled:opacity-50"
+                          >
+                            {loadingRiwayatId === item.id ? "Memuat..." : "Riwayat"}
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setKoreksiUntuk(item)}
                             className="rounded-sm border border-rule px-2 py-1 text-micro font-medium text-ink hover:bg-canvas"
                           >
@@ -153,7 +186,10 @@ export function CustomerAccountsTable({
                             action={unlockCustomerAction}
                             label="Buka kunci"
                             pesanSukses="Penguncian dibuka."
-                            onDone={show}
+                            onDone={(msg, jenis) => {
+                              show(msg, jenis);
+                              if (jenis !== "error") router.refresh();
+                            }}
                             nonaktif={!item.lockedUntil && item.failedLoginAttempts === 0}
                           />
                           <AksiKecil
@@ -161,7 +197,23 @@ export function CustomerAccountsTable({
                             action={revokeCustomerSessionsAction}
                             label="Cabut sesi"
                             pesanSukses="Sesi dicabut."
-                            onDone={show}
+                            onDone={(msg, jenis) => {
+                              show(msg, jenis);
+                              if (jenis !== "error") router.refresh();
+                            }}
+                          />
+                          <AksiKecil
+                            id={item.id}
+                            extraFields={{ isActive: String(!item.isActive) }}
+                            action={setCustomerActiveAction}
+                            label={item.isActive ? "Nonaktifkan" : "Aktifkan"}
+                            pesanSukses={
+                              item.isActive ? "Akun dinonaktifkan." : "Akun diaktifkan kembali."
+                            }
+                            onDone={(msg, jenis) => {
+                              show(msg, jenis);
+                              if (jenis !== "error") router.refresh();
+                            }}
                           />
                         </div>
                       </td>
@@ -180,7 +232,7 @@ export function CustomerAccountsTable({
         title="Koreksi Nama Pelanggan"
         description={
           koreksiUntuk
-            ? `${koreksiUntuk.phoneNumber} — saat ini "${koreksiUntuk.fullName}"`
+            ? `${koreksiUntuk.phoneNumber} · saat ini "${koreksiUntuk.fullName}"`
             : undefined
         }
       >
@@ -190,9 +242,10 @@ export function CustomerAccountsTable({
             onSelesai={(pesan) => {
               setKoreksiUntuk(null);
               show(pesan);
+              router.refresh();
             }}
             onGagal={(pesan) => show(pesan, "error")}
-            onRiwayat={setDetail}
+            onBukaRiwayat={() => bukaRiwayatIdentitas(koreksiUntuk)}
           />
         ) : null}
       </Modal>
@@ -212,6 +265,7 @@ export function CustomerAccountsTable({
 /** Tombol aksi yang memakai server action dengan konfirmasi sederhana. */
 function AksiKecil({
   id,
+  extraFields,
   action,
   label,
   pesanSukses,
@@ -219,6 +273,7 @@ function AksiKecil({
   nonaktif = false,
 }: {
   id: string;
+  extraFields?: Record<string, string>;
   action: (
     state: ActionState | null,
     formData: FormData,
@@ -238,9 +293,17 @@ function AksiKecil({
         setPending(true);
         const formData = new FormData();
         formData.set("id", id);
+        if (extraFields) {
+          for (const [k, v] of Object.entries(extraFields)) {
+            formData.set(k, v);
+          }
+        }
         const hasil = await action(null, formData);
         setPending(false);
-        onDone(hasil.success ? hasil.message || pesanSukses : hasil.message || "Gagal.", hasil.success ? "success" : "error");
+        onDone(
+          hasil.success ? hasil.message || pesanSukses : hasil.message || "Gagal.",
+          hasil.success ? "success" : "error",
+        );
       }}
       className="rounded-sm border border-rule px-2 py-1 text-micro font-medium text-ink hover:bg-canvas disabled:opacity-40"
     >
@@ -253,20 +316,23 @@ function FormKoreksi({
   item,
   onSelesai,
   onGagal,
-  onRiwayat,
+  onBukaRiwayat,
 }: {
   item: CustomerAccount;
   onSelesai: (pesan: string) => void;
   onGagal: (pesan: string) => void;
-  onRiwayat: (data: { user: CustomerAccount; riwayat: IdentityAuditItem[] }) => void;
+  onBukaRiwayat: () => void;
 }) {
   const [state, formAction, pending] = useActionState(correctCustomerNameAction, null);
 
-  if (state?.success && state.message) {
-    onSelesai(state.message);
-  } else if (state && !state.success && state.message) {
-    onGagal(state.message);
-  }
+  useEffect(() => {
+    if (!state) return;
+    if (state.success && state.message) {
+      onSelesai(state.message);
+    } else if (!state.success && state.message) {
+      onGagal(state.message);
+    }
+  }, [state, onSelesai, onGagal]);
 
   return (
     <form action={formAction} className="space-y-3.5">
@@ -287,8 +353,8 @@ function FormKoreksi({
           name="fullName"
           defaultValue={item.fullName}
           className="mt-1 w-full rounded-sm border border-rule-strong bg-surface p-2.5 text-body text-ink focus:border-navy focus:outline-none"
-        maxLength={100}
-          />
+          maxLength={100}
+        />
         {state?.errors?.fullName ? (
           <p className="mt-1 text-micro text-danger">{state.errors.fullName}</p>
         ) : null}
@@ -304,8 +370,8 @@ function FormKoreksi({
           rows={3}
           placeholder="Contoh: nama dipulihkan dari e-KTP pada booking MJ-20261027-UOBB; nama sebelumnya terisi otomatis oleh APK lama."
           className="mt-1 w-full rounded-sm border border-rule-strong bg-surface p-2.5 text-meta text-ink focus:border-navy focus:outline-none"
-        maxLength={500}
-          />
+          maxLength={500}
+        />
         {state?.errors?.reason ? (
           <p className="mt-1 text-micro text-danger">{state.errors.reason}</p>
         ) : null}
@@ -314,7 +380,7 @@ function FormKoreksi({
       <div className="flex items-center justify-between gap-2 pt-1">
         <button
           type="button"
-          onClick={() => onRiwayat({ user: item, riwayat: [] })}
+          onClick={onBukaRiwayat}
           className="text-micro font-medium text-navy hover:underline"
         >
           Lihat riwayat identitas

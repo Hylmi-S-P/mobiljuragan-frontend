@@ -1720,6 +1720,32 @@ export async function apiCorrectCustomerName(
   return json.data as { message: string };
 }
 
+/** Mengubah status aktif/nonaktif akun pelanggan. */
+export async function apiSetCustomerActive(
+  id: string,
+  isActive: boolean,
+  reason?: string,
+): Promise<{ message: string }> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}/admin/customers/${encodeURIComponent(id)}/active`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ isActive, ...(reason ? { reason } : {}) }),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "SET_CUSTOMER_ACTIVE_FAILED",
+      json?.error?.message || "Gagal mengubah status aktif pelanggan.",
+    );
+  }
+  return json.data as { message: string };
+}
+
 /** Membuka penguncian akun pelanggan. */
 export async function apiUnlockCustomer(id: string, reason?: string): Promise<{ message: string }> {
   const token = await getSessionToken();

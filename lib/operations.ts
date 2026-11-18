@@ -775,11 +775,12 @@ export type AiConfigData = {
   config: {
     id: string;
     gatewayUrl: string;
-    apiKey: string | null;
+    apiKey?: string | null;
+    hasApiKey?: boolean;
     activeModel: string;
     fallbackModel: string;
     fallbackGatewayUrl: string | null;
-    fallbackApiKey: string | null;
+    fallbackApiKey?: string | null;
     autoFallbackEnabled: boolean;
     proxyUrl: string | null;
     healthStatus: string;

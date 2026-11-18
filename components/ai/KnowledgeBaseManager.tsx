@@ -40,9 +40,14 @@ type Props = {
      pilihan hanya bisa diubah dengan mengubah kode, sehingga admin tidak punya
      cara menambah kategori sendiri. */
   initialCategories?: KnowledgeCategory[];
+  onActiveCountChange?: (count: number) => void;
 };
 
-export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] }: Props) {
+export function KnowledgeBaseManager({
+  initialDocuments,
+  initialCategories = [],
+  onActiveCountChange,
+}: Props) {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>(initialDocuments);
   const [categories, setCategories] = useState<KnowledgeCategory[]>(initialCategories);
   const [isPending, startTransition] = useTransition();
@@ -62,7 +67,8 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
   const [editingDoc, setEditingDoc] = useState<KnowledgeDocument | null>(null);
 
   const [formTitle, setFormTitle] = useState("");
-  const [formCategory, setFormCategory] = useState("SOP");
+  const defaultCategory = initialCategories[0]?.slug || "SOP";
+  const [formCategory, setFormCategory] = useState(defaultCategory);
   const [formContent, setFormContent] = useState("");
   const [formActive, setFormActive] = useState(true);
 
@@ -79,7 +85,7 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
   const openCreateModal = () => {
     setEditingDoc(null);
     setFormTitle("");
-    setFormCategory("SOP");
+    setFormCategory(categories[0]?.slug || "SOP");
     setFormContent("");
     setFormActive(true);
     setIsExtracting(false);
@@ -143,9 +149,13 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
       const nextActive = !doc.isActive;
       const res = await updateKnowledgeDocumentAction(doc.id, { isActive: nextActive });
       if (res.success) {
-        setDocuments((prev) =>
-          prev.map((d) => (d.id === doc.id ? { ...d, isActive: nextActive } : d)),
-        );
+        setDocuments((prev) => {
+          const next = prev.map((d) => (d.id === doc.id ? { ...d, isActive: nextActive } : d));
+          onActiveCountChange?.(next.filter((d) => d.isActive).length);
+          return next;
+        });
+      } else {
+        show(res.message || "Gagal memperbarui status dokumen.", "error");
       }
     });
   };
@@ -163,22 +173,15 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
         if (!formActive) formData.append("isActive", "off");
 
         const res = await createKnowledgeDocumentAction(null, formData);
-        if (res.success) {
+        if (res.success && res.data) {
+          const createdDoc = res.data;
           show("Dokumen pengetahuan berhasil ditambahkan.", "success");
           setModalMode(null);
-          // Tambahkan optimis
-          setDocuments((prev) => [
-            {
-              id: "temp-" + Date.now(),
-              title: formTitle,
-              category: formCategory,
-              content: formContent,
-              isActive: formActive,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            ...prev,
-          ]);
+          setDocuments((prev) => {
+            const next = [createdDoc, ...prev];
+            onActiveCountChange?.(next.filter((d) => d.isActive).length);
+            return next;
+          });
         } else {
           show(res.message || "Gagal menyimpan dokumen.", "error");
         }
@@ -192,8 +195,8 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
         if (res.success) {
           show("Dokumen pengetahuan berhasil diperbarui.", "success");
           setModalMode(null);
-          setDocuments((prev) =>
-            prev.map((d) =>
+          setDocuments((prev) => {
+            const next = prev.map((d) =>
               d.id === editingDoc.id
                 ? {
                     ...d,
@@ -203,8 +206,10 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
                     isActive: formActive,
                   }
                 : d,
-            ),
-          );
+            );
+            onActiveCountChange?.(next.filter((d) => d.isActive).length);
+            return next;
+          });
         } else {
           show(res.message || "Gagal memperbarui dokumen.", "error");
         }
@@ -217,7 +222,11 @@ export function KnowledgeBaseManager({ initialDocuments, initialCategories = [] 
     startTransition(async () => {
       const res = await deleteKnowledgeDocumentAction(deletingDocId);
       if (res.success) {
-        setDocuments((prev) => prev.filter((d) => d.id !== deletingDocId));
+        setDocuments((prev) => {
+          const next = prev.filter((d) => d.id !== deletingDocId);
+          onActiveCountChange?.(next.filter((d) => d.isActive).length);
+          return next;
+        });
         setDeletingDocId(null);
         show("Dokumen pengetahuan berhasil dihapus.", "success");
       } else {

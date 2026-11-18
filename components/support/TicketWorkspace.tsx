@@ -1,7 +1,8 @@
 "use client";
 
 import { useToast } from "@/components/ui/useToast";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { API_BASE_URL, getClientToken } from "@/lib/axios";
 
 import {
   loadTicketMessagesAction,
@@ -50,6 +51,101 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
   const [isSending, startTransition] = useTransition();
   const [isLoadingMessages, startLoadMessages] = useTransition();
   const [isTakingOver, startTakeOver] = useTransition();
+
+  useEffect(() => {
+    if (!activeId) return;
+
+    const controller = new AbortController();
+    const token = getClientToken();
+    const ticketId = activeId;
+
+    async function connectSse() {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/events`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "text/event-stream",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            signal: controller.signal,
+          },
+        );
+
+        if (!res.ok || !res.body) return;
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while (!controller.signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() ?? "";
+
+          for (const block of blocks) {
+            const lines = block.split("\n");
+            let eventType = "";
+            const dataLines: string[] = [];
+
+            for (const line of lines) {
+              if (line.startsWith(":")) continue;
+              if (line.startsWith("event:")) {
+                eventType = line.slice(6).trim();
+              } else if (line.startsWith("data:")) {
+                dataLines.push(line.slice(5).trim());
+              }
+            }
+
+            if (dataLines.length === 0) continue;
+            let payload: Record<string, unknown> = {};
+            try {
+              payload = JSON.parse(dataLines.join("\n")) as Record<string, unknown>;
+            } catch {
+              continue;
+            }
+
+            const jenis = (payload.jenis as string) || eventType;
+            if (jenis === "pesan" || jenis === "handover" || jenis === "status") {
+              const hasil = await loadTicketMessagesAction(ticketId);
+              if (!controller.signal.aborted && activeIdRef.current === ticketId && hasil.success) {
+                setMessages(hasil.messages);
+                setTickets((current) =>
+                  current.map((t) =>
+                    t.id === ticketId
+                      ? {
+                          ...t,
+                          ...(hasil.handledBy ? { handledBy: hasil.handledBy } : {}),
+                          ...(jenis === "status" &&
+                          (payload.status === "CLOSED" || payload.status === "RESOLVED")
+                            ? {
+                                status: "selesai",
+                                rawStatus: payload.status as "CLOSED" | "RESOLVED",
+                              }
+                            : {}),
+                        }
+                      : t,
+                  ),
+                );
+              }
+            }
+          }
+        }
+      } catch {
+        // Koneksi SSE ditutup saat berpindah tiket atau komponen dilepas.
+      }
+    }
+
+    void connectSse();
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeId]);
 
   {
     /*

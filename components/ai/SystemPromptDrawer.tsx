@@ -31,13 +31,8 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
   const handleSave = () => {
     dismiss();
     const formData = new FormData();
-    formData.append("gatewayUrl", initialConfig.gatewayUrl);
-    formData.append("apiKey", initialConfig.apiKey || "");
-    formData.append("activeModel", initialConfig.activeModel);
     formData.append("systemPrompt", systemPrompt);
-    formData.append("temperature", String(initialConfig.temperature));
-    formData.append("maxTokens", String(initialConfig.maxTokens));
-    if (enableRag) formData.append("enableRag", "on");
+    formData.append("enableRag", enableRag ? "on" : "off");
 
     startTransition(async () => {
       const res = await updateAiConfigAction(null, formData);

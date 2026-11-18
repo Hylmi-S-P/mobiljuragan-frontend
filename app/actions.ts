@@ -9,8 +9,10 @@ import {
   apiUpdateAdminAccount,
   apiDeleteAdminAccount,
   apiCorrectCustomerName,
+  apiSetCustomerActive,
   apiUnlockCustomer,
   apiRevokeCustomerSessions,
+  getCustomerDetail,
   apiReplyToTicket,
   apiTakeOverTicket,
   apiUpdateBookingStatus,
@@ -61,6 +63,7 @@ import {
   getTicketMessages,
   getFinanceSummary,
   type FinanceSummary,
+  type KnowledgeDocument,
   type TicketMessageView,
 } from "@/lib/operations";
 import { PILIHAN_BULAN_OMZET, type JumlahBulanOmzet } from "@/lib/financePeriod";
@@ -648,34 +651,56 @@ export async function updateAiConfigAction(
   _prevState: ActionState | null,
   formData: FormData,
 ): Promise<ActionState> {
-  const gatewayUrl = (formData.get("gatewayUrl") as string)?.trim();
-  const apiKey = (formData.get("apiKey") as string)?.trim();
-  const activeModel = (formData.get("activeModel") as string)?.trim();
-  const fallbackModel = (formData.get("fallbackModel") as string)?.trim();
-  const fallbackGatewayUrl = (formData.get("fallbackGatewayUrl") as string)?.trim();
-  const fallbackApiKey = (formData.get("fallbackApiKey") as string)?.trim();
-  const autoFallbackEnabled = formData.get("autoFallbackEnabled") === "on";
-  const proxyUrl = (formData.get("proxyUrl") as string)?.trim();
-  const systemPrompt = (formData.get("systemPrompt") as string)?.trim();
-  const temperature = parseFloat((formData.get("temperature") as string) || "0.7");
-  const maxTokens = parseInt((formData.get("maxTokens") as string) || "1000", 10);
-  const enableRag = formData.get("enableRag") === "on";
+  const payload: Parameters<typeof apiUpdateAiConfig>[0] = {};
+
+  if (formData.has("gatewayUrl")) {
+    const v = String(formData.get("gatewayUrl") ?? "").trim();
+    if (v) payload.gatewayUrl = v;
+  }
+  if (formData.has("apiKey")) {
+    const v = String(formData.get("apiKey") ?? "").trim();
+    if (v) payload.apiKey = v;
+  }
+  if (formData.has("activeModel")) {
+    const v = String(formData.get("activeModel") ?? "").trim();
+    if (v) payload.activeModel = v;
+  }
+  if (formData.has("fallbackModel")) {
+    const v = String(formData.get("fallbackModel") ?? "").trim();
+    if (v) payload.fallbackModel = v;
+  }
+  if (formData.has("fallbackGatewayUrl")) {
+    const v = String(formData.get("fallbackGatewayUrl") ?? "").trim();
+    if (v) payload.fallbackGatewayUrl = v;
+  }
+  if (formData.has("fallbackApiKey")) {
+    const v = String(formData.get("fallbackApiKey") ?? "").trim();
+    if (v) payload.fallbackApiKey = v;
+  }
+  if (formData.has("autoFallbackEnabled")) {
+    payload.autoFallbackEnabled = formData.get("autoFallbackEnabled") === "on";
+  }
+  if (formData.has("proxyUrl")) {
+    payload.proxyUrl = String(formData.get("proxyUrl") ?? "").trim();
+  }
+  if (formData.has("systemPrompt")) {
+    payload.systemPrompt = String(formData.get("systemPrompt") ?? "").trim();
+  }
+  if (formData.has("temperature")) {
+    const t = parseFloat(String(formData.get("temperature") ?? ""));
+    if (!Number.isNaN(t)) payload.temperature = t;
+  }
+  if (formData.has("maxTokens")) {
+    const m = parseInt(String(formData.get("maxTokens") ?? ""), 10);
+    if (!Number.isNaN(m)) payload.maxTokens = m;
+  }
+  if (formData.has("enableRag")) {
+    const v = formData.get("enableRag");
+    payload.enableRag = v === "on" || v === "true";
+  }
 
   try {
-    await apiUpdateAiConfig({
-      gatewayUrl,
-      apiKey,
-      activeModel,
-      fallbackModel,
-      fallbackGatewayUrl,
-      fallbackApiKey,
-      autoFallbackEnabled,
-      proxyUrl,
-      systemPrompt,
-      temperature,
-      maxTokens,
-      enableRag,
-    });
+    await apiUpdateAiConfig(payload);
   } catch (err) {
     if (err instanceof ApiError) {
       return { success: false, message: err.message };
@@ -710,7 +735,7 @@ export async function checkAiGatewayHealthAction() {
 export async function createKnowledgeDocumentAction(
   _prevState: ActionState | null,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<ActionState & { data?: KnowledgeDocument }> {
   const title = (formData.get("title") as string)?.trim();
   const category = (formData.get("category") as string)?.trim() || "SOP";
   const content = (formData.get("content") as string)?.trim();
@@ -720,8 +745,14 @@ export async function createKnowledgeDocumentAction(
     return { success: false, message: "Judul dan isi dokumen pengetahuan wajib diisi." };
   }
 
+  let createdDoc: KnowledgeDocument;
   try {
-    await apiCreateKnowledgeDocument({ title, category, content, isActive });
+    createdDoc = (await apiCreateKnowledgeDocument({
+      title,
+      category,
+      content,
+      isActive,
+    })) as KnowledgeDocument;
   } catch (err) {
     if (err instanceof ApiError) {
       return { success: false, message: err.message };
@@ -730,7 +761,11 @@ export async function createKnowledgeDocumentAction(
   }
 
   revalidatePath("/admin/ai-hub");
-  return { success: true, message: "Dokumen pengetahuan berhasil ditambahkan." };
+  return {
+    success: true,
+    message: "Dokumen pengetahuan berhasil ditambahkan.",
+    data: createdDoc,
+  };
 }
 
 /**
@@ -1544,6 +1579,48 @@ export async function revokeCustomerSessionsAction(
   } catch (err) {
     if (err instanceof ApiError) return { success: false, message: err.message };
     return { success: false, message: "Gagal mencabut sesi pelanggan." };
+  }
+}
+
+/** Mengambil detail akun pelanggan beserta riwayat identitasnya. */
+export async function getCustomerDetailAction(id: string) {
+  if (!id) {
+    return { success: false as const, message: "Akun tidak dikenali." };
+  }
+  try {
+    const detail = await getCustomerDetail(id);
+    return {
+      success: true as const,
+      user: detail.user,
+      riwayat: detail.riwayatIdentitas ?? [],
+    };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false as const, message: err.message };
+    }
+    return { success: false as const, message: "Gagal memuat riwayat identitas." };
+  }
+}
+
+/** Mengaktifkan atau menonaktifkan akun pelanggan. */
+export async function setCustomerActiveAction(
+  _prevState: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = (formData.get("id") as string) || "";
+  const isActive = formData.get("isActive") === "true";
+  const reason = (formData.get("reason") as string)?.trim() || undefined;
+
+  if (!id) return { success: false, message: "Akun tidak dikenali." };
+
+  try {
+    const hasil = await apiSetCustomerActive(id, isActive, reason);
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${id}`);
+    return { success: true, message: hasil.message };
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal mengubah status aktif akun." };
   }
 }
 
