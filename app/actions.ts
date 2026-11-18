@@ -1025,10 +1025,13 @@ export async function saveVehicleAction(
 ): Promise<ActionState & { data?: { id?: string } }> {
   try {
     const isNew = mode ? mode === "create" : vehicle.id.startsWith("v-") || !vehicle.id;
-    /* Unit dalam masa pemeriksaan tidak boleh diubah statusnya dari form ini:
-       statusnya hanya berubah lewat "Selesai Inspeksi". Kalau dikirim, backend
-       menolaknya 409 dan seluruh penyimpanan ikut gagal. */
-    const sedangPemeriksaan = vehicle.status === "pemeriksaan";
+    /* Unit dalam masa pemeriksaan yang tetap berstatus "pemeriksaan" (atau "disewa")
+       tidak mengirim perubahan operationalStatus. Namun bila staf mengubah statusnya
+       dari "pemeriksaan" ke "servis" (MAINTENANCE) atau "tidak_tersedia" (UNAVAILABLE)
+       karena ditemukan kerusakan saat inspeksi, operationalStatus dikirim agar masa
+       IN_SERVICE ditutup di backend. */
+    const sedangPemeriksaanAtauDisewa =
+      vehicle.status === "pemeriksaan" || vehicle.status === "disewa";
     const operationalStatus: NonNullable<VehiclePayload["operationalStatus"]> =
       vehicle.status === "tersedia"
         ? "AVAILABLE"
@@ -1050,7 +1053,7 @@ export async function saveVehicleAction(
       /* Foto ikut dikirim. Sebelumnya hanya menjadi pratinjau di layar lalu
            hilang saat modal ditutup, sehingga unit tidak pernah punya foto. */
       imageUrl: vehicle.imageUrl ?? undefined,
-      ...(sedangPemeriksaan ? {} : { operationalStatus }),
+      ...(sedangPemeriksaanAtauDisewa ? {} : { operationalStatus }),
     };
 
     let result;

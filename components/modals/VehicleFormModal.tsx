@@ -55,6 +55,13 @@ export function VehicleFormModal({
   });
   const [seatsInput, setSeatsInput] = useState<string>(String(vehicle?.seats ?? 7));
   const [status, setStatus] = useState<VehicleStatus>(vehicle?.status ?? "tersedia");
+  const sedangPemeriksaanAwal = vehicle?.status === "pemeriksaan";
+  const opsiStatusTampil: { value: VehicleStatus; label: string }[] = sedangPemeriksaanAwal
+    ? [
+        { value: "pemeriksaan", label: "Pemeriksaan" },
+        ...STATUS_OPTIONS,
+      ]
+    : STATUS_OPTIONS;
   /*
    * Mode rental yang tercentang.
    *
@@ -379,19 +386,26 @@ export function VehicleFormModal({
         <fieldset>
           <legend className="text-meta font-medium text-ink">Status operasional armada</legend>
           <div className="mt-1.5 flex flex-wrap gap-2">
-            {STATUS_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                variant={status === option.value ? "confirm" : "outline"}
-                aria-pressed={status === option.value}
-                onClick={() => setStatus(option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
+            {opsiStatusTampil.map((option) => {
+              const dikunciKeTersedia =
+                sedangPemeriksaanAwal && option.value === "tersedia";
+              return (
+                <Button
+                  key={option.value}
+                  variant={status === option.value ? "confirm" : "outline"}
+                  aria-pressed={status === option.value}
+                  disabled={dikunciKeTersedia}
+                  onClick={() => setStatus(option.value)}
+                >
+                  {option.label}
+                </Button>
+              );
+            })}
           </div>
           <p className="mt-1.5 text-micro text-ink-soft">
-            Status Disewa diisi otomatis dari pesanan aktif, jadi tidak bisa dipilih manual di sini.
+            {sedangPemeriksaanAwal
+              ? 'Unit sedang dalam masa pemeriksaan pasca-sewa. Gunakan tombol "Selesai Inspeksi" pada kartu katalog untuk mengembalikan ke Tersedia, atau pilih Servis / Tidak Tersedia di sini bila ditemukan kerusakan.'
+              : "Status Disewa dan Pemeriksaan diisi otomatis dari siklus pesanan aktif."}
           </p>
         </fieldset>
 
