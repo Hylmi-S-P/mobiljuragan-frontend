@@ -234,9 +234,7 @@ export type FaqItem = {
   updatedAt?: string;
 };
 
-// ==========================================
 // Modul Pembayaran (Payment Lifecycle)
-// ==========================================
 
 export type PaymentStatus =
   | "UNPAID"

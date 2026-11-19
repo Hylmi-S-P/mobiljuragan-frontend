@@ -237,7 +237,7 @@ export function KnowledgeBaseManager({
 
   const activeCount = documents.filter((d) => d.isActive).length;
 
-  /* ---- Pengelola kategori ---- */
+  // Pengelola kategori
 
   const muatKategori = async () => {
     /* Daftar diambil ulang setelah perubahan supaya nomor urut dan jumlah
@@ -362,7 +362,6 @@ export function KnowledgeBaseManager({
                   ? categories[indeksKategori].label
                   : doc.category || "Tanpa kategori",
             };
-                /* ---- Pengelola kategori ---- */
   return (
                   <TableRow key={doc.id}>
                     <TableCell>

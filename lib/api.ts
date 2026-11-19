@@ -915,9 +915,7 @@ export async function apiTestAiChat(
   };
 }
 
-// ==========================================
 // Manajemen FAQ (Admin & Publik)
-// ==========================================
 
 export async function getAdminFaqs(params?: {
   category?: string;
@@ -1066,9 +1064,7 @@ export async function apiToggleFaqActive(id: string, isActive?: boolean): Promis
   return json.data as FaqItem;
 }
 
-// ==========================================
 // Verifikasi Pembayaran (Admin Payment Queue)
-// ==========================================
 
 export async function getAdminPayments(params?: {
   status?: string;
@@ -1456,9 +1452,7 @@ export async function apiAdminVerifyBookingDocuments(
   return (json?.data?.document ?? json?.data) as BookingDocument;
 }
 
-// ==========================================
 // Template Dokumen Resmi (Form Kesanggupan)
-// ==========================================
 
 /**
  * Satu versi dokumen yang tersimpan.
@@ -1596,9 +1590,7 @@ export async function apiAktifkanVersi(id: string): Promise<VersiTemplate> {
   return json.data as VersiTemplate;
 }
 
-// ==========================================
 // Akun Pelanggan & Jejak Identitas
-// ==========================================
 
 export type CustomerAccount = {
   id: string;
@@ -1796,9 +1788,7 @@ export async function apiRevokeCustomerSessions(
   return json.data as { message: string };
 }
 
-/* ===========================================================================
-   Pengembalian dana (refund)
-   =========================================================================== */
+// Pengembalian dana (refund)
 
 export type ApiRefundListResponse = {
   items: Array<{

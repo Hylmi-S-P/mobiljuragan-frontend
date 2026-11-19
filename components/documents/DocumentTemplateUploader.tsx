@@ -103,7 +103,7 @@ export function DocumentTemplateUploader({ aktif, daftarVersi, tautanBerkasAktif
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
-          {/* -------------------------------------------------- DOKUMEN AKTIF */}
+          {/* Dokumen aktif */}
           <section className="rounded-lg border border-rule bg-surface p-4">
             <h2 className="text-subtitle font-semibold text-ink">Dokumen yang Sedang Dipakai</h2>
             <p className="mt-1 text-micro text-ink-soft">
@@ -140,7 +140,7 @@ export function DocumentTemplateUploader({ aktif, daftarVersi, tautanBerkasAktif
             )}
           </section>
 
-          {/* -------------------------------------------------- UNGGAH */}
+          {/* Unggah dokumen baru */}
           <section className="rounded-lg border border-rule bg-surface p-4">
             <h2 className="text-subtitle font-semibold text-ink">Unggah Dokumen Baru</h2>
             <p className="mt-1 text-micro text-ink-soft">
@@ -196,7 +196,7 @@ export function DocumentTemplateUploader({ aktif, daftarVersi, tautanBerkasAktif
             </div>
           </section>
 
-          {/* -------------------------------------------------- ALUR */}
+          {/* Alur pengisian */}
           <section className="rounded-lg border border-rule bg-surface p-4">
             <h2 className="text-subtitle font-semibold text-ink">Alur di Sisi Pelanggan</h2>
             <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-4 text-meta text-ink-soft">
@@ -208,7 +208,7 @@ export function DocumentTemplateUploader({ aktif, daftarVersi, tautanBerkasAktif
           </section>
         </div>
 
-        {/* -------------------------------------------------- RIWAYAT */}
+        {/* Riwayat versi */}
         <aside className="flex flex-col gap-4">
           <section className="rounded-lg border border-rule bg-surface p-4">
             <h2 className="text-subtitle font-semibold text-ink">Riwayat Versi</h2>

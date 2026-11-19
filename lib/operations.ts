@@ -881,9 +881,7 @@ export async function getAiGatewayLogs(): Promise<AiGatewayLogData> {
   };
 }
 
-/* ==========================================
- * Verifikasi Pembayaran (Admin Payment Queue)
- * ========================================== */
+// Verifikasi Pembayaran (Admin Payment Queue)
 
 export async function getAdminPayments(params?: {
   status?: string;
