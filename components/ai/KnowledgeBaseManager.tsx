@@ -9,6 +9,7 @@ import {
   updateKnowledgeDocumentAction,
   deleteKnowledgeDocumentAction,
   parseKnowledgeFileAction,
+  reindexRagKnowledgeAction,
   getKnowledgeCategoriesAction,
   createKnowledgeCategoryAction,
   updateKnowledgeCategoryAction,
@@ -24,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { IconPlus, IconPencil, IconTrash } from "@/components/ui/icons";
-import type { KnowledgeDocument } from "@/lib/operations";
+import type { AiConfigData, KnowledgeDocument } from "@/lib/operations";
 
 export type KnowledgeCategory = {
   id: string;
@@ -40,16 +41,20 @@ type Props = {
      pilihan hanya bisa diubah dengan mengubah kode, sehingga admin tidak punya
      cara menambah kategori sendiri. */
   initialCategories?: KnowledgeCategory[];
+  initialRagStats?: AiConfigData["stats"];
   onActiveCountChange?: (count: number) => void;
 };
 
 export function KnowledgeBaseManager({
   initialDocuments,
   initialCategories = [],
+  initialRagStats,
   onActiveCountChange,
 }: Props) {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>(initialDocuments);
   const [categories, setCategories] = useState<KnowledgeCategory[]>(initialCategories);
+  const [ragStats, setRagStats] = useState<AiConfigData["stats"] | undefined>(initialRagStats);
+  const [isReindexing, setIsReindexing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   /* Pengelola kategori, dibuka dari tombol di bawah pilihan kategori. */
@@ -237,6 +242,33 @@ export function KnowledgeBaseManager({
 
   const activeCount = documents.filter((d) => d.isActive).length;
 
+  const handleReindexRag = async () => {
+    setIsReindexing(true);
+    try {
+      const res = await reindexRagKnowledgeAction(false);
+      if (res.success && res.data) {
+        const result = res.data;
+        setRagStats((prev) => ({
+          documentCount: prev?.documentCount ?? documents.length,
+          activeDocumentCount: prev?.activeDocumentCount ?? activeCount,
+          faqCount: prev?.faqCount,
+          activeFaqCount: prev?.activeFaqCount,
+          chunkCount: result.chunksTotal,
+          activeChunkCount: result.chunksTotal,
+          embeddedChunkCount: Math.max(0, result.chunksTotal - result.failedEmbeddings),
+        }));
+        show(
+          `Indeks RAG diperbarui: ${result.chunksTotal} chunk (${result.embeddedNow} embedding baru, ${result.reused} digunakan ulang).`,
+          "success",
+        );
+      } else {
+        show(res.message || "Gagal menyinkronkan indeks RAG.", "error");
+      }
+    } finally {
+      setIsReindexing(false);
+    }
+  };
+
   // Pengelola kategori
 
   const muatKategori = async () => {
@@ -313,23 +345,39 @@ export function KnowledgeBaseManager({
   return (
     <div className="rounded-card border border-rule bg-surface p-5 shadow-sm">
       <div className="flex flex-col gap-3 border-b border-rule pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-badge bg-emerald-50 px-2 py-0.5 text-micro font-semibold text-emerald-700 border border-emerald-200">
             {activeCount} Dokumen Aktif
           </span>
+          {ragStats && ragStats.chunkCount !== undefined ? (
+            <span className="rounded-badge border border-rule bg-canvas px-2 py-0.5 text-micro font-medium tabular-nums text-ink-soft">
+              {ragStats.activeChunkCount ?? ragStats.chunkCount} Chunk ({ragStats.embeddedChunkCount ?? 0} vektor)
+            </span>
+          ) : null}
           <p className="text-meta text-ink-soft">
-            SOP, regulasi lepas kunci, rute Merauke, dan kontak darurat yang diinjeksikan ke AI.
+            SOP, regulasi lepas kunci, rute Merauke, dan kontak darurat yang diindeks ke Hybrid RAG.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="inline-flex items-center gap-1.5 rounded-button bg-navy px-3.5 py-2 text-meta font-semibold text-white shadow-sm transition-colors hover:bg-navy-hover"
-        >
-          <IconPlus className="h-4 w-4" />
-          <span>Tambah Dokumen</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleReindexRag}
+            disabled={isReindexing || isPending}
+            className="inline-flex items-center gap-1.5 rounded-button border border-rule bg-canvas px-3 py-2 text-meta font-semibold text-ink transition-colors hover:bg-canvas-subtle disabled:opacity-50"
+          >
+            <span>{isReindexing ? "Menyinkronkan..." : "Sinkronkan Indeks RAG"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-1.5 rounded-button bg-navy px-3.5 py-2 text-meta font-semibold text-white shadow-sm transition-colors hover:bg-navy-hover"
+          >
+            <IconPlus className="h-4 w-4" />
+            <span>Tambah Dokumen</span>
+          </button>
+        </div>
       </div>
 
       {node}
@@ -366,6 +414,11 @@ export function KnowledgeBaseManager({
                   <TableRow key={doc.id}>
                     <TableCell>
                       <span className="block text-body font-semibold text-ink">{doc.title}</span>
+                      {doc.chunkCount !== undefined ? (
+                        <span className="text-micro tabular-nums text-ink-soft">
+                          {doc.chunkCount} chunk ({doc.embeddedChunkCount ?? 0} vektor)
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       {/* Kategori ditampilkan netral tanpa warna. Warna per
@@ -520,7 +573,7 @@ export function KnowledgeBaseManager({
                 <AutoGrowTextarea
                   rows={6}
                   maxHeight={420}
-                  maxLength={3000}
+                  maxLength={15000}
                   value={formContent}
                   onChange={(e) => setFormContent(e.target.value)}
                   placeholder="Tuliskan poin-poin persyaratan, aturan jalan, atau ketentuan operasional di sini..."
@@ -528,7 +581,7 @@ export function KnowledgeBaseManager({
                   className="rounded-button border border-rule p-3 font-mono text-meta text-ink outline-none focus:border-teal focus:ring-1 focus:ring-teal"
                 />
                 <span className="text-right text-micro tabular-nums text-ink-soft">
-                  {formContent.length}/3000
+                  {formContent.length}/15000
                 </span>
               </div>
 

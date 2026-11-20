@@ -13,6 +13,21 @@ type Message = {
   tokensPerSecond?: number;
   tokens?: number | null;
   referencedDocuments?: string[];
+  ragMode?: "HYBRID_VECTOR" | "LEXICAL_FALLBACK" | "NONE";
+  ragChunksUsed?: Array<{
+    id: string;
+    sourceType: string;
+    title: string;
+    category: string;
+    score: number;
+  }>;
+  toolsUsed?: Array<{
+    name: string;
+    ok: boolean;
+    durationMs: number;
+    summary: string;
+  }>;
+  intentGuard?: "PASSED" | "PROMPT_INJECTION" | "ROADSIDE_EMERGENCY";
 };
 
 type Props = {
@@ -92,6 +107,10 @@ export function AiChatSandbox({
           tokensPerSecond: res.data.tokensPerSecond,
           tokens: res.data.tokens,
           referencedDocuments: res.data.referencedDocuments,
+          ragMode: res.data.ragMode,
+          ragChunksUsed: res.data.ragChunksUsed,
+          toolsUsed: res.data.toolsUsed,
+          intentGuard: res.data.intentGuard,
         };
         setMessages((prev) => [...prev, botMsg]);
       } else {
@@ -197,12 +216,36 @@ export function AiChatSandbox({
 
                 <div className="whitespace-pre-line text-sm">{msg.content}</div>
 
-                {/* 4 Metadata Badges: Model, Latency, TPS, Referenced Docs */}
+                {/* Metadata Ringkas: Model, Latency, TPS, RAG Mode, Tools, Guard, Rujukan */}
                 {!isUser && msg.modelUsed ? (
                   <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-rule/60 pt-2 text-[11px] text-ink-soft">
                     <span className="font-mono bg-canvas px-1.5 py-0.5 rounded border border-rule/80">
                       Model: {msg.modelUsed}
                     </span>
+                    {msg.ragMode ? (
+                      <span className="rounded border border-rule/80 bg-canvas px-1.5 py-0.5 font-medium text-ink">
+                        {msg.ragMode === "HYBRID_VECTOR"
+                          ? "Hybrid RAG"
+                          : msg.ragMode === "LEXICAL_FALLBACK"
+                            ? "Lexical BM25"
+                            : "Non-RAG"}
+                      </span>
+                    ) : null}
+                    {msg.intentGuard && msg.intentGuard !== "PASSED" ? (
+                      <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 font-medium text-amber-800">
+                        {msg.intentGuard === "ROADSIDE_EMERGENCY"
+                          ? "Guard: Darurat"
+                          : "Guard: Diblokir"}
+                      </span>
+                    ) : null}
+                    {msg.toolsUsed && msg.toolsUsed.length > 0 ? (
+                      <span
+                        className="rounded border border-navy/20 bg-navy/5 px-1.5 py-0.5 font-medium text-navy"
+                        title={msg.toolsUsed.map((t) => `${t.name} (${t.summary})`).join("; ")}
+                      >
+                        Tool: {msg.toolsUsed.map((t) => t.name).join(", ")}
+                      </span>
+                    ) : null}
                     {msg.latencyMs ? (
                       <span className="tabular-nums">⏱ {msg.latencyMs}ms</span>
                     ) : null}
@@ -251,7 +294,7 @@ export function AiChatSandbox({
       >
         <input
           type="text"
-          maxLength={300}
+          maxLength={500}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Tanyakan hal seputar rental armada, tarif, atau ketentuan rute..."

@@ -97,12 +97,13 @@ export function SystemPromptDrawer({ initialConfig, activeDocCount }: Props) {
         {/* Textarea Persona */}
         <div className="flex flex-col gap-1.5">
           <AutoGrowTextarea
-            maxHeight={420}
+            rows={7}
+            maxHeight={560}
             maxLength={2000}
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             placeholder="Tuliskan persona asisten di sini..."
-            className="rounded-button border border-rule bg-white p-3 font-mono text-meta text-ink outline-none focus:border-teal focus:ring-1 focus:ring-teal"
+            className="min-h-[200px] rounded-button border border-rule bg-white p-3.5 font-mono text-meta leading-relaxed text-ink outline-none focus:border-teal focus:ring-1 focus:ring-teal"
           />
           <div className="flex items-start justify-between gap-3">
             <span className="text-micro text-ink-soft">

@@ -20,6 +20,7 @@ type Props = {
     rawLogs: string[];
   };
   config: AiConfigData["config"];
+  ragStats?: AiConfigData["stats"];
   documents: KnowledgeDocument[];
   activeDocCount: number;
   categories?: KnowledgeCategory[];
@@ -31,6 +32,7 @@ export function AiHubTabbedWorkspace({
   healthData,
   initialLogs,
   config,
+  ragStats,
   documents,
   activeDocCount,
   categories = [],
@@ -115,6 +117,7 @@ export function AiHubTabbedWorkspace({
           <KnowledgeBaseManager
             initialDocuments={documents}
             initialCategories={categories}
+            initialRagStats={ragStats}
             onActiveCountChange={setLiveActiveDocCount}
           />
         </div>
