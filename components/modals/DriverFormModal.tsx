@@ -112,7 +112,7 @@ export function DriverFormModal({ driver, onClose, onSave, onRequestDelete }: Pr
           </label>
           <input
             id={`${fieldId}-label`}
-            maxLength={80}
+            maxLength={60}
             value={label}
             onChange={(event) => setLabel(event.target.value)}
             aria-invalid={Boolean(errors.label)}

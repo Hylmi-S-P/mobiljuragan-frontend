@@ -30,6 +30,7 @@ type SidebarProps = {
   /* Rincian angka: berapa yang benar-benar baru, berapa yang menunggu balasan
      admin setelah pelanggan membalas. Dipakai badge untuk menjelaskan isinya. */
   navDetails?: Record<string, { baru: number; dibalas: number }>;
+  userRole?: "ADMIN" | "STAFF";
 };
 
 /* Satu ikon per tujuan navigasi, semuanya dari keluarga ikon yang sama. */
@@ -50,16 +51,12 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
   "/admin": IconShield,
 };
 
-export function Sidebar({ open, onClose, navCounts, navDetails }: SidebarProps) {
+export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: SidebarProps) {
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const fleetActive = NAV_ENTRIES.some(
-    (entry) => isNavGroup(entry) && entry.items.some((item) => pathname.startsWith(item.href)),
-  );
 
-  /* Akordeon mengikuti rute armada; pilihan manual pengguna menang sampai ia mengubahnya lagi. */
-  const [fleetOverride, setFleetOverride] = useState<boolean | null>(null);
-  const fleetOpen = fleetOverride ?? fleetActive;
+  /* Setiap grup akordeon memiliki state independen agar membuka satu grup tidak memengaruhi grup lain. */
+  const [groupOverrides, setGroupOverrides] = useState<Record<string, boolean>>({});
 
   function isNavActive(entryHref: string): boolean {
     if (entryHref === "/bookings") {
@@ -108,37 +105,43 @@ export function Sidebar({ open, onClose, navCounts, navDetails }: SidebarProps) 
             {WORKSPACE_NAME}
           </p>
           <p className="mt-1 text-micro font-semibold uppercase text-on-navy-muted">
-            {WORKSPACE_ROLE}
+            {userRole === "STAFF" ? "Portal staf" : WORKSPACE_ROLE}
           </p>
         </div>
 
         <div aria-hidden="true" className="mb-3 h-px bg-navy-line" />
 
         <nav className="flex flex-col gap-0.5">
-          {NAV_ENTRIES.map((entry) => {
+          {NAV_ENTRIES.filter((entry) => userRole === "ADMIN" || !entry.adminOnly).map((entry) => {
             if (isNavGroup(entry)) {
-              const IkonGrup = IconCar;
-              const grupAktif = fleetActive;
+              const IkonGrup = entry.label === "Akun Pelanggan" ? IconUsers : IconCar;
+              const grupAktif = entry.items.some((item) => pathname.startsWith(item.href));
+              const groupOpen = groupOverrides[entry.label] ?? grupAktif;
               return (
                 <div key={entry.label} className="flex flex-col gap-0.5">
                   <button
                     type="button"
-                    onClick={() => setFleetOverride(!fleetOpen)}
-                    aria-expanded={fleetOpen}
+                    onClick={() =>
+                      setGroupOverrides((prev) => ({
+                        ...prev,
+                        [entry.label]: !groupOpen,
+                      }))
+                    }
+                    aria-expanded={groupOpen}
                     className={`flex h-11 items-center gap-2.5 rounded-nav px-3 text-body font-medium text-white transition-colors ${
-                      grupAktif && !fleetOpen ? "bg-navy-surface" : "hover:bg-navy-hover"
+                      grupAktif && !groupOpen ? "bg-navy-surface" : "hover:bg-navy-hover"
                     }`}
                   >
                     <IkonGrup className="h-[17px] w-[17px] shrink-0 text-white/85" />
                     <span className="flex-1 whitespace-nowrap text-left">{entry.label}</span>
                     <IconChevronDown
                       className={`h-3.5 w-3.5 shrink-0 text-white/70 transition-transform duration-200 ${
-                        fleetOpen ? "rotate-180" : ""
+                        groupOpen ? "rotate-180" : ""
                       }`}
                     />
                   </button>
 
-                  {fleetOpen ? (
+                  {groupOpen ? (
                     <div className="flex flex-col gap-0.5 pb-1">
                       {entry.items.map((item) => {
                         const active = pathname.startsWith(item.href);

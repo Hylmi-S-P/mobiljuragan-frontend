@@ -158,6 +158,7 @@ export function BookingDetailClient({
        apakah pesanan ini punya tagihan, karena tombolnya hanya berguna kalau
        ada yang bisa diverifikasi. */
     staleTime: 0,
+    refetchInterval: 10_000,
   });
 
   /* Penyesuaian biaya hanya boleh di tahap penetapan tarif. Di tahap 1
@@ -460,7 +461,7 @@ export function BookingDetailClient({
               onAssignDriver={handleAutoAssignDriver}
               isPending={isPending}
               isLuarKota={isLuarKotaBooking}
-              disabled={isCompleted || isRejected}
+              disabled={rawStatus !== "CREATED" && rawStatus !== "PENDING_CONFIRMATION"}
             />
           ) : (
             <LepasKunciDocumentReviewCard
@@ -652,7 +653,7 @@ export function BookingDetailClient({
           ke pembayaran yang sedang dibuka, sama seperti di antrean pembayaran,
           supaya centang "Dana sudah masuk" tidak terbawa ke pesanan lain. */}
       <PaymentProofModal
-        key={dataPembayaran?.id ?? "tanpa-pembayaran"}
+        key={`${dataPembayaran?.id ?? "tanpa-pembayaran"}-${dataPembayaran?.status ?? ""}-${dataPembayaran?.updatedAt ?? ""}`}
         open={verifikasiTerbuka && Boolean(dataPembayaran)}
         payment={dataPembayaran ?? null}
         onClose={() => setVerifikasiTerbuka(false)}

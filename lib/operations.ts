@@ -709,16 +709,37 @@ export type FinanceSummary = {
 
   summary: {
     totalRevenue: number;
+    rentalRevenue?: number;
+    cancellationFeeRevenue?: number;
     completedBookingsCount: number;
     confirmedOrActiveCount: number;
     totalAllBookings: number;
+    bookingBreakdown?: {
+      paidCount: number;
+      refundWithFeeCount: number;
+      refundFullCount: number;
+      pendingRefundCount: number;
+      unpaidCount: number;
+    };
   };
 
-  /* Perbandingan model sewa. Angkanya dihitung dari pembayaran lunas, sama
-     seperti pemasukan total, sehingga persentasenya selalu berjumlah 100%. */
+  /* Perbandingan model sewa. Angkanya dihitung dari pemasukan sewa lunas
+     ditambah potongan pembatalan, sehingga persentasenya selalu berjumlah 100%. */
   rentalTypes?: {
-    withoutDriver: { count: number; revenue: number; percentage: number };
-    withDriver: { count: number; revenue: number; percentage: number };
+    withoutDriver: {
+      count: number;
+      feeCount?: number;
+      feeRevenue?: number;
+      revenue: number;
+      percentage: number;
+    };
+    withDriver: {
+      count: number;
+      feeCount?: number;
+      feeRevenue?: number;
+      revenue: number;
+      percentage: number;
+    };
   };
 
   fleetBreakdown: Array<{
@@ -738,6 +759,7 @@ export type FinanceSummary = {
     bulan: number;
     revenue: number;
     bookings: number;
+    refundFeeCount?: number;
     weekly: number[];
   }>;
   weeklyBreakdown: Array<{
@@ -750,6 +772,7 @@ export type FinanceSummary = {
     tahun: number;
     revenue: number;
     bookings: number;
+    refundFeeCount?: number;
   }>;
 };
 

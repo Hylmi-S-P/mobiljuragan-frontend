@@ -56,6 +56,7 @@ export function LoginForm() {
             <input
               id={`${fieldId}-username`}
               name="username"
+              maxLength={40}
               autoComplete="username"
               aria-invalid={Boolean(state?.errors?.username)}
               aria-describedby={state?.errors?.username ? `${fieldId}-username-error` : undefined}
@@ -84,6 +85,7 @@ export function LoginForm() {
             <input
               id={`${fieldId}-password`}
               name="password"
+              maxLength={50}
               type={passwordVisible ? "text" : "password"}
               autoComplete="current-password"
               aria-invalid={Boolean(state?.errors?.password)}

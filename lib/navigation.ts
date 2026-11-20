@@ -1,5 +1,5 @@
-export type NavLink = { label: string; href: string };
-export type NavGroup = { label: string; items: NavLink[] };
+export type NavLink = { label: string; href: string; adminOnly?: boolean };
+export type NavGroup = { label: string; items: NavLink[]; adminOnly?: boolean };
 export type NavEntry = NavLink | NavGroup;
 
 export const WORKSPACE_NAME = "CV. Mobil Juragan Express Transport";
@@ -33,10 +33,10 @@ export const NAV_ENTRIES: NavEntry[] = [
      keuangan karena keduanya soal arus uang, tetapi halamannya terpisah:
      refund adalah daftar kerja, bukan laporan. */
   { label: "Pengembalian Dana", href: "/refunds" },
-  { label: "Template Dokumen", href: "/documents" },
-  { label: "AI HUB", href: "/admin/ai-hub" },
+  { label: "Template Dokumen", href: "/documents", adminOnly: true },
+  { label: "AI HUB", href: "/admin/ai-hub", adminOnly: true },
   { label: "Manajemen FAQ", href: "/faqs" },
-  { label: "Manajemen Akun", href: "/admin" },
+  { label: "Manajemen Akun", href: "/admin", adminOnly: true },
 ];
 
 export function isNavGroup(entry: NavEntry): entry is NavGroup {

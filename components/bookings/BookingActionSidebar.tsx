@@ -304,14 +304,18 @@ export function BookingActionSidebar({
 
           {isPaymentBlocked ? (
             <>
-              <p className="text-micro text-amber-800 bg-amber-50 border border-amber-300 rounded-sm p-2">
-                Pembayaran pesanan ini belum diverifikasi
-                {statusPembayaran === "PENDING_VERIFICATION"
-                  ? " (bukti transfer sudah diunggah, menunggu pemeriksaan admin)"
-                  : statusPembayaran === "FAILED"
-                    ? " (bukti transfer ditolak)"
-                    : ""}
-                . Verifikasi dulu sebelum menyerahkan armada.
+              <p
+                className={
+                  statusPembayaran === "FAILED"
+                    ? "text-micro text-rose-800 bg-rose-50 border border-rose-300 rounded-sm p-2"
+                    : "text-micro text-amber-800 bg-amber-50 border border-amber-300 rounded-sm p-2"
+                }
+              >
+                {statusPembayaran === "FAILED"
+                  ? "Bukti transfer sebelumnya ditolak. Menunggu pelanggan mengunggah ulang bukti baru sebelum verifikasi dapat dilanjutkan."
+                  : statusPembayaran === "PENDING_VERIFICATION"
+                    ? "Pembayaran pesanan ini belum diverifikasi (bukti transfer sudah diunggah, menunggu pemeriksaan admin). Verifikasi dulu sebelum menyerahkan armada."
+                    : "Pembayaran pesanan ini belum diverifikasi. Menunggu pelanggan menyelesaikan pembayaran sebelum menyerahkan armada."}
               </p>
               <Button
                 variant="outline"
@@ -320,7 +324,9 @@ export function BookingActionSidebar({
                 disabled={isPending || !onOpenPaymentVerification}
                 onClick={onOpenPaymentVerification}
               >
-                Verifikasi Pembayaran
+                {statusPembayaran === "FAILED"
+                  ? "Lihat Bukti Ditolak"
+                  : "Verifikasi Pembayaran"}
               </Button>
             </>
           ) : (

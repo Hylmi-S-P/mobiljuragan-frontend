@@ -113,6 +113,7 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
             maxHeight={160}
             id={`${fieldId}-question`}
             name="question"
+            maxLength={150}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             aria-invalid={Boolean(state?.errors?.question)}
@@ -121,6 +122,9 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
             placeholder="Contoh: Bagaimana prosedur sewa lepas kunci di MobilJuragan Merauke?"
             required
           />
+          <p className="mt-1 text-right text-micro tabular-nums text-ink-soft">
+            {question.length}/150
+          </p>
           {state?.errors?.question ? (
             <p id={`${fieldId}-question-error`} className="mt-1 text-meta text-danger">
               {state.errors.question}
@@ -138,6 +142,7 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
             name="answer"
             rows={4}
             maxHeight={320}
+            maxLength={1000}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             aria-invalid={Boolean(state?.errors?.answer)}
@@ -146,6 +151,9 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
             placeholder="Tuliskan jawaban yang rinci, ramah, dan solutif bagi pelanggan..."
             required
           />
+          <p className="mt-1 text-right text-micro tabular-nums text-ink-soft">
+            {answer.length}/1000
+          </p>
           {state?.errors?.answer ? (
             <p id={`${fieldId}-answer-error`} className="mt-1 text-meta text-danger">
               {state.errors.answer}
@@ -195,6 +203,7 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
             <input
               id={`${fieldId}-custom-category`}
               type="text"
+              maxLength={40}
               value={customCategory}
               onChange={(e) => setCustomCategory(e.target.value)}
               placeholder="Contoh: Protokol Luar Kota"

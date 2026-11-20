@@ -33,6 +33,7 @@ export function YearOverYearChart({ yearOverYear }: Props) {
         tahun: y.tahun,
         revenue: y.revenue,
         bookings: y.bookings,
+        refundFeeCount: y.refundFeeCount ?? 0,
       })),
     [yearOverYear],
   );
@@ -106,8 +107,13 @@ export function YearOverYearChart({ yearOverYear }: Props) {
                       Pemasukan: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
                     </p>
                     <p className="text-meta text-ink-soft">
-                      Transaksi lunas: <strong className="text-ink">{d.bookings}</strong>
+                      Sewa lunas: <strong className="text-ink">{d.bookings} transaksi</strong>
                     </p>
+                    {d.refundFeeCount > 0 ? (
+                      <p className="text-meta text-ink-soft">
+                        Potongan batal: <strong className="text-ink">{d.refundFeeCount} transaksi</strong>
+                      </p>
+                    ) : null}
                   </div>
                 );
               }}

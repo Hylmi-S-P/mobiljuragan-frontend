@@ -683,8 +683,11 @@ export function LepasKunciDocumentReviewCard({ booking, onDocumentUpdated }: Pro
                   onChange={(e) => setRejectionReason(e.target.value)}
                   placeholder="Tulis sendiri, atau susun dari alasan cepat di atas."
                   className="w-full rounded border border-rule bg-canvas p-2.5 text-meta text-ink focus:border-navy focus:outline-none"
-                maxLength={500}
-                  />
+                  maxLength={300}
+                />
+                <p className="mt-1 text-right text-micro tabular-nums text-ink-soft">
+                  {rejectionReason.length}/300
+                </p>
               </div>
 
               <div className="rounded border border-rule bg-canvas p-3">

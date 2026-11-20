@@ -159,6 +159,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
                 </span>
                 <input
                   type="search"
+                  maxLength={50}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari nama atau telepon..."

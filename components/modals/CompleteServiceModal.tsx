@@ -63,13 +63,13 @@ export function CompleteServiceModal({ vehicle, onClose, onConfirm }: Props) {
           setCatatan(event.target.value);
           if (galat) setGalat(null);
         }}
-        maxLength={500}
+        maxLength={300}
         rows={3}
         placeholder="Contoh: Body bersih, bahan bakar tersisa setengah, tidak ada kerusakan baru."
         className="mt-1 w-full rounded-sm border border-rule-strong bg-canvas px-3 py-2 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
       />
       <div className="mt-1 flex items-center justify-between">
-        <span className="text-micro text-ink-soft">{catatan.length}/500</span>
+        <span className="text-micro text-ink-soft">{catatan.length}/300</span>
         {galat ? <span className="text-micro font-medium text-danger">{galat}</span> : null}
       </div>
     </Modal>

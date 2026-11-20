@@ -353,7 +353,7 @@ function FormKoreksi({
           name="fullName"
           defaultValue={item.fullName}
           className="mt-1 w-full rounded-sm border border-rule-strong bg-surface p-2.5 text-body text-ink focus:border-navy focus:outline-none"
-          maxLength={100}
+          maxLength={60}
         />
         {state?.errors?.fullName ? (
           <p className="mt-1 text-micro text-danger">{state.errors.fullName}</p>
@@ -370,7 +370,7 @@ function FormKoreksi({
           rows={3}
           placeholder="Contoh: nama dipulihkan dari e-KTP pada booking MJ-20261027-UOBB; nama sebelumnya terisi otomatis oleh APK lama."
           className="mt-1 w-full rounded-sm border border-rule-strong bg-surface p-2.5 text-meta text-ink focus:border-navy focus:outline-none"
-          maxLength={500}
+          maxLength={300}
         />
         {state?.errors?.reason ? (
           <p className="mt-1 text-micro text-danger">{state.errors.reason}</p>

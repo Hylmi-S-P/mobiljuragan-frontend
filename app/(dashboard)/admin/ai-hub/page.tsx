@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { AiHubTabbedWorkspace } from "@/components/ai/AiHubTabbedWorkspace";
+import { getCurrentAdminProfile } from "@/lib/api";
 import {
   getAiConfig,
   getKnowledgeDocuments,
@@ -19,6 +21,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AiHubPage() {
+  const profile = await getCurrentAdminProfile();
+  if (profile?.role !== "ADMIN") {
+    redirect("/");
+  }
+
   const [aiData, documents, categories, healthData, initialLogs] = await Promise.all([
     getAiConfig(),
     getKnowledgeDocuments(),

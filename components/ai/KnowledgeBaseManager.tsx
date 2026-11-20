@@ -480,6 +480,7 @@ export function KnowledgeBaseManager({
                 <label className="text-meta font-semibold text-ink">Judul Dokumen</label>
                 <input
                   type="text"
+                  maxLength={80}
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="Contoh: Ketentuan Lepas Kunci Wilayah Sota"
@@ -519,12 +520,16 @@ export function KnowledgeBaseManager({
                 <AutoGrowTextarea
                   rows={6}
                   maxHeight={420}
+                  maxLength={3000}
                   value={formContent}
                   onChange={(e) => setFormContent(e.target.value)}
                   placeholder="Tuliskan poin-poin persyaratan, aturan jalan, atau ketentuan operasional di sini..."
                   required
                   className="rounded-button border border-rule p-3 font-mono text-meta text-ink outline-none focus:border-teal focus:ring-1 focus:ring-teal"
                 />
+                <span className="text-right text-micro tabular-nums text-ink-soft">
+                  {formContent.length}/3000
+                </span>
               </div>
 
               <div className="flex items-center gap-2 pt-1">
@@ -626,7 +631,7 @@ export function KnowledgeBaseManager({
                   }
                 }}
                 placeholder="Nama kategori"
-                maxLength={60}
+                maxLength={40}
                 className="h-10 min-w-0 flex-1 rounded-sm border border-rule bg-canvas px-3 text-meta text-ink focus:border-navy focus:outline-none"
               />
               <button

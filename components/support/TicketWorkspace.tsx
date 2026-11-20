@@ -26,7 +26,7 @@ import type { SupportTicketView, TicketMessageView } from "@/lib/operations";
   ditolak server, atau sebaliknya.
 */
 }
-const MAKS_PANJANG_PESAN = 2000;
+const MAKS_PANJANG_PESAN = 500;
 
 type Props = {
   initialTickets: SupportTicketView[];
@@ -425,7 +425,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
               <div className="mb-2 flex flex-wrap gap-1.5" role="group" aria-label="Saring arsip">
                 {[
                   { id: "semua" as const, label: "Semua" },
-                  { id: "RESOLVED" as const, label: "Menunggu Pelanggan" },
+                  { id: "RESOLVED" as const, label: "Teratasi" },
                   { id: "CLOSED" as const, label: "Ditutup" },
                 ].map((saring) => (
                   <button
@@ -449,7 +449,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                 di aplikasi, tiket umum dari formulir pusat bantuan. */}
             <div className="mb-2 flex flex-wrap gap-1.5" role="group" aria-label="Saring sumber tiket">
               {[
-                { id: "semua" as const, label: "Semua tiket" },
+                { id: "semua" as const, label: "Semua sumber" },
                 { id: "pesanan" as const, label: "Dari pesanan" },
               ].map((saring) => (
                 <button
@@ -477,13 +477,15 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cari tiket"
               className="h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-            maxLength={100}
+            maxLength={50}
               />
 
             <ul className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
               {filteredTickets.map((ticket) => {
                 const active = ticket.id === activeId;
                 const tahap = TICKET_STAGE[ticketStageOf(ticket.status)];
+                const kartuDipegangSendiri = Boolean(ticket.assignedAdminId) && Boolean(ticket.isMine);
+                const kartuDipegangOrangLain = Boolean(ticket.assignedAdminId) && !ticket.isMine;
                 return (
                   <li key={ticket.id}>
                     <button
@@ -508,6 +510,16 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                             {ticket.customerLabel}
                           </span>
                           <StatusChip tone={tahap.tone}>{tahap.label}</StatusChip>
+                          {kartuDipegangSendiri ? (
+                            <span className="rounded-xs border border-teal bg-teal/10 px-1.5 py-0.5 text-micro font-semibold text-teal">
+                              Anda pegang
+                            </span>
+                          ) : null}
+                          {kartuDipegangOrangLain ? (
+                            <span className="rounded-xs border border-navy bg-navy/10 px-1.5 py-0.5 text-micro font-semibold text-navy">
+                              Dipegang: {ticket.assignedAdminName ?? "Staf lain"}
+                            </span>
+                          ) : null}
                           {ticket.handledBy === "AI" ? (
                             <span className="rounded-xs border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-micro font-medium text-amber-800">
                               Bot AI
@@ -755,33 +767,23 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
                       {isResolvedOrClosed ? null : (
                         <div className="mb-2 flex flex-wrap items-center gap-2">
                           {dipegangOrangLain ? (
-                            <>
-                              <span className="text-meta text-ink-soft">
-                                Dipegang {activeTicket.assignedAdminName ?? "admin lain"}.
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleTakeoverAssigned}
-                                disabled={isSending}
-                              >
-                                Ambil Alih
-                              </Button>
-                            </>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleTakeoverAssigned}
+                              disabled={isSending}
+                            >
+                              Ambil Alih
+                            </Button>
                           ) : dipegangSendiri ? (
-                            <>
-                              <span className="text-meta font-medium text-teal">
-                                Anda pegang tiket ini.
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleRelease}
-                                disabled={isSending}
-                              >
-                                Lepas Tiket
-                              </Button>
-                            </>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleRelease}
+                              disabled={isSending}
+                            >
+                              Lepas Tiket
+                            </Button>
                           ) : (
                             <>
                               <span className="text-meta text-ink-soft">

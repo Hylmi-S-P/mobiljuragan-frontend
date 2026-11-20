@@ -81,6 +81,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
     },
     initialData: initialResponse,
     initialDataUpdatedAt: 0,
+    refetchInterval: 10_000,
   });
 
   const rawItems = response?.items ?? [];
@@ -218,7 +219,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
           <div className="relative min-w-[280px]">
             <input
               id="payment-search"
-              maxLength={80}
+              maxLength={50}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari kode booking, nama, rekening..."
@@ -358,7 +359,7 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
           centang "sudah dicocokkan" dan tahap konfirmasi terbawa ke pembayaran
           berikutnya, sehingga admin bisa menandai lunas tanpa membaca peringatan. */}
       <PaymentProofModal
-        key={selectedPayment?.id ?? "tanpa-pembayaran"}
+        key={`${selectedPayment?.id ?? "tanpa-pembayaran"}-${selectedPayment?.status ?? ""}-${selectedPayment?.updatedAt ?? ""}`}
         open={isModalOpen}
         payment={selectedPayment}
         onClose={() => {

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { DocumentTemplateUploader } from "@/components/documents/DocumentTemplateUploader";
 import {
+  getCurrentAdminProfile,
   getDaftarVersiTemplate,
   getTemplateAktif,
   type TemplateAktif,
@@ -43,6 +45,11 @@ function tautanBerkas(id: string): string {
  * mengunduh berkas itu apa adanya. Halaman ini tidak menyusun isi dokumen.
  */
 export default async function DocumentsPage() {
+  const profile = await getCurrentAdminProfile();
+  if (profile?.role !== "ADMIN") {
+    redirect("/");
+  }
+
   let aktif: TemplateAktif | null = null;
   let daftarVersi: VersiTemplate[] = [];
   let galat: string | null = null;

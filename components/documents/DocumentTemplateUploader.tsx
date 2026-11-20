@@ -174,12 +174,13 @@ export function DocumentTemplateUploader({ aktif, daftarVersi, tautanBerkasAktif
                 <span className="text-meta font-medium text-ink">Catatan perubahan</span>
                 <input
                   className={masukanGaya}
+                  maxLength={300}
                   placeholder="Contoh: menambah klausul denda keterlambatan"
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
                 />
                 <span className="text-micro text-ink-soft">
-                  Opsional. Membantu menelusuri kenapa dokumen diganti.
+                  Opsional ({catatan.length}/300). Membantu menelusuri kenapa dokumen diganti.
                 </span>
               </label>
 

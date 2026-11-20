@@ -164,7 +164,7 @@ export function DriverRosterTable({ initialDrivers }: Props) {
             </label>
             <input
               id="driver-search-input"
-              maxLength={60}
+              maxLength={50}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari nama supir, kontak, rute..."

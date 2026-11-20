@@ -118,7 +118,7 @@ export function ManualSurchargeModal({ onClose, onSaved, booking }: Props) {
             aria-describedby={errors.nama ? `${fieldId}-nama-error` : undefined}
             className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
             placeholder="Contoh: Tambahan BBM rute tanah"
-          maxLength={200}
+          maxLength={150}
             />
           {errors.nama ? (
             <p id={`${fieldId}-nama-error`} className="mt-1 text-meta text-danger">
@@ -134,6 +134,7 @@ export function ManualSurchargeModal({ onClose, onSaved, booking }: Props) {
           <input
             id={`${fieldId}-amount`}
             inputMode="numeric"
+            maxLength={14}
             value={amount}
             onChange={(event) => setAmount(formatCurrencyInput(event.target.value))}
             aria-invalid={Boolean(errors.amount)}
@@ -180,8 +181,11 @@ export function ManualSurchargeModal({ onClose, onSaved, booking }: Props) {
             aria-describedby={errors.catatan ? `${fieldId}-catatan-error` : undefined}
             className="mt-1 w-full rounded-sm border border-rule-strong bg-canvas px-3 py-2 text-body text-ink"
             placeholder="Alasan biaya ini, misalnya medan ekstrem atau diskon pelanggan baru"
-          maxLength={1000}
+          maxLength={300}
             />
+          <p className="mt-1 text-right text-micro tabular-nums text-ink-soft">
+            {catatan.length}/300
+          </p>
           {errors.catatan ? (
             <p id={`${fieldId}-catatan-error`} className="mt-1 text-meta text-danger">
               {errors.catatan}

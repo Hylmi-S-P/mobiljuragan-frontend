@@ -35,6 +35,33 @@ export async function getSessionToken(): Promise<string | undefined> {
   }
 }
 
+export async function getCurrentAdminProfile(): Promise<{
+  id: string;
+  fullName: string;
+  role: "ADMIN" | "STAFF";
+} | null> {
+  const token = await getSessionToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => null);
+    const user = json?.data?.user;
+    if (!user?.id || !user?.role) return null;
+    return {
+      id: String(user.id),
+      fullName: String(user.fullName ?? ""),
+      role: user.role === "ADMIN" ? "ADMIN" : "STAFF",
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Mendukung autentikasi via nomor telepon resmi maupun username.
 export async function apiAdminLogin(usernameOrPhone: string, password: string, rememberMe = false) {
   const res = await fetch(`${API_BASE_URL}/admin/auth/login`, {

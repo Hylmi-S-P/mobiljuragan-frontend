@@ -159,7 +159,7 @@ export function FaqCategoryModal({ isOpen, onClose }: Props) {
                           type="text"
                           value={namaBaru}
                           onChange={(e) => setNamaBaru(e.target.value)}
-                          maxLength={100}
+                          maxLength={40}
                           className="mt-1 h-10 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
                         />
                       </label>

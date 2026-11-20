@@ -75,7 +75,14 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
 
   if (!payment) return null;
 
-  const resolvedImageUrl = tautanMedia(payment.proofImageUrl);
+  const rawResolvedUrl = tautanMedia(payment.proofImageUrl);
+  const cacheBust = payment.updatedAt ? new Date(payment.updatedAt).getTime() : null;
+  const resolvedImageUrl =
+    rawResolvedUrl &&
+    cacheBust &&
+    (rawResolvedUrl.startsWith("http://") || rawResolvedUrl.startsWith("https://"))
+      ? `${rawResolvedUrl}${rawResolvedUrl.includes("?") ? "&" : "?"}t=${cacheBust}`
+      : rawResolvedUrl;
   const isPending = payment.status === "PENDING_VERIFICATION";
   const statusConfig = PAYMENT_STATUS[payment.status] ?? {
     label: payment.status,
@@ -168,7 +175,9 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
           <div>
             {payment.status === "PAID"
               ? "Pembayaran ini sudah lunas terverifikasi."
-              : "Status pembayaran: " + statusConfig.label}
+              : payment.status === "FAILED"
+                ? "Pembayaran ini sudah ditolak. Menunggu pelanggan mengunggah ulang bukti pembayaran yang baru."
+                : "Status pembayaran: " + statusConfig.label}
           </div>
           {payment.acknowledgedBy ? (
             <div className="text-micro text-teal">
@@ -339,6 +348,7 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
                 </label>
                 <AutoGrowTextarea
                   maxHeight={200}
+                  maxLength={300}
                   id="verify-notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -346,6 +356,9 @@ export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAd
                   className="mt-1 w-full rounded-sm border border-rule-strong bg-surface p-2.5 text-body text-ink placeholder:text-ink-soft/60 focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
                   disabled={isSubmitting}
                 />
+                <p className="mt-1 text-right text-micro tabular-nums text-ink-soft">
+                  {notes.length}/300
+                </p>
               </div>
             </div>
           </div>

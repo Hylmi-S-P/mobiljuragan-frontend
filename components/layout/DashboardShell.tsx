@@ -11,12 +11,14 @@ export function DashboardShell({
   children,
   navCounts,
   navDetails,
+  userRole,
 }: {
   children: ReactNode;
   /* Angka pekerjaan yang menunggu, dihitung di tata letak sisi server. */
   navCounts?: NavCounts;
   /* Rincian angka per menu, dipakai badge agar bisa menjelaskan komposisinya. */
   navDetails?: Record<string, { baru: number; dibalas: number }>;
+  userRole?: "ADMIN" | "STAFF";
 }) {
   const [navOpen, setNavOpen] = useState(false);
 
@@ -34,6 +36,7 @@ export function DashboardShell({
         onClose={() => setNavOpen(false)}
         navCounts={navCounts}
         navDetails={navDetails}
+        userRole={userRole}
       />
       </Suspense>
       <div className="flex min-w-0 flex-1 flex-col">

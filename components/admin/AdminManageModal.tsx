@@ -226,7 +226,7 @@ export function AdminManageModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-            maxLength={80}
+            maxLength={60}
               />
           </div>
 
@@ -290,6 +290,7 @@ export function AdminManageModal({
               id={`${fieldId}-password`}
               type={showPassword ? "text" : "password"}
               name="password"
+              maxLength={50}
               placeholder="Masukkan kata sandi baru..."
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}

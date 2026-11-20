@@ -148,7 +148,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-10 w-full rounded-sm border border-rule bg-canvas pl-9 pr-3 text-meta text-ink placeholder:text-ink-soft focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
-                maxLength={120}
+                maxLength={50}
                   />
               </div>
 

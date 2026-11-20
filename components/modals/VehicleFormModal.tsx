@@ -253,7 +253,7 @@ export function VehicleFormModal({
             aria-describedby={errors.name ? `${fieldId}-name-error` : undefined}
             className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
             placeholder="Contoh: AVANZA G PUTIH"
-          maxLength={120}
+          maxLength={60}
             />
           {errors.name ? (
             <p id={`${fieldId}-name-error`} className="mt-1 text-meta text-danger">
@@ -274,7 +274,7 @@ export function VehicleFormModal({
             aria-describedby={errors.plate ? `${fieldId}-plate-error` : undefined}
             className="tabular-nums mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
             placeholder="Contoh: PS1692B"
-          maxLength={20}
+          maxLength={15}
             />
           {errors.plate ? (
             <p id={`${fieldId}-plate-error`} className="mt-1 text-meta text-danger">
@@ -332,6 +332,7 @@ export function VehicleFormModal({
             id={`${fieldId}-seats`}
             type="text"
             inputMode="numeric"
+            maxLength={2}
             value={seatsInput}
             onChange={(e) => setSeatsInput(e.target.value.replace(/[^\d]/g, ""))}
             aria-invalid={Boolean(errors.seats)}
@@ -361,6 +362,7 @@ export function VehicleFormModal({
               id={`${fieldId}-price`}
               type="text"
               inputMode="numeric"
+              maxLength={11}
               value={priceInput}
               onChange={(e) => {
                 const raw = e.target.value.replace(/[^\d]/g, "");

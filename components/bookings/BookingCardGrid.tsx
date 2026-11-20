@@ -114,7 +114,7 @@ export function BookingCardGrid({ initialBookings, vehicles, statusFilter }: Pro
           </span>
           <input
             id="booking-search"
-            maxLength={80}
+            maxLength={50}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Ketik nama pelanggan, BK-MRK, atau plat nomor..."

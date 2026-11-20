@@ -66,6 +66,11 @@ export function FinancialSummaryCard({ initialData }: Props) {
      sama sudah ada di grafik donut pada tab Model Sewa. Sekarang donutnya
      dihapus dan kartu ini mengisi sisi yang belum terwakili di halaman mana pun:
      berapa banyak pesanan yang masuk dan seberapa banyak yang masih berjalan. */
+  const rentalRevenue = summary.rentalRevenue ?? summary.totalRevenue;
+  const cancellationFeeRevenue = summary.cancellationFeeRevenue ?? 0;
+  const breakdown = summary.bookingBreakdown;
+  const pendingRefundCount = breakdown?.pendingRefundCount ?? 0;
+
   const ringkasan = (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <ComparisonMetricCard
@@ -81,6 +86,24 @@ export function FinancialSummaryCard({ initialData }: Props) {
         sparklineColor="#059669"
         icon={<IconTrendingUp className="h-4 w-4" />}
         iconBgColor="bg-emerald-50 text-emerald-600"
+        footer={
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+            <span>
+              Sewa lunas: <strong className="text-ink">{formatRupiah(rentalRevenue)}</strong>
+            </span>
+            {cancellationFeeRevenue > 0 ? (
+              <span>
+                · Potongan batal:{" "}
+                <strong className="text-ink">{formatRupiah(cancellationFeeRevenue)}</strong>
+              </span>
+            ) : null}
+            {pendingRefundCount > 0 ? (
+              <span className="text-amber-700">
+                · {pendingRefundCount} refund menunggu proses
+              </span>
+            ) : null}
+          </div>
+        }
       />
 
       <ComparisonMetricCard
@@ -89,6 +112,36 @@ export function FinancialSummaryCard({ initialData }: Props) {
         unitLabel="pesanan"
         icon={<IconClipboard className="h-4 w-4" />}
         iconBgColor="bg-navy/10 text-navy"
+        footer={
+          breakdown ? (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+              <span>
+                <strong className="text-ink">{breakdown.paidCount}</strong> sewa lunas
+              </span>
+              {breakdown.refundWithFeeCount > 0 ? (
+                <span>
+                  · <strong className="text-ink">{breakdown.refundWithFeeCount}</strong> potongan
+                  batal
+                </span>
+              ) : null}
+              {breakdown.refundFullCount > 0 ? (
+                <span>
+                  · <strong className="text-ink">{breakdown.refundFullCount}</strong> refund penuh
+                </span>
+              ) : null}
+              {breakdown.pendingRefundCount > 0 ? (
+                <span className="text-amber-700">
+                  · <strong>{breakdown.pendingRefundCount}</strong> refund menunggu
+                </span>
+              ) : null}
+              {breakdown.unpaidCount > 0 ? (
+                <span>
+                  · <strong className="text-ink">{breakdown.unpaidCount}</strong> belum bayar/batal
+                </span>
+              ) : null}
+            </div>
+          ) : null
+        }
       />
     </div>
   );

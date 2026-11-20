@@ -42,6 +42,7 @@ export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }:
         labelPenuh: m.label,
         revenue: m.revenue,
         bookings: m.bookings,
+        refundFeeCount: m.refundFeeCount ?? 0,
       })),
     [monthlyTrends],
   );
@@ -112,8 +113,13 @@ export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }:
                       Pemasukan: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
                     </p>
                     <p className="text-meta text-ink-soft">
-                      Transaksi lunas: <strong className="text-ink">{d.bookings}</strong>
+                      Sewa lunas: <strong className="text-ink">{d.bookings} transaksi</strong>
                     </p>
+                    {d.refundFeeCount > 0 ? (
+                      <p className="text-meta text-ink-soft">
+                        Potongan batal: <strong className="text-ink">{d.refundFeeCount} transaksi</strong>
+                      </p>
+                    ) : null}
                   </div>
                 );
               }}

@@ -32,6 +32,7 @@ export function RentalModelChart({ rentalTypes }: Props) {
         label: "Lepas Kunci",
         revenue: rentalTypes.withoutDriver.revenue,
         count: rentalTypes.withoutDriver.count,
+        feeCount: rentalTypes.withoutDriver.feeCount ?? 0,
         percentage: rentalTypes.withoutDriver.percentage,
         warna: WARNA.withoutDriver,
       },
@@ -40,6 +41,7 @@ export function RentalModelChart({ rentalTypes }: Props) {
         label: "Dengan Supir",
         revenue: rentalTypes.withDriver.revenue,
         count: rentalTypes.withDriver.count,
+        feeCount: rentalTypes.withDriver.feeCount ?? 0,
         percentage: rentalTypes.withDriver.percentage,
         warna: WARNA.withDriver,
       },
@@ -49,17 +51,18 @@ export function RentalModelChart({ rentalTypes }: Props) {
 
   const totalOmzet = data.reduce((jumlah, d) => jumlah + d.revenue, 0);
   const totalTransaksi = data.reduce((jumlah, d) => jumlah + d.count, 0);
+  const totalPotongan = data.reduce((jumlah, d) => jumlah + d.feeCount, 0);
 
   /* Donut butuh minimal satu bagian bernilai. Kalau semua nol, grafiknya kosong
      dan Recharts menggambar lingkaran penuh tanpa arti, jadi diganti keterangan. */
-  const adaData = totalOmzet > 0 || totalTransaksi > 0;
+  const adaData = totalOmzet > 0 || totalTransaksi > 0 || totalPotongan > 0;
 
   return (
     <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
       <div className="flex flex-col gap-1 border-b border-rule pb-3">
         <h3 className="text-subtitle font-bold text-ink">Model Sewa</h3>
         <p className="text-meta text-ink-soft">
-          Perbandingan pemasukan lepas kunci dan dengan supir dari pembayaran lunas.
+          Perbandingan pemasukan lepas kunci dan dengan supir (sewa lunas dan potongan batal).
         </p>
       </div>
 
@@ -94,8 +97,13 @@ export function RentalModelChart({ rentalTypes }: Props) {
                           Pemasukan: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
                         </p>
                         <p className="text-meta text-ink-soft">
-                          Transaksi lunas: <strong className="text-ink">{d.count}</strong>
+                          Sewa lunas: <strong className="text-ink">{d.count} transaksi</strong>
                         </p>
+                        {d.feeCount > 0 ? (
+                          <p className="text-meta text-ink-soft">
+                            Potongan batal: <strong className="text-ink">{d.feeCount} transaksi</strong>
+                          </p>
+                        ) : null}
                         <p className="text-meta text-ink-soft">
                           Porsi: <strong className="text-ink">{d.percentage}%</strong>
                         </p>
@@ -121,14 +129,16 @@ export function RentalModelChart({ rentalTypes }: Props) {
                   </span>
                 </div>
                 <p className="mt-0.5 text-meta tabular-nums text-ink-soft">
-                  {formatRupiah(d.revenue)} · {d.count} transaksi lunas
+                  {formatRupiah(d.revenue)} · {d.count} sewa lunas
+                  {d.feeCount > 0 ? ` · ${d.feeCount} potongan batal` : ""}
                 </p>
               </li>
             ))}
             <li className="flex items-baseline justify-between gap-2 border-t border-rule pt-2.5 text-meta text-ink-soft">
               <span>Total</span>
               <span className="tabular-nums font-semibold text-ink">
-                {formatRupiah(totalOmzet)} · {totalTransaksi} transaksi
+                {formatRupiah(totalOmzet)} · {totalTransaksi} sewa lunas
+                {totalPotongan > 0 ? ` · ${totalPotongan} potongan batal` : ""}
               </span>
             </li>
           </ul>

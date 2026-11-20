@@ -251,6 +251,7 @@ export function AiChatSandbox({
       >
         <input
           type="text"
+          maxLength={300}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Tanyakan hal seputar rental armada, tarif, atau ketentuan rute..."

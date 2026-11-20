@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Panel } from "@/components/ui/PageLayout";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/useToast";
 import { unggahBuktiRefundAction, updateRefundAction } from "@/app/actions";
@@ -67,6 +69,7 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
   const [terbuka, setTerbuka] = useState<string | null>(null);
   const [sedangSimpan, setSedangSimpan] = useState<string | null>(null);
   const [berkasBukti, setBerkasBukti] = useState<File | null>(null);
+  const [konfirmasiRefund, setKonfirmasiRefund] = useState<BookingRefund | null>(null);
   const [ranah, setRanah] = useState<Ranah>({
     namaBank: "",
     nomorRekening: "",
@@ -252,7 +255,7 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           onChange={(e) => setRanah({ ...ranah, namaBank: e.target.value })}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
                           placeholder="BRI / Mandiri / BCA"
-                        maxLength={60}
+                        maxLength={30}
                           />
                       </label>
                       <label className="text-meta text-ink-soft">
@@ -262,7 +265,7 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           onChange={(e) => setRanah({ ...ranah, nomorRekening: e.target.value })}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
                           placeholder="1234567890"
-                        maxLength={30}
+                        maxLength={20}
                           />
                       </label>
                       <label className="text-meta text-ink-soft">
@@ -271,7 +274,7 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           value={ranah.namaPemilik}
                           onChange={(e) => setRanah({ ...ranah, namaPemilik: e.target.value })}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
-                        maxLength={120}
+                        maxLength={60}
                           />
                       </label>
                       <label className="text-meta text-ink-soft">
@@ -280,28 +283,56 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           value={ranah.nominal}
                           onChange={(e) => setRanah({ ...ranah, nominal: e.target.value })}
                           inputMode="numeric"
+                          maxLength={11}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
                         />
                       </label>
                       <label className="text-meta text-ink-soft sm:col-span-2">
-                        Catatan (wajib saat menutup baris ini)
+                        Catatan {refund.buktiUrl || berkasBukti ? "(opsional)" : "(wajib jika tanpa bukti)"}
+                        {refund.alasan ? (
+                          <span className="mt-1 block rounded-sm border border-rule bg-surface px-2.5 py-1.5 text-micro text-ink-soft">
+                            Catatan tersimpan: {refund.alasan}
+                          </span>
+                        ) : null}
                         <input
                           value={ranah.catatan}
                           onChange={(e) => setRanah({ ...ranah, catatan: e.target.value })}
                           className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
-                          placeholder="Contoh: ditransfer 13 Nov, bukti dikirim via WhatsApp"
-                          maxLength={500}
+                          placeholder="Tambahkan catatan baru, misal: ditransfer 13 Nov via BCA"
+                          maxLength={300}
                         />
+                        <span className="mt-1 block text-right text-micro tabular-nums text-ink-soft">
+                          {ranah.catatan.length}/300
+                        </span>
                       </label>
-                      <label className="text-meta text-ink-soft sm:col-span-2">
-                        Foto bukti transfer (opsional)
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => setBerkasBukti(e.target.files?.[0] ?? null)}
-                          className="mt-1 block w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink file:mr-3 file:rounded-xs file:border-0 file:bg-ink/10 file:px-2.5 file:py-1 file:text-meta file:font-medium file:text-ink"
-                        />
-                      </label>
+                      <div className="text-meta text-ink-soft sm:col-span-2">
+                        {refund.buktiUrl ? (
+                          <div className="mb-1.5 flex flex-wrap items-center gap-2 rounded-sm border border-rule bg-surface px-3 py-2">
+                            <span className="text-meta font-medium text-ink">
+                              Bukti transfer sudah tersimpan.
+                            </span>
+                            <a
+                              href={tautanMedia(refund.buktiUrl) ?? "#"}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-meta font-semibold text-teal hover:underline"
+                            >
+                              Lihat bukti transfer
+                            </a>
+                          </div>
+                        ) : null}
+                        <label className="block">
+                          {refund.buktiUrl
+                            ? "Ganti foto bukti transfer (opsional)"
+                            : "Foto bukti transfer (opsional)"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setBerkasBukti(e.target.files?.[0] ?? null)}
+                            className="mt-1 block w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink file:mr-3 file:rounded-xs file:border-0 file:bg-ink/10 file:px-2.5 file:py-1 file:text-meta file:font-medium file:text-ink"
+                          />
+                        </label>
+                      </div>
 
                       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
                         <button
@@ -310,7 +341,7 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                           onClick={() => kirim(refund)}
                           className="rounded-sm border border-rule bg-surface px-3 py-1.5 text-meta font-medium text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Simpan data rekening
+                          Simpan draft
                         </button>
                         <button
                           type="button"
@@ -319,10 +350,10 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                             refund.status === "SELESAI" ||
                             !refund.danaTerverifikasi
                           }
-                          onClick={() => kirim(refund, "SELESAI")}
+                          onClick={() => setKonfirmasiRefund(refund)}
                           className="rounded-sm bg-ink px-3 py-1.5 text-meta font-semibold text-surface hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Tandai sudah ditransfer
+                          Konfirmasi Pengembalian
                         </button>
                         <button
                           type="button"
@@ -390,6 +421,83 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
           </div>
         )}
       </Panel>
+
+      <Modal
+        open={Boolean(konfirmasiRefund)}
+        onClose={() => {
+          if (!sedangSimpan) setKonfirmasiRefund(null);
+        }}
+        title="Konfirmasi Pengembalian Dana"
+        footer={
+          <div className="flex w-full items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              disabled={Boolean(sedangSimpan)}
+              onClick={() => setKonfirmasiRefund(null)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="confirm"
+              disabled={Boolean(sedangSimpan)}
+              onClick={async () => {
+                if (!konfirmasiRefund) return;
+                const target = konfirmasiRefund;
+                setKonfirmasiRefund(null);
+                await kirim(target, "SELESAI");
+              }}
+            >
+              {sedangSimpan ? "Menyimpan..." : "Ya, Konfirmasi Selesai"}
+            </Button>
+          </div>
+        }
+      >
+        {konfirmasiRefund ? (
+          <div className="space-y-3 text-meta text-ink">
+            <p className="text-ink-soft">
+              Pastikan dana sudah benar-benar ditransfer. Setelah dikonfirmasi, baris pengembalian
+              ini ditutup permanen.
+            </p>
+            <div className="space-y-1.5 rounded-sm border border-rule bg-canvas p-3">
+              <div className="flex justify-between gap-2">
+                <span className="text-ink-soft">Pesanan</span>
+                <span className="font-semibold">#{konfirmasiRefund.bookingCode}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-ink-soft">Bank & Rekening</span>
+                <span className="font-medium">
+                  {(ranah.namaBank.trim() || konfirmasiRefund.namaBank || "-")} ·{" "}
+                  {(ranah.nomorRekening.trim() || konfirmasiRefund.nomorRekening || "-")}
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-ink-soft">Pemilik</span>
+                <span className="font-medium">
+                  {ranah.namaPemilik.trim() || konfirmasiRefund.namaPemilik || "-"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-ink-soft">Nominal</span>
+                <span className="font-semibold text-navy">
+                  {formatRupiah(
+                    ranah.nominal.trim() ? Number(ranah.nominal) : konfirmasiRefund.nominal,
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-ink-soft">Bukti Transfer</span>
+                <span className="font-medium">
+                  {berkasBukti
+                    ? `Berkas baru (${berkasBukti.name})`
+                    : konfirmasiRefund.buktiUrl
+                      ? "Sudah tersimpan"
+                      : "Tidak ada berkas"}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

@@ -32,6 +32,7 @@ export type ComparisonMetricCardProps = {
     valueSuffix?: string;
   };
   badge?: React.ReactNode;
+  footer?: React.ReactNode;
   className?: string;
   onClick?: () => void;
 };
@@ -54,6 +55,7 @@ export function ComparisonMetricCard({
   sparklineColor,
   circularProgress,
   badge,
+  footer,
   className = "",
   onClick,
 }: ComparisonMetricCardProps) {
@@ -170,8 +172,12 @@ export function ComparisonMetricCard({
         ) : null}
       </div>
 
-      {/* Baris Bawah: Baseline Komparasi & Keterangan Kontekstual */}
-      {(baselineLabel || subtitle) ? (
+      {/* Baris Bawah: Baseline Komparasi, Keterangan Kontekstual, atau Footer Rincian */}
+      {footer ? (
+        <div className="mt-3.5 border-t border-rule/60 pt-2.5 text-micro text-ink-soft">
+          {footer}
+        </div>
+      ) : (baselineLabel || subtitle) ? (
         <div className="mt-3.5 border-t border-rule/60 pt-2.5 flex items-center justify-between text-micro text-ink-soft">
           {baselineLabel ? (
             <span className="truncate font-medium">{baselineLabel}</span>

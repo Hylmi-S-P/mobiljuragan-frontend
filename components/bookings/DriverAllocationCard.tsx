@@ -115,7 +115,7 @@ export function DriverAllocationCard({
                 onAssignDriver(val);
               }}
               disabled={disabled || isPending}
-              className="h-11 w-full rounded-sm border border-rule-strong bg-surface px-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy sm:max-w-md"
+              className="h-11 w-full rounded-sm border border-rule-strong bg-surface px-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy disabled:cursor-not-allowed disabled:bg-canvas disabled:opacity-75 sm:max-w-md"
             >
               <option value="">-- Pilih Supir Siaga --</option>
               {eligibleDrivers.map((driver) => {
@@ -137,6 +137,12 @@ export function DriverAllocationCard({
               </span>
             ) : null}
           </div>
+
+          {disabled && hasAssignedDriver ? (
+            <p className="mt-1.5 text-micro text-ink-soft">
+              Penugasan supir dikunci setelah tarif dikonfirmasi.
+            </p>
+          ) : null}
 
           {eligibleDrivers.length === 0 ? (
             <p className="mt-1.5 text-micro text-amber-700">

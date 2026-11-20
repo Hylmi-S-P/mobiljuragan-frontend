@@ -100,7 +100,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
           <input
             id={`${fieldId}-name`}
             name="fullName"
-            maxLength={80}
+            maxLength={60}
             value={name}
             onChange={(event) => setName(event.target.value)}
             aria-invalid={Boolean(state?.errors?.fullName)}
@@ -169,7 +169,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
               id={`${fieldId}-password`}
               name="password"
               type="password"
-              maxLength={100}
+              maxLength={50}
               autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
