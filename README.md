@@ -135,6 +135,10 @@ npm run dev
 ```
 Dashboard akan aktif pada: `http://localhost:3000`.
 
+Akun admin bawaan hasil seeding backend (`npm run prisma:seed`):
+- **No. HP:** `081234567890`
+- **Password:** `Admin123!`
+
 ### Langkah 4: Perintah Build & Quality Check
 ```bash
 # Typecheck TypeScript
