@@ -25,11 +25,26 @@ export function AutoGrowTextarea({ maxHeight = 420, style, ...props }: Props) {
     const el = ref.current;
     if (!el) return;
 
-    el.style.height = "auto";
-    const tinggi = Math.min(el.scrollHeight, maxHeight);
-    el.style.height = `${tinggi}px`;
-    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+    const syncHeight = () => {
+      el.style.height = "auto";
+      if (el.scrollHeight <= 0) {
+        el.style.overflowY = "hidden";
+        return;
+      }
+      const tinggi = Math.min(el.scrollHeight, maxHeight);
+      el.style.height = `${tinggi}px`;
+      el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+    };
+
+    syncHeight();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      syncHeight();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [props.value, maxHeight]);
 
-  return <textarea ref={ref} {...props} style={{ ...style, resize: "none" }} />;
+  return <textarea ref={ref} {...props} style={{ resize: "vertical", ...style }} />;
 }

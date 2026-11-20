@@ -827,7 +827,13 @@ export async function apiDeleteKnowledgeDocument(id: string) {
 export type AiGatewayLog = {
   id: string;
   timestamp: string;
-  event: "CHAT_COMPLETION" | "HEALTH_CHECK" | "GATEWAY_ROUTING" | "DOC_PARSED";
+  event:
+    | "CHAT_COMPLETION"
+    | "HEALTH_CHECK"
+    | "GATEWAY_ROUTING"
+    | "DOC_PARSED"
+    | "TOOL_CALL"
+    | "RAG_RETRIEVAL";
   model: string;
   status: number;
   latencyMs: number;
@@ -897,6 +903,38 @@ export async function apiParseKnowledgeFile(
   return json.data;
 }
 
+export type RagReindexResult = {
+  documentsProcessed: number;
+  faqsProcessed: number;
+  chunksTotal: number;
+  embeddedNow: number;
+  reused: number;
+  failedEmbeddings: number;
+  embeddingModel: string;
+};
+
+export async function apiReindexRagKnowledge(force: boolean = false): Promise<RagReindexResult> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}/admin/ai/rag/reindex`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ force }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "REINDEX_RAG_FAILED",
+      json?.message || json?.error?.message || "Gagal menyinkronkan indeks RAG.",
+    );
+  }
+  return json.data as RagReindexResult;
+}
+
 export async function apiTestAiChat(
   prompt: string,
   history?: Array<{ role: string; content: string }>,
@@ -934,7 +972,24 @@ export async function apiTestAiChat(
     latencyMs: number;
     tokensPerSecond?: number;
     ragDocumentsInjected: number;
+    ragFaqsInjected?: number;
     referencedDocuments?: string[];
+    ragMode?: "HYBRID_VECTOR" | "LEXICAL_FALLBACK" | "NONE";
+    ragLatencyMs?: number;
+    ragChunksUsed?: Array<{
+      id: string;
+      sourceType: string;
+      title: string;
+      category: string;
+      score: number;
+    }>;
+    toolsUsed?: Array<{
+      name: string;
+      ok: boolean;
+      durationMs: number;
+      summary: string;
+    }>;
+    intentGuard?: "PASSED" | "PROMPT_INJECTION" | "ROADSIDE_EMERGENCY";
     isSimulationFallback: boolean;
     isFallbackTriggered?: boolean;
     fallbackReason?: string;

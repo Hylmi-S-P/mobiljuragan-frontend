@@ -52,6 +52,7 @@ export default async function AiHubPage() {
       healthData={healthData}
       initialLogs={initialLogs}
       config={aiData.config}
+      ragStats={aiData.stats}
       documents={documents}
       categories={categories}
       activeDocCount={activeDocCount}

@@ -29,7 +29,9 @@ export function tautanMedia(url: string | null | undefined): string | null {
    * NEXT_PUBLIC_API_URL berakhiran `/api/v1`. Yang dibutuhkan di sini hanya
    * asal dan portnya, jadi akhiran itu dibuang lebih dulu.
    */
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NODE_ENV === "production" ? "" : "http://localhost:4000/api/v1");
   const asal = apiUrl.replace(/\/api\/v1\/?$/, "");
 
   return `${asal}${url.startsWith("/") ? url : `/${url}`}`;

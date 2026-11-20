@@ -36,6 +36,7 @@ import {
   apiGetAiGatewayLogs,
   apiClearAiGatewayLogs,
   apiParseKnowledgeFile,
+  apiReindexRagKnowledge,
   apiUnggahFotoKendaraan,
   apiUnggahMedia,
   apiCreateBookingLineItem,
@@ -854,6 +855,27 @@ export async function parseKnowledgeFileAction(filename: string, contentBase64: 
       success: false,
       data: null,
       message: err instanceof Error ? err.message : "Gagal mengekstrak isi berkas dokumen.",
+    };
+  }
+}
+
+/**
+ * Server Action untuk menyinkronkan ulang seluruh chunk & embedding indeks RAG.
+ */
+export async function reindexRagKnowledgeAction(force: boolean = false) {
+  try {
+    const data = await apiReindexRagKnowledge(force);
+    revalidatePath("/admin/ai-hub");
+    return {
+      success: true,
+      data,
+      message: `Indeks RAG disinkronkan: ${data.chunksTotal} chunk (${data.embeddedNow} baru, ${data.reused} digunakan ulang).`,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      data: null,
+      message: err instanceof Error ? err.message : "Gagal menyinkronkan indeks RAG.",
     };
   }
 }

@@ -801,6 +801,7 @@ export type AiConfigData = {
     apiKey?: string | null;
     hasApiKey?: boolean;
     activeModel: string;
+    embeddingModel?: string;
     fallbackModel: string;
     fallbackGatewayUrl: string | null;
     fallbackApiKey?: string | null;
@@ -818,6 +819,11 @@ export type AiConfigData = {
   stats: {
     documentCount: number;
     activeDocumentCount: number;
+    faqCount?: number;
+    activeFaqCount?: number;
+    chunkCount?: number;
+    activeChunkCount?: number;
+    embeddedChunkCount?: number;
   };
 };
 
@@ -844,6 +850,8 @@ export type KnowledgeDocument = {
   category: string;
   content: string;
   isActive: boolean;
+  chunkCount?: number;
+  embeddedChunkCount?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -879,7 +887,13 @@ export async function getKnowledgeCategories(): Promise<KnowledgeCategoryView[]>
 export type AiGatewayLog = {
   id: string;
   timestamp: string;
-  event: "CHAT_COMPLETION" | "HEALTH_CHECK" | "GATEWAY_ROUTING" | "DOC_PARSED";
+  event:
+    | "CHAT_COMPLETION"
+    | "HEALTH_CHECK"
+    | "GATEWAY_ROUTING"
+    | "DOC_PARSED"
+    | "TOOL_CALL"
+    | "RAG_RETRIEVAL";
   model: string;
   status: number;
   latencyMs: number;
