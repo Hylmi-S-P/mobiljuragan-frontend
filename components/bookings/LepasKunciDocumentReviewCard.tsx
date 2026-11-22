@@ -12,7 +12,8 @@ import type { Booking, BookingDocument, BookingDocumentStatus } from "@/lib/type
 /* Alamat API dipakai untuk tautan unduhan yang dibuka di tab baru (tidak lewat
    server action). */
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "production" ? "/api/v1" : "http://localhost:4000/api/v1");
 
 type Props = {
   booking: Booking;
