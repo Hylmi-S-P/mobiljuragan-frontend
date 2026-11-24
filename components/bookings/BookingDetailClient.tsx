@@ -12,6 +12,7 @@ import { formatRupiah } from "@/lib/format";
 import { ManualSurchargeModal } from "@/components/modals/ManualSurchargeModal";
 import { PaymentProofModal } from "@/components/payments/PaymentProofModal";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
 import { useToast } from "@/components/ui/useToast";
 import { apiClient } from "@/lib/axios";
@@ -128,6 +129,8 @@ export function BookingDetailClient({
      `REJECTED` (permintaan belum pernah diterima). */
   const [cancelReason, setCancelReason] = useState("");
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [surchargeToDelete, setSurchargeToDelete] = useState<LineItem | null>(null);
+  const [isDeletingSurcharge, setIsDeletingSurcharge] = useState(false);
   const { show, node } = useToast();
 
   const [isPending, startTransition] = useTransition();
@@ -230,13 +233,32 @@ export function BookingDetailClient({
     show("Penyesuaian biaya tersimpan pada riwayat pesanan.");
   }
 
-  async function handleRemoveSurcharge(itemId: string) {
-    const res = await cancelBookingLineItemAction(booking.id, itemId);
-    if (res.success) {
-      router.refresh();
-      show(res.message ?? "Penyesuaian biaya dibatalkan.");
-    } else {
-      show(res.message ?? "Gagal membatalkan penyesuaian biaya.", "error");
+  function handleRemoveSurcharge(itemId: string) {
+    const found = items.find((item) => item.id === itemId);
+    setSurchargeToDelete(
+      found ?? {
+        id: itemId,
+        label: "Penyesuaian biaya manual",
+        amount: null,
+        kind: "penyesuaian",
+      },
+    );
+  }
+
+  async function confirmRemoveSurcharge() {
+    if (!surchargeToDelete) return;
+    setIsDeletingSurcharge(true);
+    try {
+      const res = await cancelBookingLineItemAction(booking.id, surchargeToDelete.id);
+      if (res.success) {
+        setSurchargeToDelete(null);
+        router.refresh();
+        show(res.message ?? "Penyesuaian biaya dibatalkan.");
+      } else {
+        show(res.message ?? "Gagal membatalkan penyesuaian biaya.", "error");
+      }
+    } finally {
+      setIsDeletingSurcharge(false);
     }
   }
 
@@ -668,6 +690,45 @@ export function BookingDetailClient({
           booking={booking}
         />
       ) : null}
+
+      {/* Modal Konfirmasi Hapus Biaya Tambahan */}
+      <Modal
+        open={Boolean(surchargeToDelete)}
+        onClose={() => {
+          if (!isDeletingSurcharge) setSurchargeToDelete(null);
+        }}
+        title="Hapus Biaya Tambahan?"
+        description="Penyesuaian manual yang dihapus akan dilepas dari total tagihan pesanan ini."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isDeletingSurcharge}
+              onClick={() => setSurchargeToDelete(null)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              disabled={isDeletingSurcharge}
+              onClick={confirmRemoveSurcharge}
+            >
+              {isDeletingSurcharge ? "Menghapus..." : "Ya, Hapus Biaya"}
+            </Button>
+          </>
+        }
+      >
+        {surchargeToDelete ? (
+          <div className="rounded-sm border border-rule bg-canvas p-3 text-meta">
+            <p className="font-semibold text-ink">{surchargeToDelete.label}</p>
+            {surchargeToDelete.note ? (
+              <p className="mt-1 text-micro text-ink-soft">{surchargeToDelete.note}</p>
+            ) : null}
+          </div>
+        ) : null}
+      </Modal>
     </>
   );
 }

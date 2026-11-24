@@ -52,6 +52,44 @@ export function CustomerAccountsTable({
     null,
   );
   const [loadingRiwayatId, setLoadingRiwayatId] = useState<string | null>(null);
+  const [pendingConfirmAction, setPendingConfirmAction] = useState<{
+    type: "revoke" | "toggle_status";
+    customer: CustomerAccount;
+  } | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+
+  async function jalankanAksiTerkonfirmasi() {
+    if (!pendingConfirmAction) return;
+    const { type, customer } = pendingConfirmAction;
+    setConfirmBusy(true);
+    const formData = new FormData();
+    formData.set("id", customer.id);
+
+    if (type === "revoke") {
+      const hasil = await revokeCustomerSessionsAction(null, formData);
+      setConfirmBusy(false);
+      setPendingConfirmAction(null);
+      show(
+        hasil.success ? hasil.message || "Sesi pelanggan dicabut." : hasil.message || "Gagal mencabut sesi.",
+        hasil.success ? "success" : "error",
+      );
+      if (hasil.success) router.refresh();
+      return;
+    }
+
+    const nextActive = !customer.isActive;
+    formData.set("isActive", String(nextActive));
+    const hasil = await setCustomerActiveAction(null, formData);
+    setConfirmBusy(false);
+    setPendingConfirmAction(null);
+    show(
+      hasil.success
+        ? hasil.message || (nextActive ? "Akun diaktifkan kembali." : "Akun dinonaktifkan.")
+        : hasil.message || "Gagal mengubah status akun.",
+      hasil.success ? "success" : "error",
+    );
+    if (hasil.success) router.refresh();
+  }
 
   async function bukaRiwayatIdentitas(item: CustomerAccount) {
     setLoadingRiwayatId(item.id);
@@ -192,29 +230,24 @@ export function CustomerAccountsTable({
                             }}
                             nonaktif={!item.lockedUntil && item.failedLoginAttempts === 0}
                           />
-                          <AksiKecil
-                            id={item.id}
-                            action={revokeCustomerSessionsAction}
-                            label="Cabut sesi"
-                            pesanSukses="Sesi dicabut."
-                            onDone={(msg, jenis) => {
-                              show(msg, jenis);
-                              if (jenis !== "error") router.refresh();
-                            }}
-                          />
-                          <AksiKecil
-                            id={item.id}
-                            extraFields={{ isActive: String(!item.isActive) }}
-                            action={setCustomerActiveAction}
-                            label={item.isActive ? "Nonaktifkan" : "Aktifkan"}
-                            pesanSukses={
-                              item.isActive ? "Akun dinonaktifkan." : "Akun diaktifkan kembali."
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingConfirmAction({ type: "revoke", customer: item })
                             }
-                            onDone={(msg, jenis) => {
-                              show(msg, jenis);
-                              if (jenis !== "error") router.refresh();
-                            }}
-                          />
+                            className="rounded-sm border border-rule px-2 py-1 text-micro font-medium text-ink hover:bg-canvas"
+                          >
+                            Cabut sesi
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingConfirmAction({ type: "toggle_status", customer: item })
+                            }
+                            className="rounded-sm border border-rule px-2 py-1 text-micro font-medium text-ink hover:bg-canvas"
+                          >
+                            {item.isActive ? "Nonaktifkan" : "Aktifkan"}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -257,6 +290,60 @@ export function CustomerAccountsTable({
         description={detail ? detail.user.fullName : undefined}
       >
         {detail ? <DaftarRiwayat items={detail.riwayat} /> : null}
+      </Modal>
+
+      <Modal
+        open={pendingConfirmAction !== null}
+        onClose={() => {
+          if (!confirmBusy) setPendingConfirmAction(null);
+        }}
+        title={
+          pendingConfirmAction?.type === "revoke"
+            ? "Cabut Sesi Pelanggan?"
+            : pendingConfirmAction?.customer.isActive
+              ? "Nonaktifkan Akun Pelanggan?"
+              : "Aktifkan Kembali Akun Pelanggan?"
+        }
+        footer={
+          <div className="flex w-full items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={confirmBusy}
+              onClick={() => setPendingConfirmAction(null)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant={
+                pendingConfirmAction?.type === "revoke" || pendingConfirmAction?.customer.isActive
+                  ? "danger"
+                  : "confirm"
+              }
+              disabled={confirmBusy}
+              onClick={jalankanAksiTerkonfirmasi}
+            >
+              {confirmBusy ? "Memproses..." : "Ya, Lanjutkan"}
+            </Button>
+          </div>
+        }
+      >
+        {pendingConfirmAction ? (
+          <div className="space-y-2 text-meta text-ink">
+            <p className="text-ink-soft">
+              {pendingConfirmAction.type === "revoke"
+                ? "Semua sesi login aktif akun ini di aplikasi pelanggan akan diputus segera, sehingga pengguna harus masuk ulang."
+                : pendingConfirmAction.customer.isActive
+                  ? "Akun ini akan dinonaktifkan dan tidak dapat masuk atau membuat pesanan baru sampai diaktifkan kembali."
+                  : "Akun ini akan diaktifkan kembali sehingga pelanggan dapat masuk dan menggunakan aplikasi seperti semula."}
+            </p>
+            <div className="rounded-sm border border-rule bg-canvas p-3">
+              <p className="font-semibold text-ink">{pendingConfirmAction.customer.fullName}</p>
+              <p className="text-micro text-ink-soft">{pendingConfirmAction.customer.phoneNumber}</p>
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </>
   );

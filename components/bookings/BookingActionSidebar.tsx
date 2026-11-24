@@ -1,8 +1,10 @@
 "use client";
 
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { formatRupiah } from "@/lib/format";
+import { formatDateRange, formatRupiah } from "@/lib/format";
 import { BOOKING_STATUS } from "@/lib/labels";
 import type { Booking, BookingDocument, BookingStatus, CanonicalBookingStatus } from "@/lib/types";
 
@@ -51,6 +53,13 @@ export function BookingActionSidebar({
   onOpenPaymentVerification,
   onOpenCancelModal,
 }: Props) {
+  const fieldId = useId();
+  const [showEarlyReturnModal, setShowEarlyReturnModal] = useState(false);
+  const [earlyReturnChecked, setEarlyReturnChecked] = useState(false);
+  const [earlyReturnNote, setEarlyReturnNote] = useState(
+    "Unit armada dikembalikan lebih awal dalam kondisi baik. Sewa selesai.",
+  );
+
   /* Dua langkah, bukan satu: pesanan diterima dulu, tarifnya ditetapkan kemudian.
      Sebelumnya tombol tunggal mengirim CONFIRMED langsung dari CREATED, dan
      backend menolaknya karena PENDING_CONFIRMATION belum pernah dilewati. */
@@ -384,17 +393,104 @@ export function BookingActionSidebar({
             size="md"
             className="w-full"
             disabled={isPending}
-            onClick={() =>
-              onTransitionStatus(
-                "COMPLETED",
+            onClick={() => {
+              setEarlyReturnChecked(false);
+              setEarlyReturnNote(
                 "Unit armada dikembalikan lebih awal dalam kondisi baik. Sewa selesai.",
-              )
-            }
+              );
+              setShowEarlyReturnModal(true);
+            }}
           >
             {isPending ? "Memproses..." : "Selesaikan Lebih Awal (Unit Dikembalikan)"}
           </Button>
         </div>
       ) : null}
+
+      <Modal
+        open={showEarlyReturnModal}
+        onClose={() => {
+          if (!isPending) setShowEarlyReturnModal(false);
+        }}
+        title="Konfirmasi Pengembalian Unit Lebih Awal"
+        description="Pastikan unit kendaraan sudah kembali di kantor dan diperiksa fisiknya sebelum menandai sewa selesai."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => setShowEarlyReturnModal(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="confirm"
+              disabled={isPending || !earlyReturnChecked}
+              onClick={() => {
+                setShowEarlyReturnModal(false);
+                onTransitionStatus(
+                  "COMPLETED",
+                  earlyReturnNote.trim() ||
+                    "Unit armada dikembalikan lebih awal dalam kondisi baik. Sewa selesai.",
+                );
+              }}
+            >
+              {isPending ? "Memproses..." : "Konfirmasi Selesaikan Pesanan"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3.5 text-meta">
+          <div className="rounded-sm border border-rule bg-canvas p-3 space-y-1.5">
+            <div className="flex justify-between gap-2">
+              <span className="text-ink-soft">Kode Pesanan</span>
+              <span className="font-semibold text-ink">#{booking.code}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-ink-soft">Pelanggan</span>
+              <span className="font-medium text-ink">{booking.customerName}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-ink-soft">Jadwal Semula</span>
+              <span className="tabular-nums text-ink">
+                {formatDateRange(booking.startDate, booking.endDate, booking.dayCount)}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor={`${fieldId}-early-return-note`}
+              className="block text-meta font-medium text-ink"
+            >
+              Catatan kondisi pengembalian unit
+            </label>
+            <input
+              id={`${fieldId}-early-return-note`}
+              type="text"
+              maxLength={250}
+              value={earlyReturnNote}
+              onChange={(e) => setEarlyReturnNote(e.target.value)}
+              className="mt-1 h-10 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
+              placeholder="Contoh: Unit kembali lengkap, BBM penuh, kondisi bodi aman."
+            />
+          </div>
+
+          <label className="flex items-start gap-2.5 rounded-sm border border-amber-300 bg-amber-50 p-3 text-meta text-ink cursor-pointer">
+            <input
+              type="checkbox"
+              checked={earlyReturnChecked}
+              onChange={(e) => setEarlyReturnChecked(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-teal"
+            />
+            <span>
+              Saya memastikan unit kendaraan dan kunci telah diterima kembali serta diperiksa oleh
+              petugas.
+            </span>
+          </label>
+        </div>
+      </Modal>
 
       {isCompleted ? (
         <div className="rounded-md border border-teal/40 bg-teal/10 p-3 text-meta text-teal">

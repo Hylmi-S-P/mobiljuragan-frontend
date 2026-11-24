@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { DRIVER_STATUS } from "@/lib/labels";
@@ -59,6 +60,14 @@ export function DriverAllocationCard({
 
   const activeDriverLabel = assignedDriver?.label || (assignedDriverName?.trim() ? assignedDriverName : null);
   const hasAssignedDriver = Boolean(activeDriverLabel);
+  const currentAssignedSlug = assignedDriver?.id ?? selectedDriverId;
+
+  const [syncedAssignedSlug, setSyncedAssignedSlug] = useState(currentAssignedSlug);
+  const [draftDriverId, setDraftDriverId] = useState(currentAssignedSlug);
+  if (syncedAssignedSlug !== currentAssignedSlug) {
+    setSyncedAssignedSlug(currentAssignedSlug);
+    setDraftDriverId(currentAssignedSlug);
+  }
 
   if (!isDriverService) {
     // Mode Lepas Kunci (Self-Drive)
@@ -109,11 +118,8 @@ export function DriverAllocationCard({
                  bisa berisi UUID dari pesanan. Yang ditampilkan adalah slug supaya
                  supir yang sudah ditugaskan tetap terpilih, bukan kembali ke
                  placeholder setelah halaman dimuat ulang. */
-              value={assignedDriver?.id ?? selectedDriverId}
-              onChange={(e) => {
-                const val = e.target.value;
-                onAssignDriver(val);
-              }}
+              value={draftDriverId}
+              onChange={(e) => setDraftDriverId(e.target.value)}
               disabled={disabled || isPending}
               className="h-11 w-full rounded-sm border border-rule-strong bg-surface px-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy disabled:cursor-not-allowed disabled:bg-canvas disabled:opacity-75 sm:max-w-md"
             >
@@ -125,16 +131,22 @@ export function DriverAllocationCard({
                 return (
                   <option key={driver.id} value={driver.id}>
                     {driver.label} ({driver.route === "luar_kota" ? "Luar Kota" : "Dalam Kota"})
-                    {cocokRute ? "" : " — beda rute"}
+                    {cocokRute ? "" : " (beda rute)"}
                   </option>
                 );
               })}
             </select>
 
-            {isPending ? (
-              <span className="text-micro font-medium text-teal animate-pulse">
-                Menyimpan...
-              </span>
+            {!disabled ? (
+              <Button
+                type="button"
+                variant="confirm"
+                size="md"
+                disabled={isPending || !draftDriverId || draftDriverId === currentAssignedSlug}
+                onClick={() => onAssignDriver(draftDriverId)}
+              >
+                {isPending ? "Menyimpan..." : "Tugaskan Supir"}
+              </Button>
             ) : null}
           </div>
 
