@@ -109,9 +109,9 @@ export default async function OverviewPage() {
         <ComparisonMetricCard
           title={LABEL_TOTAL_PEMASUKAN}
           value={
-            finance?.summary.totalRevenue
+            finance?.summary.totalRevenue !== undefined
               ? formatRupiah(finance.summary.totalRevenue)
-              : `${bookings.length} Pesanan`
+              : formatRupiah(0)
           }
           sparklineData={monthlyTrends.map((t) => t.revenue)}
           sparklineColor="#059669"
@@ -134,8 +134,10 @@ export default async function OverviewPage() {
       >
         {queue.length === 0 ? (
           <div className="flex flex-col items-start gap-2 rounded-card border border-rule bg-canvas px-4 py-6 text-meta text-ink-soft sm:px-6">
-            <p className="font-semibold text-ink text-body">Semua pesanan telah diproses.</p>
-            <p>Tidak ada antrean yang menunggu konfirmasi saat ini.</p>
+            <p className="font-semibold text-ink text-body">
+              Tidak ada pesanan yang menunggu konfirmasi tarif saat ini.
+            </p>
+            <p>Pesanan baru dari pelanggan akan otomatis masuk ke daftar ini.</p>
           </div>
         ) : (
           /* Antrean disajikan sebagai Grid Kartu Kompak Responsif */

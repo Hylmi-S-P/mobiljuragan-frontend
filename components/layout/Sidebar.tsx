@@ -55,8 +55,47 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
   const pathname = usePathname();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  const [syncedCounts, setSyncedCounts] = useState(navCounts);
+  const [syncedDetails, setSyncedDetails] = useState(navDetails);
+  const [liveCounts, setLiveCounts] = useState(navCounts);
+  const [liveDetails, setLiveDetails] = useState(navDetails);
+
+  if (syncedCounts !== navCounts || syncedDetails !== navDetails) {
+    setSyncedCounts(navCounts);
+    setSyncedDetails(navDetails);
+    setLiveCounts(navCounts);
+    setLiveDetails(navDetails);
+  }
+
   /* Setiap grup akordeon memiliki state independen agar membuka satu grup tidak memengaruhi grup lain. */
   const [groupOverrides, setGroupOverrides] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let activeEffect = true;
+
+    async function refreshCounts() {
+      try {
+        const res = await fetch("/api/nav-counts", { cache: "no-store" });
+        if (!res.ok || !activeEffect) return;
+        const json = (await res.json()) as {
+          counts?: Record<string, number>;
+          details?: Record<string, { baru: number; dibalas: number }>;
+        };
+        if (!activeEffect) return;
+        if (json.counts) setLiveCounts(json.counts);
+        if (json.details) setLiveDetails(json.details);
+      } catch {
+        // Kegagalan polling dibiarkan tenang agar navigasi tidak terganggu.
+      }
+    }
+
+    refreshCounts();
+    const timer = window.setInterval(refreshCounts, 25_000);
+    return () => {
+      activeEffect = false;
+      window.clearInterval(timer);
+    };
+  }, [pathname]);
 
   function isNavActive(entryHref: string): boolean {
     if (entryHref === "/bookings") {
@@ -117,6 +156,10 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
               const IkonGrup = entry.label === "Akun Pelanggan" ? IconUsers : IconCar;
               const grupAktif = entry.items.some((item) => pathname.startsWith(item.href));
               const groupOpen = groupOverrides[entry.label] ?? grupAktif;
+              const groupCount = entry.items.reduce(
+                (sum, sub) => sum + (liveCounts?.[sub.href] ?? 0),
+                0,
+              );
               return (
                 <div key={entry.label} className="flex flex-col gap-0.5">
                   <button
@@ -134,6 +177,15 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                   >
                     <IkonGrup className="h-[17px] w-[17px] shrink-0 text-white/85" />
                     <span className="flex-1 whitespace-nowrap text-left">{entry.label}</span>
+                    {groupCount > 0 ? (
+                      <span
+                        aria-label={`${groupCount} menunggu tindakan`}
+                        title={`${groupCount} menunggu tindakan`}
+                        className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gold px-1.5 text-micro font-bold tabular-nums leading-none text-ink"
+                      >
+                        {groupCount > 99 ? "99+" : groupCount}
+                      </span>
+                    ) : null}
                     <IconChevronDown
                       className={`h-3.5 w-3.5 shrink-0 text-white/70 transition-transform duration-200 ${
                         groupOpen ? "rotate-180" : ""
@@ -146,6 +198,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                       {entry.items.map((item) => {
                         const active = pathname.startsWith(item.href);
                         const IkonItem = IKON_NAV[item.href] ?? IconCar;
+                        const subCount = liveCounts?.[item.href] ?? 0;
                         return (
                           <Link
                             key={item.href}
@@ -163,7 +216,18 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                                 active ? "text-white" : "text-white/70"
                               }`}
                             />
-                            <span className="truncate">{item.label}</span>
+                            <span className="flex-1 truncate">{item.label}</span>
+                            {subCount > 0 ? (
+                              <span
+                                aria-label={`${subCount} menunggu pemeriksaan`}
+                                title={`${subCount} unit menunggu pemeriksaan`}
+                                className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
+                                  active ? "bg-white text-teal" : "bg-gold text-ink"
+                                }`}
+                              >
+                                {subCount > 99 ? "99+" : subCount}
+                              </span>
+                            ) : null}
                           </Link>
                         );
                       })}
@@ -175,7 +239,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
 
             const active = isNavActive(entry.href);
             const Ikon = IKON_NAV[entry.href] ?? IconDashboard;
-            const jumlah = navCounts?.[entry.href] ?? 0;
+            const jumlah = liveCounts?.[entry.href] ?? 0;
             return (
               <Link
                 key={entry.href}
@@ -192,19 +256,15 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                   className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/70"}`}
                 />
                 <span className="flex-1 whitespace-nowrap">{entry.label}</span>
-                {/* Indikator notifikasi responsif & adaptif:
-                    - Satuan (1â€“9): Berbentuk lingkaran sempurna 20x20 px (min-w-5 h-5).
-                    - Puluhan (10â€“99): Mengembang mulus menjadi pil lonjong dengan padding aman px-1.5 tanpa teks terpotong (overflow).
-                    - Ratusan (100+): Dibatasi 99+ (atau pil adaptif) agar tata letak sidebar tetap presisi. */}
+                {/* Indikator notifikasi responsif & adaptif */}
                 {jumlah > 0 ? (() => {
-                  const rincian = navDetails?.[entry.href];
-                  /* Nada warna membedakan dua keadaan yang sama-sama menunggu tindakan:
-                     emas untuk tiket yang belum pernah disentuh, navy untuk tiket yang
-                     sudah dibalas pelanggan dan sekarang menunggu admin lagi. */
+                  const rincian = liveDetails?.[entry.href];
                   const adaYangDibalas = (rincian?.dibalas ?? 0) > 0;
                   const adaYangBaru = (rincian?.baru ?? 0) > 0;
                   const keterangan = rincian
-                    ? `${jumlah} menunggu tindakan: ${rincian.baru} baru, ${rincian.dibalas} sudah dibalas pelanggan`
+                    ? entry.href === "/bookings"
+                      ? `${jumlah} menunggu tindakan: ${rincian.baru} permintaan baru, ${rincian.dibalas} pesanan perlu tindak lanjut`
+                      : `${jumlah} menunggu tindakan: ${rincian.baru} baru, ${rincian.dibalas} sudah dibalas pelanggan`
                     : `${jumlah} menunggu tindakan`;
 
                   return (
