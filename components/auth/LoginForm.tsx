@@ -85,7 +85,7 @@ export function LoginForm() {
             <input
               id={`${fieldId}-password`}
               name="password"
-              maxLength={50}
+              maxLength={72}
               type={passwordVisible ? "text" : "password"}
               autoComplete="current-password"
               aria-invalid={Boolean(state?.errors?.password)}
