@@ -139,6 +139,25 @@ export async function loginAction(
   redirect("/");
 }
 
+function extractFieldErrors(details: unknown): Record<string, string> | undefined {
+  if (!details || typeof details !== "object") return undefined;
+  const result: Record<string, string> = {};
+  for (const [key, val] of Object.entries(details as Record<string, unknown>)) {
+    if (Array.isArray(val) && typeof val[0] === "string") {
+      result[key] = val[0];
+    } else if (typeof val === "string") {
+      result[key] = val;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function isValidStaffPhone(value: string): boolean {
+  if (!/^[0-9+\-\s()]+$/.test(value)) return false;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+}
+
 // Validasi minimal 8 karakter sandi disesuaikan dengan aturan bcrypt backend.
 export async function createAdminAction(
   _prevState: ActionState | null,
@@ -150,14 +169,20 @@ export async function createAdminAction(
   const password = (formData.get("password") as string)?.trim() || "";
 
   const errors: Record<string, string> = {};
-  if (!fullName) errors.fullName = "Nama lengkap wajib diisi.";
-  if (!phoneNumber) errors.phoneNumber = "Nomor telepon/kontak wajib diisi.";
+  if (fullName.length < 3) errors.fullName = "Nama lengkap minimal 3 karakter.";
+  if (!phoneNumber || !isValidStaffPhone(phoneNumber)) {
+    errors.phoneNumber = "Nomor telepon wajib berisi 8 hingga 15 digit angka.";
+  }
   if (!password || password.length < 8) {
     errors.password = "Kata sandi minimal 8 karakter.";
   }
 
   if (Object.keys(errors).length > 0) {
-    return { success: false, errors };
+    return {
+      success: false,
+      message: Object.values(errors)[0],
+      errors,
+    };
   }
 
   try {
@@ -169,7 +194,13 @@ export async function createAdminAction(
     });
   } catch (err) {
     if (err instanceof ApiError) {
-      return { success: false, message: err.message };
+      const errorsFromApi = extractFieldErrors(err.details);
+      const firstDetail = errorsFromApi ? Object.values(errorsFromApi)[0] : undefined;
+      return {
+        success: false,
+        message: firstDetail && err.message === "Format data tidak valid." ? firstDetail : err.message,
+        errors: errorsFromApi,
+      };
     }
     return { success: false, message: "Gagal membuat akun admin pada backend." };
   }
@@ -195,16 +226,29 @@ export async function updateAdminAction(
     return { success: false, message: "ID akun tidak valid." };
   }
 
+  const errors: Record<string, string> = {};
+  if (fullName !== undefined && fullName.length > 0 && fullName.length < 3) {
+    errors.fullName = "Nama lengkap minimal 3 karakter.";
+  }
+  if (phoneNumber !== undefined && phoneNumber.length > 0 && !isValidStaffPhone(phoneNumber)) {
+    errors.phoneNumber = "Nomor telepon wajib berisi 8 hingga 15 digit angka.";
+  }
+
   if (password) {
     if (password.length < 8) {
-      return { success: false, message: "Kata sandi baru minimal 8 karakter." };
+      errors.password = "Kata sandi baru minimal 8 karakter.";
+    } else if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      errors.password =
+        "Kata sandi baru wajib mengandung minimal 1 huruf besar (A-Z) dan 1 angka (0-9).";
     }
-    if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-      return {
-        success: false,
-        message: "Kata sandi baru wajib mengandung minimal 1 huruf besar (A-Z) dan 1 angka (0-9).",
-      };
-    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return {
+      success: false,
+      message: Object.values(errors)[0],
+      errors,
+    };
   }
 
   try {
@@ -217,7 +261,13 @@ export async function updateAdminAction(
     });
   } catch (err) {
     if (err instanceof ApiError) {
-      return { success: false, message: err.message };
+      const errorsFromApi = extractFieldErrors(err.details);
+      const firstDetail = errorsFromApi ? Object.values(errorsFromApi)[0] : undefined;
+      return {
+        success: false,
+        message: firstDetail && err.message === "Format data tidak valid." ? firstDetail : err.message,
+        errors: errorsFromApi,
+      };
     }
     return { success: false, message: "Gagal memperbarui akun admin pada backend." };
   }

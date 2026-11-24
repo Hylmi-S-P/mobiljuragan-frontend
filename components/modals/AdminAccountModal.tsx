@@ -104,7 +104,9 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
             value={name}
             onChange={(event) => setName(event.target.value)}
             aria-invalid={Boolean(state?.errors?.fullName)}
-            aria-describedby={state?.errors?.fullName ? `${fieldId}-name-error` : undefined}
+            aria-describedby={
+              state?.errors?.fullName ? `${fieldId}-name-error` : `${fieldId}-name-hint`
+            }
             className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
             placeholder="Nama sesuai identitas staf"
             required
@@ -113,7 +115,11 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
             <p id={`${fieldId}-name-error`} className="mt-1 text-meta text-danger">
               {state.errors.fullName}
             </p>
-          ) : null}
+          ) : (
+            <p id={`${fieldId}-name-hint`} className="mt-1 text-micro text-ink-soft">
+              Minimal 3 karakter.
+            </p>
+          )}
         </div>
 
         <div>
@@ -138,27 +144,33 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
         <div className="grid gap-3.5 sm:grid-cols-2">
           <div>
             <label htmlFor={`${fieldId}-username`} className="block text-meta font-medium text-ink">
-              Username
+              Nomor Telepon (untuk login)
             </label>
             <input
               id={`${fieldId}-username`}
               name="phoneNumber"
+              type="tel"
+              inputMode="tel"
               maxLength={20}
               value={username}
-              onChange={(event) => setUsername(event.target.value.replace(/[^\w.@+-]/g, ""))}
+              onChange={(event) => setUsername(event.target.value.replace(/[^0-9+\-\s()]/g, ""))}
               aria-invalid={Boolean(state?.errors?.phoneNumber)}
               aria-describedby={
-                state?.errors?.phoneNumber ? `${fieldId}-username-error` : undefined
+                state?.errors?.phoneNumber ? `${fieldId}-username-error` : `${fieldId}-username-hint`
               }
               className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-              placeholder="Nomor telepon atau nama pengguna"
+              placeholder="Contoh: 081234567890"
               required
             />
             {state?.errors?.phoneNumber ? (
               <p id={`${fieldId}-username-error`} className="mt-1 text-meta text-danger">
                 {state.errors.phoneNumber}
               </p>
-            ) : null}
+            ) : (
+              <p id={`${fieldId}-username-hint`} className="mt-1 text-micro text-ink-soft">
+                Minimal 8 digit angka, digunakan untuk masuk ke dashboard.
+              </p>
+            )}
           </div>
 
           <div>
@@ -217,13 +229,6 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
             </div>
           </fieldset>
         ) : null}
-
-        <div className="rounded-sm border border-rule bg-canvas px-3.5 py-2.5">
-          <p className="text-micro font-semibold uppercase text-ink-soft">Pengidentifikasi Akun</p>
-          <p className="mt-1 text-meta text-ink">
-            {account ? account.id : "Dibuat otomatis oleh sistem"}
-          </p>
-        </div>
       </form>
     </Modal>
   );
