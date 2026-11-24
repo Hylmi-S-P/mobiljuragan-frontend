@@ -6,15 +6,15 @@ import { Button } from "@/components/ui/Button";
 import { IconTrash } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import {
-  BOOKING_MODE_LABEL,
   VEHICLE_CATEGORY_OPTIONS,
   VEHICLE_TRANSMISSION_OPTIONS,
 } from "@/lib/labels";
 import { tautanMedia } from "@/lib/media";
-import type { BookingMode, Vehicle, VehicleStatus } from "@/lib/types";
+import type { Vehicle, VehicleStatus } from "@/lib/types";
 
 type Props = {
   vehicle?: Vehicle;
+  isRented?: boolean;
   existingPlates: string[];
   onClose: () => void;
   /** Berkas foto baru, hanya terisi kalau admin memilih foto pada sesi ini. */
@@ -34,6 +34,7 @@ const JENIS_FOTO = ["image/png", "image/jpeg"];
 
 export function VehicleFormModal({
   vehicle,
+  isRented = false,
   existingPlates,
   onClose,
   onSave,
@@ -54,33 +55,22 @@ export function VehicleFormModal({
     return p > 0 ? p.toLocaleString("id-ID") : "";
   });
   const [seatsInput, setSeatsInput] = useState<string>(String(vehicle?.seats ?? 7));
-  const [status, setStatus] = useState<VehicleStatus>(vehicle?.status ?? "tersedia");
-  const sedangPemeriksaanAwal = vehicle?.status === "pemeriksaan";
-  const opsiStatusTampil: { value: VehicleStatus; label: string }[] = sedangPemeriksaanAwal
-    ? [
-        { value: "pemeriksaan", label: "Pemeriksaan" },
-        ...STATUS_OPTIONS,
-      ]
-    : STATUS_OPTIONS;
-  /*
-   * Mode rental yang tercentang.
-   *
-   * Dulu memakai `vehicle?.allowedModes ?? [keduanya]`, yang hanya berlaku saat
-   * nilainya null. Kalau array-nya kosong (seperti data dari backend yang tidak
-   * menyimpan mode rental), hasilnya kosong dan validasi menolak simpan. Sekarang array
-   * kosong diperlakukan sama dengan tidak ada data.
-   */
-  const [modes, setModes] = useState<BookingMode[]>(
-    vehicle?.allowedModes && vehicle.allowedModes.length > 0
-      ? vehicle.allowedModes
-      : ["lepas_kunci", "dengan_supir"],
+  const isUnitRented = Boolean(isRented || vehicle?.status === "disewa");
+  const [status, setStatus] = useState<VehicleStatus>(
+    isUnitRented ? "disewa" : (vehicle?.status ?? "tersedia"),
   );
+  const sedangPemeriksaanAwal = !isUnitRented && vehicle?.status === "pemeriksaan";
+  const opsiStatusTampil: { value: VehicleStatus; label: string }[] = isUnitRented
+    ? [{ value: "disewa", label: "Disewa" }, ...STATUS_OPTIONS]
+    : sedangPemeriksaanAwal
+      ? [{ value: "pemeriksaan", label: "Pemeriksaan" }, ...STATUS_OPTIONS]
+      : STATUS_OPTIONS;
   const [photoName, setPhotoName] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   /*
    * Foto yang sudah tersimpan di server, dipakai ulang saat unit disunting
    * tanpa mengganti fotonya. Untuk berkas baru, yang dikirim adalah `photoFile`
-   * lewat multipart â€” bukan isinya sebagai Base64.
+   * lewat multipart, bukan isinya sebagai Base64.
    */
   const [photoDataUrl] = useState<string | null>(vehicle?.imageUrl ?? null);
   /* Berkas asli disimpan supaya bisa dikirim lewat multipart, bukan Base64. */
@@ -94,12 +84,6 @@ export function VehicleFormModal({
     };
   }, [photoUrl]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  function toggleMode(mode: BookingMode) {
-    setModes((current) =>
-      current.includes(mode) ? current.filter((item) => item !== mode) : [...current, mode],
-    );
-  }
 
   function handlePhoto(file: File | undefined) {
     if (!file) {
@@ -167,7 +151,6 @@ export function VehicleFormModal({
     else if (existingPlates.some((item) => item.toUpperCase() === normalizedPlate)) {
       nextErrors.plate = "Plat ini sudah dipakai unit lain di katalog.";
     }
-    if (modes.length === 0) nextErrors.modes = "Pilih minimal satu mode rental yang diizinkan.";
     const numericPrice = Number(priceInput.replace(/[^\d]/g, "")) || 0;
     if (numericPrice <= 0) {
       nextErrors.pricePerDay = "Tarif sewa harian harus bernilai lebih dari 0.";
@@ -184,7 +167,7 @@ export function VehicleFormModal({
         id: vehicle?.id ?? `v-${Date.now()}`,
         name: name.trim().toUpperCase(),
         plate: normalizedPlate,
-        status,
+        status: isUnitRented ? "disewa" : status,
         category,
         transmission,
         seats: numericSeats,
@@ -195,7 +178,10 @@ export function VehicleFormModal({
            backend, jadi nilai lama dipertahankan agar data yang sudah ada tidak hilang
            saat unit disunting. */
         usage: vehicle?.usage ?? null,
-        allowedModes: modes,
+        allowedModes:
+          vehicle?.allowedModes && vehicle.allowedModes.length > 0
+            ? vehicle.allowedModes
+            : ["lepas_kunci", "dengan_supir"],
       },
       photoFile,
     );
@@ -391,13 +377,16 @@ export function VehicleFormModal({
             {opsiStatusTampil.map((option) => {
               const dikunciKeTersedia =
                 sedangPemeriksaanAwal && option.value === "tersedia";
+              const dikunci = isUnitRented || dikunciKeTersedia;
               return (
                 <Button
                   key={option.value}
                   variant={status === option.value ? "confirm" : "outline"}
                   aria-pressed={status === option.value}
-                  disabled={dikunciKeTersedia}
-                  onClick={() => setStatus(option.value)}
+                  disabled={dikunci}
+                  onClick={() => {
+                    if (!dikunci) setStatus(option.value);
+                  }}
                 >
                   {option.label}
                 </Button>
@@ -405,33 +394,12 @@ export function VehicleFormModal({
             })}
           </div>
           <p className="mt-1.5 text-micro text-ink-soft">
-            {sedangPemeriksaanAwal
-              ? 'Unit sedang dalam masa pemeriksaan pasca-sewa. Gunakan tombol "Selesai Inspeksi" pada kartu katalog untuk mengembalikan ke Tersedia, atau pilih Servis / Tidak Tersedia di sini bila ditemukan kerusakan.'
-              : "Status Disewa dan Pemeriksaan diisi otomatis dari siklus pesanan aktif."}
+            {isUnitRented
+              ? "Status operasional dikunci selama unit sedang disewa atau terikat pesanan aktif. Selesaikan atau batalkan pesanan terlebih dahulu untuk mengubah status manual."
+              : sedangPemeriksaanAwal
+                ? 'Unit sedang dalam masa pemeriksaan pasca-sewa. Gunakan tombol "Selesai Inspeksi" pada kartu katalog untuk mengembalikan ke Tersedia, atau pilih Servis / Tidak Tersedia di sini bila ditemukan kerusakan.'
+                : "Status Disewa dan Pemeriksaan diisi otomatis dari siklus pesanan aktif."}
           </p>
-        </fieldset>
-
-        <fieldset>
-          <legend className="text-meta font-medium text-ink">
-            Pilihan mode rental yang diizinkan
-          </legend>
-          <div className="mt-1.5 flex flex-wrap gap-3">
-            {(["lepas_kunci", "dengan_supir"] as BookingMode[]).map((mode) => (
-              <label key={mode} className="flex items-center gap-2 text-body text-ink">
-                <input
-                  type="checkbox"
-                  checked={modes.includes(mode)}
-                  onChange={() => toggleMode(mode)}
-                  className="h-5 w-5 rounded-sm border border-rule-strong accent-teal"
-                />
-                {/* Keterangan "(Operasional 10 Jam/Hari)" sengaja dilepas: durasi
-                    operasional berbeda per paket sewa, jadi menuliskannya di sini
-                    justru membuat admin mengira itu angka tetap. */}
-                {BOOKING_MODE_LABEL[mode]}
-              </label>
-            ))}
-          </div>
-          {errors.modes ? <p className="mt-1 text-meta text-danger">{errors.modes}</p> : null}
         </fieldset>
 
         <div>

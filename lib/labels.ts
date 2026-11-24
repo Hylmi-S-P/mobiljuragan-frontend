@@ -216,7 +216,7 @@ export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; tone: ChipTo
   PENDING_VERIFICATION: { label: "Menunggu Verifikasi", tone: "pending" },
   PAID: { label: "Dibayar", tone: "available" },
   FAILED: { label: "Ditolak", tone: "danger" },
-  REFUNDED: { label: "Dikembalikan", tone: "service" },
+  REFUNDED: { label: "Pengembalian Dana", tone: "pending" },
 };
 
 /* Label bahasa Indonesia yang natural untuk metode pembayaran */

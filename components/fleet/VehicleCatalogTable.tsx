@@ -201,6 +201,11 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
       {formTarget ? (
         <VehicleFormModal
           vehicle={editing}
+          isRented={
+            editing
+              ? rentedVehicleIds.includes(editing.id) || editing.status === "disewa"
+              : false
+          }
           existingPlates={vehicles
             .filter((vehicle) => vehicle.id !== editing?.id)
             .map((vehicle) => vehicle.plate)}

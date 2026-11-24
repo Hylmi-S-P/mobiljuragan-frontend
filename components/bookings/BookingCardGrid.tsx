@@ -153,7 +153,12 @@ export function BookingCardGrid({ initialBookings, vehicles, statusFilter }: Pro
             {tampil.map((booking) => {
               const vehicle = vehicleById(booking.vehicleId);
               const statusMeta = BOOKING_STATUS[booking.status];
-              const actionText = ACTION_BUTTON_TEXT[booking.status] ?? "Detail & Verifikasi";
+              const chipLabel =
+                booking.rawStatus === "CREATED" ? "Permintaan Baru" : statusMeta.label;
+              const actionText =
+                booking.rawStatus === "CREATED"
+                  ? "Tinjau Permintaan"
+                  : (ACTION_BUTTON_TEXT[booking.status] ?? "Detail & Verifikasi");
               const isUrgent =
                 booking.status === "perlu_konfirmasi_tarif" ||
                 booking.status === "perlu_alokasi_sopir";
@@ -177,7 +182,7 @@ export function BookingCardGrid({ initialBookings, vehicles, statusFilter }: Pro
                           {booking.code}
                         </span>
                       </div>
-                      <StatusChip tone={statusMeta.tone}>{statusMeta.label}</StatusChip>
+                      <StatusChip tone={statusMeta.tone}>{chipLabel}</StatusChip>
                     </div>
 
                     {/* Info Armada & Plat */}
@@ -230,16 +235,28 @@ export function BookingCardGrid({ initialBookings, vehicles, statusFilter }: Pro
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                             Pembayaran Lunas
                           </span>
+                        ) : booking.payment.status === "FAILED" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200/80 px-2 py-0.5 text-micro font-semibold text-red-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                            Bukti Ditolak
+                          </span>
+                        ) : booking.payment.status === "REFUNDED" ? (
+                          booking.refund?.status === "SELESAI" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-micro font-semibold text-emerald-700">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              Dana Dikembalikan
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-micro font-semibold text-amber-700">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              Proses Refund
+                            </span>
+                          )
                         ) : booking.payment.proofImageUrl ||
                           booking.payment.status === "PENDING_VERIFICATION" ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-micro font-semibold text-amber-700">
                             <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                             Bukti Transfer Terlampir
-                          </span>
-                        ) : booking.payment.status === "FAILED" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200/80 px-2 py-0.5 text-micro font-semibold text-red-700">
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                            Bukti Ditolak
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-micro font-medium text-slate-600">

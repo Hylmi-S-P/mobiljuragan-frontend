@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/useToast";
 import { unggahBuktiRefundAction, updateRefundAction } from "@/app/actions";
-import { formatRupiah, formatDateTimeWit } from "@/lib/format";
+import { formatCurrencyInput, formatDateTimeWit, formatRupiah, parseRupiahDots } from "@/lib/format";
 import { tautanMedia } from "@/lib/media";
 import type { BookingRefund, RefundStatus } from "@/lib/types";
 
@@ -90,12 +90,12 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
       namaBank: refund.namaBank ?? "",
       nomorRekening: refund.nomorRekening ?? "",
       namaPemilik: refund.namaPemilik ?? "",
-      nominal: String(refund.nominal),
+      nominal: refund.nominal ? formatCurrencyInput(String(refund.nominal)) : "",
       catatan: "",
     });
   }
 
-  async function kirim(refund: BookingRefund, status?: RefundStatus) {
+  async function kirim(refund: BookingRefund, status?: RefundStatus): Promise<boolean> {
     setSedangSimpan(refund.id);
     try {
       let buktiMediaId: string | undefined;
@@ -105,16 +105,17 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
         const unggah = await unggahBuktiRefundAction(formData);
         if (!unggah.success || !unggah.mediaId) {
           show(unggah.message ?? "Gagal mengunggah bukti transfer.", "error");
-          return;
+          return false;
         }
         buktiMediaId = unggah.mediaId;
       }
 
+      const nominalAngka = parseRupiahDots(ranah.nominal);
       const hasil = await updateRefundAction(refund.id, {
         namaBank: ranah.namaBank.trim() || undefined,
         nomorRekening: ranah.nomorRekening.trim() || undefined,
         namaPemilik: ranah.namaPemilik.trim() || undefined,
-        nominal: ranah.nominal.trim() ? Number(ranah.nominal) : undefined,
+        nominal: ranah.nominal.trim() && nominalAngka > 0 ? nominalAngka : undefined,
         buktiMediaId,
         catatan: ranah.catatan.trim() || undefined,
         status,
@@ -125,9 +126,10 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
         setTerbuka(null);
         setBerkasBukti(null);
         router.refresh();
-      } else {
-        show(hasil.message ?? "Gagal menyimpan.", "error");
+        return true;
       }
+      show(hasil.message ?? "Gagal menyimpan.", "error");
+      return false;
     } finally {
       setSedangSimpan(null);
     }
@@ -281,10 +283,13 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                         Nominal yang ditransfer
                         <input
                           value={ranah.nominal}
-                          onChange={(e) => setRanah({ ...ranah, nominal: e.target.value })}
+                          onChange={(e) =>
+                            setRanah({ ...ranah, nominal: formatCurrencyInput(e.target.value) })
+                          }
                           inputMode="numeric"
-                          maxLength={11}
-                          className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta text-ink"
+                          maxLength={18}
+                          placeholder="Rp 0"
+                          className="mt-1 w-full rounded-sm border border-rule bg-canvas px-3 py-2 text-meta tabular-nums text-ink"
                         />
                       </label>
                       <label className="text-meta text-ink-soft sm:col-span-2">
@@ -443,8 +448,10 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
               onClick={async () => {
                 if (!konfirmasiRefund) return;
                 const target = konfirmasiRefund;
-                setKonfirmasiRefund(null);
-                await kirim(target, "SELESAI");
+                const berhasil = await kirim(target, "SELESAI");
+                if (berhasil) {
+                  setKonfirmasiRefund(null);
+                }
               }}
             >
               {sedangSimpan ? "Menyimpan..." : "Ya, Konfirmasi Selesai"}
@@ -480,7 +487,9 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
                 <span className="text-ink-soft">Nominal</span>
                 <span className="font-semibold text-navy">
                   {formatRupiah(
-                    ranah.nominal.trim() ? Number(ranah.nominal) : konfirmasiRefund.nominal,
+                    ranah.nominal.trim() && parseRupiahDots(ranah.nominal) > 0
+                      ? parseRupiahDots(ranah.nominal)
+                      : konfirmasiRefund.nominal,
                   )}
                 </span>
               </div>
