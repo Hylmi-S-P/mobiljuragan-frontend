@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import {
   correctCustomerNameAction,
+  deleteCustomerAccountAction,
   getCustomerDetailAction,
   revokeCustomerSessionsAction,
   setCustomerActiveAction,
@@ -53,7 +54,7 @@ export function CustomerAccountsTable({
   );
   const [loadingRiwayatId, setLoadingRiwayatId] = useState<string | null>(null);
   const [pendingConfirmAction, setPendingConfirmAction] = useState<{
-    type: "revoke" | "toggle_status";
+    type: "revoke" | "toggle_status" | "delete";
     customer: CustomerAccount;
   } | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
@@ -64,6 +65,20 @@ export function CustomerAccountsTable({
     setConfirmBusy(true);
     const formData = new FormData();
     formData.set("id", customer.id);
+
+    if (type === "delete") {
+      const hasil = await deleteCustomerAccountAction(null, formData);
+      setConfirmBusy(false);
+      setPendingConfirmAction(null);
+      show(
+        hasil.success
+          ? hasil.message || "Akun pelanggan berhasil dihapus."
+          : hasil.message || "Gagal menghapus akun pelanggan.",
+        hasil.success ? "success" : "error",
+      );
+      if (hasil.success) router.refresh();
+      return;
+    }
 
     if (type === "revoke") {
       const hasil = await revokeCustomerSessionsAction(null, formData);
@@ -248,6 +263,15 @@ export function CustomerAccountsTable({
                           >
                             {item.isActive ? "Nonaktifkan" : "Aktifkan"}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingConfirmAction({ type: "delete", customer: item })
+                            }
+                            className="rounded-sm border border-danger/40 px-2 py-1 text-micro font-medium text-danger hover:bg-danger/10"
+                          >
+                            Hapus akun
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -298,11 +322,13 @@ export function CustomerAccountsTable({
           if (!confirmBusy) setPendingConfirmAction(null);
         }}
         title={
-          pendingConfirmAction?.type === "revoke"
-            ? "Cabut Sesi Pelanggan?"
-            : pendingConfirmAction?.customer.isActive
-              ? "Nonaktifkan Akun Pelanggan?"
-              : "Aktifkan Kembali Akun Pelanggan?"
+          pendingConfirmAction?.type === "delete"
+            ? "Hapus Akun Pelanggan Permanen?"
+            : pendingConfirmAction?.type === "revoke"
+              ? "Cabut Sesi Pelanggan?"
+              : pendingConfirmAction?.customer.isActive
+                ? "Nonaktifkan Akun Pelanggan?"
+                : "Aktifkan Kembali Akun Pelanggan?"
         }
         footer={
           <div className="flex w-full items-center justify-end gap-2">
@@ -317,14 +343,20 @@ export function CustomerAccountsTable({
             <Button
               type="button"
               variant={
-                pendingConfirmAction?.type === "revoke" || pendingConfirmAction?.customer.isActive
+                pendingConfirmAction?.type === "delete" ||
+                pendingConfirmAction?.type === "revoke" ||
+                pendingConfirmAction?.customer.isActive
                   ? "danger"
                   : "confirm"
               }
               disabled={confirmBusy}
               onClick={jalankanAksiTerkonfirmasi}
             >
-              {confirmBusy ? "Memproses..." : "Ya, Lanjutkan"}
+              {confirmBusy
+                ? "Memproses..."
+                : pendingConfirmAction?.type === "delete"
+                  ? "Ya, Hapus Permanen"
+                  : "Ya, Lanjutkan"}
             </Button>
           </div>
         }
@@ -332,15 +364,22 @@ export function CustomerAccountsTable({
         {pendingConfirmAction ? (
           <div className="space-y-2 text-meta text-ink">
             <p className="text-ink-soft">
-              {pendingConfirmAction.type === "revoke"
-                ? "Semua sesi login aktif akun ini di aplikasi pelanggan akan diputus segera, sehingga pengguna harus masuk ulang."
-                : pendingConfirmAction.customer.isActive
-                  ? "Akun ini akan dinonaktifkan dan tidak dapat masuk atau membuat pesanan baru sampai diaktifkan kembali."
-                  : "Akun ini akan diaktifkan kembali sehingga pelanggan dapat masuk dan menggunakan aplikasi seperti semula."}
+              {pendingConfirmAction.type === "delete"
+                ? "Seluruh data akun ini (pesanan, pembayaran, dokumen, tiket, dan berkas media) akan dihapus permanen secara atomik. Mobil yang tertahan disewa oleh akun ini otomatis dikembalikan ke Tersedia dan supir dikembalikan ke Siaga."
+                : pendingConfirmAction.type === "revoke"
+                  ? "Semua sesi login aktif akun ini di aplikasi pelanggan akan diputus segera, sehingga pengguna harus masuk ulang."
+                  : pendingConfirmAction.customer.isActive
+                    ? "Akun ini akan dinonaktifkan dan tidak dapat masuk atau membuat pesanan baru sampai diaktifkan kembali."
+                    : "Akun ini akan diaktifkan kembali sehingga pelanggan dapat masuk dan menggunakan aplikasi seperti semula."}
             </p>
             <div className="rounded-sm border border-rule bg-canvas p-3">
               <p className="font-semibold text-ink">{pendingConfirmAction.customer.fullName}</p>
               <p className="text-micro text-ink-soft">{pendingConfirmAction.customer.phoneNumber}</p>
+              {pendingConfirmAction.type === "delete" ? (
+                <p className="mt-1 text-micro font-medium text-danger">
+                  Pesanan tercatat: {pendingConfirmAction.customer.jumlahBooking} pesanan
+                </p>
+              ) : null}
             </div>
           </div>
         ) : null}

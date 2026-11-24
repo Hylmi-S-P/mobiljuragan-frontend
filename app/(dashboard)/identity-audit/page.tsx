@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { IdentityAuditTable } from "@/components/customers/IdentityAuditTable";
-import { getIdentityAudit } from "@/lib/api";
+import { getCurrentAdminProfile, getIdentityAudit } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Jejak Identitas | MobilJuragan",
@@ -11,6 +12,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function IdentityAuditPage() {
+  const profile = await getCurrentAdminProfile();
+  if (profile?.role !== "SUPER_ADMIN") {
+    redirect("/");
+  }
+
   const { items, pagination } = await getIdentityAudit();
 
   return <IdentityAuditTable items={items} total={pagination.total} />;
