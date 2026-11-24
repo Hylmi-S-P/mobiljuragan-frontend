@@ -59,6 +59,7 @@ export function AdminManageModal({
   const isSelf = Boolean(currentUserId && currentUserId === account.id);
 
   const [name, setName] = useState(account.name);
+  const [username, setUsername] = useState(account.username);
   const [role, setRole] = useState<AdminRole>(account.role);
   const [active] = useState(account.active);
 
@@ -78,23 +79,27 @@ export function AdminManageModal({
 
   // Validasi kata sandi baru (hanya jika diisi super admin)
   const hasMinLength = newPassword.length >= MIN_PASSWORD_LENGTH;
+  const hasMaxBytes = new TextEncoder().encode(newPassword).length <= 72;
   const hasUppercase = /[A-Z]/.test(newPassword);
+  const hasLowercase = /[a-z]/.test(newPassword);
   const hasNumber = /[0-9]/.test(newPassword);
+  const hasSymbol = /[^A-Za-z0-9]/.test(newPassword);
   const isPasswordValid =
-    newPassword.length === 0 || (hasMinLength && hasUppercase && hasNumber);
+    newPassword.length === 0 ||
+    (hasMinLength && hasMaxBytes && hasUppercase && hasLowercase && hasNumber && hasSymbol);
 
   useEffect(() => {
     if (state?.success) {
       onSave({
         id: account.id,
         name: name.trim(),
-        username: account.username,
+        username: username.trim().toLowerCase(),
         role,
         active,
       });
       onClose();
     }
-  }, [state, account.id, account.username, name, role, active, onSave, onClose]);
+  }, [state, account.id, name, username, role, active, onSave, onClose]);
 
   const handleDeleteSelfProtected = async () => {
     if (isSelf) return;
@@ -231,16 +236,25 @@ export function AdminManageModal({
 
           <div>
             <label htmlFor={`${fieldId}-username`} className="block text-meta font-medium text-ink">
-              Username (tetap)
+              Username
             </label>
             <input
               id={`${fieldId}-username`}
               type="text"
-              value={account.username}
-              disabled
-              readOnly
-              className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-rule/40 px-3 text-body text-ink-soft cursor-not-allowed"
+              name="username"
+              required
+              autoCapitalize="none"
+              autoCorrect="off"
+              maxLength={30}
+              value={username}
+              onChange={(e) =>
+                setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))
+              }
+              className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
             />
+            {state?.errors?.username ? (
+              <p className="mt-1 text-micro text-danger">{state.errors.username}</p>
+            ) : null}
           </div>
         </div>
 
@@ -287,7 +301,7 @@ export function AdminManageModal({
               id={`${fieldId}-password`}
               type={showPassword ? "text" : "password"}
               name="password"
-              maxLength={50}
+              maxLength={72}
               placeholder="Masukkan kata sandi baru..."
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -314,10 +328,10 @@ export function AdminManageModal({
               <div className="flex flex-wrap items-center gap-3">
                 <span
                   className={
-                    hasMinLength ? "text-emerald-700 font-medium" : "text-danger"
+                    hasMinLength && hasMaxBytes ? "text-emerald-700 font-medium" : "text-danger"
                   }
                 >
-                  {hasMinLength ? "✓" : "✗"} Minimal 8 Karakter
+                  {hasMinLength && hasMaxBytes ? "✓" : "✗"} 8-72 Byte
                 </span>
                 <span
                   className={
@@ -328,10 +342,24 @@ export function AdminManageModal({
                 </span>
                 <span
                   className={
+                    hasLowercase ? "text-emerald-700 font-medium" : "text-danger"
+                  }
+                >
+                  {hasLowercase ? "✓" : "✗"} Huruf Kecil (a-z)
+                </span>
+                <span
+                  className={
                     hasNumber ? "text-emerald-700 font-medium" : "text-danger"
                   }
                 >
                   {hasNumber ? "✓" : "✗"} Angka (0-9)
+                </span>
+                <span
+                  className={
+                    hasSymbol ? "text-emerald-700 font-medium" : "text-danger"
+                  }
+                >
+                  {hasSymbol ? "✓" : "✗"} Simbol
                 </span>
               </div>
               {!isPasswordValid ? (

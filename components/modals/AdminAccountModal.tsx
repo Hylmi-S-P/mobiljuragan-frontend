@@ -187,7 +187,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
                 id={`${fieldId}-password`}
                 name="password"
                 type={showPassword ? "text" : "password"}
-                maxLength={50}
+                maxLength={72}
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -196,7 +196,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
                   state?.errors?.password ? `${fieldId}-password-error` : `${fieldId}-password-hint`
                 }
                 className="h-11 w-full rounded-sm border border-rule-strong bg-canvas pl-3 pr-10 text-body text-ink"
-                placeholder={account ? "Kosongkan jika tidak diubah" : "Minimal 8 karakter"}
+                placeholder={account ? "Kosongkan jika tidak diubah" : "Min. 8 karakter + simbol"}
               />
               <button
                 type="button"
@@ -216,7 +216,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
               <p id={`${fieldId}-password-hint`} className="mt-1 text-micro text-ink-soft">
                 {account
                   ? "Biarkan kosong kalau sandi tidak diganti."
-                  : `Minimal ${MIN_PASSWORD_LENGTH} karakter.`}
+                  : `Minimal ${MIN_PASSWORD_LENGTH} karakter dengan huruf besar, huruf kecil, angka, dan simbol.`}
               </p>
             )}
           </div>

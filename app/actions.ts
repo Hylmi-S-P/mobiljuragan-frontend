@@ -92,7 +92,7 @@ export async function loginAction(
   formData: FormData,
 ): Promise<ActionState> {
   const username = (formData.get("username") as string)?.trim() || "";
-  const password = (formData.get("password") as string)?.trim() || "";
+  const password = (formData.get("password") as string) || "";
   const rememberMe = formData.get("rememberMe") === "on";
 
   const errors: Record<string, string> = {};
@@ -154,10 +154,24 @@ function extractFieldErrors(details: unknown): Record<string, string> | undefine
 }
 
 function isValidAdminUsername(value: string): boolean {
-  return value.length >= 3 && value.length <= 30 && /^[a-z0-9._-]+$/i.test(value);
+  return (
+    value.length >= 3 &&
+    value.length <= 30 &&
+    /^[a-z0-9](?:[a-z0-9._-]{1,28}[a-z0-9])$/i.test(value) &&
+    !/[._-]{2}/.test(value)
+  );
 }
 
-// Validasi minimal 8 karakter sandi disesuaikan dengan aturan bcrypt backend.
+function validateAdminPassword(password: string): string | null {
+  if (password.length < 8) return "Kata sandi minimal 8 karakter.";
+  if (new TextEncoder().encode(password).length > 72) return "Kata sandi maksimal 72 byte.";
+  if (!/[A-Z]/.test(password)) return "Kata sandi harus memuat huruf besar.";
+  if (!/[a-z]/.test(password)) return "Kata sandi harus memuat huruf kecil.";
+  if (!/[0-9]/.test(password)) return "Kata sandi harus memuat angka.";
+  if (!/[^A-Za-z0-9]/.test(password)) return "Kata sandi harus memuat simbol.";
+  return null;
+}
+
 export async function createAdminAction(
   _prevState: ActionState | null,
   formData: FormData,
@@ -165,16 +179,17 @@ export async function createAdminAction(
   const fullName = (formData.get("fullName") as string)?.trim() || "";
   const username = (formData.get("username") as string)?.trim().toLowerCase() || "";
   const role = (formData.get("role") as AdminRole) || "staf_operasional";
-  const password = (formData.get("password") as string)?.trim() || "";
+  const password = (formData.get("password") as string) || "";
 
   const errors: Record<string, string> = {};
   if (fullName.length < 3) errors.fullName = "Nama lengkap minimal 3 karakter.";
   if (!username || !isValidAdminUsername(username)) {
     errors.username =
-      "Username harus 3-30 karakter (huruf, angka, titik, underscore, atau tanda hubung).";
+      "Username harus 3-30 karakter, diawali dan diakhiri huruf/angka, tanpa tanda baca berurutan.";
   }
-  if (!password || password.length < 8) {
-    errors.password = "Kata sandi minimal 8 karakter.";
+  const passwordErr = validateAdminPassword(password);
+  if (passwordErr) {
+    errors.password = passwordErr;
   }
 
   if (Object.keys(errors).length > 0) {
@@ -209,15 +224,17 @@ export async function createAdminAction(
   return { success: true, message: `Akun ${fullName} berhasil dibuat.` };
 }
 
-// Kata sandi bersifat opsional pada update; username bersifat tetap dan tidak diubah.
 export async function updateAdminAction(
   _prevState: ActionState | null,
   formData: FormData,
 ): Promise<ActionState> {
   const id = formData.get("id") as string;
   const fullName = (formData.get("fullName") as string)?.trim();
+  const rawUsername = (formData.get("username") as string | null)?.trim().toLowerCase();
+  const username = rawUsername ? rawUsername : undefined;
   const role = (formData.get("role") as AdminRole) || undefined;
-  const password = (formData.get("password") as string)?.trim() || undefined;
+  const rawPassword = (formData.get("password") as string | null) ?? "";
+  const password = rawPassword.length > 0 ? rawPassword : undefined;
   const activeVal = formData.get("active");
   const isActive = activeVal !== null ? activeVal === "true" : undefined;
 
@@ -229,13 +246,15 @@ export async function updateAdminAction(
   if (fullName !== undefined && fullName.length > 0 && fullName.length < 3) {
     errors.fullName = "Nama lengkap minimal 3 karakter.";
   }
+  if (username !== undefined && !isValidAdminUsername(username)) {
+    errors.username =
+      "Username harus 3-30 karakter, diawali dan diakhiri huruf/angka, tanpa tanda baca berurutan.";
+  }
 
   if (password) {
-    if (password.length < 8) {
-      errors.password = "Kata sandi baru minimal 8 karakter.";
-    } else if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-      errors.password =
-        "Kata sandi baru wajib mengandung minimal 1 huruf besar (A-Z) dan 1 angka (0-9).";
+    const passwordErr = validateAdminPassword(password);
+    if (passwordErr) {
+      errors.password = passwordErr;
     }
   }
 
@@ -250,6 +269,7 @@ export async function updateAdminAction(
   try {
     await apiUpdateAdminAccount(id, {
       fullName,
+      username,
       role,
       password,
       isActive,

@@ -189,6 +189,7 @@ export async function apiUpdateAdminAccount(
   id: string,
   data: {
     fullName?: string;
+    username?: string;
     role?: AdminRole;
     password?: string;
     isActive?: boolean;
@@ -206,6 +207,7 @@ export async function apiUpdateAdminAccount(
     },
     body: JSON.stringify({
       fullName: data.fullName,
+      username: data.username,
       role: backendRole,
       password: data.password ? data.password : undefined,
       isActive: data.isActive,
