@@ -135,7 +135,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
           menggulir di dalam sidebar sendiri, bukan mendorong tinggi halaman. */}
       <aside
         aria-label="Navigasi utama"
-        className={`fixed inset-y-0 left-0 z-40 flex w-[256px] shrink-0 flex-col overflow-y-auto bg-navy px-3 py-5 lg:sticky lg:top-0 lg:bottom-auto lg:z-auto lg:h-dvh lg:self-start lg:visible lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-[227px] shrink-0 flex-col overflow-y-auto bg-navy px-3 py-5 lg:sticky lg:top-0 lg:bottom-auto lg:z-auto lg:h-dvh lg:self-start lg:visible lg:translate-x-0 ${
           open ? "visible translate-x-0" : "invisible -translate-x-full"
         }`}
       >
@@ -171,17 +171,17 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                       }))
                     }
                     aria-expanded={groupOpen}
-                    className={`flex h-11 w-full items-center gap-2 rounded-nav px-2.5 text-body font-medium text-white transition-colors ${
+                    className={`flex h-11 items-center gap-2.5 rounded-nav px-3 text-body font-medium text-white transition-colors ${
                       grupAktif && !groupOpen ? "bg-navy-surface" : "hover:bg-navy-hover"
                     }`}
                   >
-                    <IkonGrup className="h-[18px] w-[18px] shrink-0 text-white/85" />
-                    <span className="min-w-0 flex-1 truncate text-left">{entry.label}</span>
+                    <IkonGrup className="h-[17px] w-[17px] shrink-0 text-white/85" />
+                    <span className="flex-1 whitespace-nowrap text-left">{entry.label}</span>
                     {groupCount > 0 ? (
                       <span
                         aria-label={`${groupCount} menunggu tindakan`}
                         title={`${groupCount} menunggu tindakan`}
-                        className="ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gold px-1.5 text-micro font-bold tabular-nums leading-none text-ink"
+                        className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gold px-1.5 text-micro font-bold tabular-nums leading-none text-ink"
                       >
                         {groupCount > 99 ? "99+" : groupCount}
                       </span>
@@ -205,7 +205,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                             href={item.href}
                             aria-current={active ? "page" : undefined}
                             onClick={onClose}
-                            className={`ml-3 flex h-10 items-center gap-2 rounded-nav pl-3 pr-2.5 text-body font-medium transition-colors ${
+                            className={`ml-3 flex h-10 items-center gap-2.5 rounded-nav pl-3 pr-3 text-body font-medium transition-colors ${
                               active
                                 ? "bg-teal text-white"
                                 : "text-white/85 hover:bg-navy-hover hover:text-white"
@@ -216,19 +216,18 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                                 active ? "text-white" : "text-white/70"
                               }`}
                             />
-                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                            <span className="flex-1 truncate">{item.label}</span>
                             {subCount > 0 ? (
                               <span
                                 aria-label={`${subCount} menunggu pemeriksaan`}
                                 title={`${subCount} unit menunggu pemeriksaan`}
-                                className={`ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
+                                className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
                                   active ? "bg-white text-teal" : "bg-gold text-ink"
                                 }`}
                               >
                                 {subCount > 99 ? "99+" : subCount}
                               </span>
                             ) : null}
-                            <span aria-hidden="true" className="w-3.5 shrink-0" />
                           </Link>
                         );
                       })}
@@ -247,7 +246,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                 href={entry.href}
                 aria-current={active ? "page" : undefined}
                 onClick={onClose}
-                className={`flex h-11 w-full items-center gap-2 rounded-nav px-2.5 text-body font-medium transition-colors ${
+                className={`flex h-11 items-center gap-2 rounded-nav px-2.5 text-body font-medium transition-colors ${
                   active
                     ? "bg-teal text-white"
                     : "text-white/85 hover:bg-navy-hover hover:text-white"
@@ -256,7 +255,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                 <Ikon
                   className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/70"}`}
                 />
-                <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+                <span className="flex-1 whitespace-nowrap">{entry.label}</span>
                 {/* Indikator notifikasi responsif & adaptif */}
                 {jumlah > 0 ? (() => {
                   const rincian = liveDetails?.[entry.href];
@@ -272,7 +271,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                     <span
                       aria-label={keterangan}
                       title={keterangan}
-                      className={`ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
+                      className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-micro font-bold tabular-nums leading-none ${
                         active
                           ? "bg-white text-teal"
                           : adaYangDibalas && !adaYangBaru
@@ -284,7 +283,6 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                     </span>
                   );
                 })() : null}
-                <span aria-hidden="true" className="w-3.5 shrink-0" />
               </Link>
             );
           })}
