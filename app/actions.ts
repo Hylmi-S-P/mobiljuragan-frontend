@@ -12,6 +12,7 @@ import {
   apiSetCustomerActive,
   apiUnlockCustomer,
   apiRevokeCustomerSessions,
+  apiDeleteCustomerAccount,
   getCustomerDetail,
   apiReplyToTicket,
   apiTakeOverTicket,
@@ -95,7 +96,7 @@ export async function loginAction(
   const rememberMe = formData.get("rememberMe") === "on";
 
   const errors: Record<string, string> = {};
-  if (!username) errors.username = "Username atau nomor telepon wajib diisi.";
+  if (!username) errors.username = "Username wajib diisi.";
   if (!password) errors.password = "Kata sandi wajib diisi.";
 
   if (Object.keys(errors).length > 0) {
@@ -152,10 +153,8 @@ function extractFieldErrors(details: unknown): Record<string, string> | undefine
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-function isValidStaffPhone(value: string): boolean {
-  if (!/^[0-9+\-\s()]+$/.test(value)) return false;
-  const digits = value.replace(/\D/g, "");
-  return digits.length >= 8 && digits.length <= 15;
+function isValidAdminUsername(value: string): boolean {
+  return value.length >= 3 && value.length <= 30 && /^[a-z0-9._-]+$/i.test(value);
 }
 
 // Validasi minimal 8 karakter sandi disesuaikan dengan aturan bcrypt backend.
@@ -164,14 +163,15 @@ export async function createAdminAction(
   formData: FormData,
 ): Promise<ActionState> {
   const fullName = (formData.get("fullName") as string)?.trim() || "";
-  const phoneNumber = (formData.get("phoneNumber") as string)?.trim() || "";
+  const username = (formData.get("username") as string)?.trim().toLowerCase() || "";
   const role = (formData.get("role") as AdminRole) || "staf_operasional";
   const password = (formData.get("password") as string)?.trim() || "";
 
   const errors: Record<string, string> = {};
   if (fullName.length < 3) errors.fullName = "Nama lengkap minimal 3 karakter.";
-  if (!phoneNumber || !isValidStaffPhone(phoneNumber)) {
-    errors.phoneNumber = "Nomor telepon wajib berisi 8 hingga 15 digit angka.";
+  if (!username || !isValidAdminUsername(username)) {
+    errors.username =
+      "Username harus 3-30 karakter (huruf, angka, titik, underscore, atau tanda hubung).";
   }
   if (!password || password.length < 8) {
     errors.password = "Kata sandi minimal 8 karakter.";
@@ -188,7 +188,7 @@ export async function createAdminAction(
   try {
     await apiCreateAdminAccount({
       fullName,
-      phoneNumber,
+      username,
       role,
       password,
     });
@@ -209,14 +209,13 @@ export async function createAdminAction(
   return { success: true, message: `Akun ${fullName} berhasil dibuat.` };
 }
 
-// Kata sandi bersifat opsional pada update; dikirim hanya jika staf memasukkan nilai baru.
+// Kata sandi bersifat opsional pada update; username bersifat tetap dan tidak diubah.
 export async function updateAdminAction(
   _prevState: ActionState | null,
   formData: FormData,
 ): Promise<ActionState> {
   const id = formData.get("id") as string;
   const fullName = (formData.get("fullName") as string)?.trim();
-  const phoneNumber = (formData.get("phoneNumber") as string)?.trim();
   const role = (formData.get("role") as AdminRole) || undefined;
   const password = (formData.get("password") as string)?.trim() || undefined;
   const activeVal = formData.get("active");
@@ -229,9 +228,6 @@ export async function updateAdminAction(
   const errors: Record<string, string> = {};
   if (fullName !== undefined && fullName.length > 0 && fullName.length < 3) {
     errors.fullName = "Nama lengkap minimal 3 karakter.";
-  }
-  if (phoneNumber !== undefined && phoneNumber.length > 0 && !isValidStaffPhone(phoneNumber)) {
-    errors.phoneNumber = "Nomor telepon wajib berisi 8 hingga 15 digit angka.";
   }
 
   if (password) {
@@ -254,7 +250,6 @@ export async function updateAdminAction(
   try {
     await apiUpdateAdminAccount(id, {
       fullName,
-      phoneNumber,
       role,
       password,
       isActive,
@@ -347,6 +342,11 @@ export async function loadTicketMessagesAction(ticketId: string): Promise<{
   success: boolean;
   messages: TicketMessageView[];
   handledBy?: string;
+  assignedAdminId?: string | null;
+  assignedAdminName?: string | null;
+  isMine?: boolean;
+  status?: string;
+  rawStatus?: string;
   message?: string;
 }> {
   if (!ticketId) {
@@ -355,7 +355,16 @@ export async function loadTicketMessagesAction(ticketId: string): Promise<{
 
   try {
     const detail = await getTicketDetail(ticketId);
-    return { success: true, messages: detail.messages, handledBy: detail.handledBy };
+    return {
+      success: true,
+      messages: detail.messages,
+      handledBy: detail.handledBy,
+      assignedAdminId: detail.assignedAdminId,
+      assignedAdminName: detail.assignedAdminName,
+      isMine: detail.isMine,
+      status: detail.status,
+      rawStatus: detail.rawStatus,
+    };
   } catch (err) {
     if (err instanceof ApiError) {
       return { success: false, messages: [], message: err.message };
@@ -1689,6 +1698,38 @@ export async function setCustomerActiveAction(
   } catch (err) {
     if (err instanceof ApiError) return { success: false, message: err.message };
     return { success: false, message: "Gagal mengubah status aktif akun." };
+  }
+}
+
+/** Menghapus akun pelanggan secara atomik beserta seluruh data terkaitnya. */
+export async function deleteCustomerAccountAction(
+  _prevState: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = (formData.get("id") as string) || "";
+  if (!id) return { success: false, message: "Akun tidak dikenali." };
+
+  try {
+    const hasil = await apiDeleteCustomerAccount(id);
+    revalidatePath("/customers");
+    revalidatePath("/identity-audit");
+    revalidatePath("/bookings");
+    revalidatePath("/fleet/catalog");
+    revalidatePath("/fleet/calendar");
+    revalidatePath("/fleet/drivers");
+    revalidatePath("/customer-care");
+    revalidatePath("/");
+    const rincianArmada =
+      hasil.releasedVehicles > 0 ? ` ${hasil.releasedVehicles} armada dikembalikan ke Tersedia.` : "";
+    const rincianSupir =
+      hasil.releasedDrivers > 0 ? ` ${hasil.releasedDrivers} supir kembali Siaga.` : "";
+    return {
+      success: true,
+      message: `Akun ${hasil.fullName} dihapus atomik (${hasil.deletedBookings} pesanan, ${hasil.deletedTickets} tiket).${rincianArmada}${rincianSupir}`,
+    };
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, message: err.message };
+    return { success: false, message: "Gagal menghapus akun pelanggan." };
   }
 }
 

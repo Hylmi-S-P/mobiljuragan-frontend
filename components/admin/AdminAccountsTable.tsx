@@ -21,17 +21,18 @@ type Props = {
 type StaffUserPayload = {
   id: string;
   fullName: string;
-  phoneNumber: string;
+  username?: string | null;
+  phoneNumber?: string | null;
   role: string;
   isActive: boolean;
 };
 
 function mapApiUser(user: StaffUserPayload): AdminAccount {
-  const role: AdminRole = user.role === "ADMIN" ? "super_admin" : "staf_operasional";
+  const role: AdminRole = user.role === "SUPER_ADMIN" ? "super_admin" : "staf_operasional";
   return {
     id: user.id,
     name: user.fullName,
-    username: user.phoneNumber,
+    username: user.username ?? user.phoneNumber ?? "",
     role,
     active: Boolean(user.isActive),
   };
@@ -94,7 +95,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
       if (context?.previous) {
         queryClient.setQueryData(["adminAccounts"], context.previous);
       }
-      show("Gagal memperbarui status akun staf.", "error");
+      show("Gagal memperbarui status akun.", "error");
     },
     onSuccess: (_data, variables) => {
       show(
@@ -162,8 +163,8 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
                   maxLength={50}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari nama atau telepon..."
-                  aria-label="Cari admin atau staf"
+                  placeholder="Cari nama atau username..."
+                  aria-label="Cari admin atau super admin"
                   className="h-11 w-56 rounded-sm border border-rule-strong bg-canvas pl-9 pr-3 text-meta text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy sm:w-64"
                 />
               </div>
@@ -179,10 +180,10 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
           }
         >
           {isFetching ? (
-            <p className="mb-3 text-micro text-ink-soft">Menyinkronkan data staf terbaru...</p>
+            <p className="mb-3 text-micro text-ink-soft">Menyinkronkan data akun terbaru...</p>
           ) : null}
 
-          {/* Grid Kartu Akun Staf */}
+          {/* Grid Kartu Akun */}
           <AdminCardGrid
             accounts={optimisticAccounts}
             currentUserId={currentUser?.id}
@@ -218,7 +219,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
           }}
           onDeleted={(_id) => {
             queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
-            show("Akun staf berhasil dihapus.", "info");
+            show("Akun berhasil dihapus.", "info");
           }}
         />
       ) : null}

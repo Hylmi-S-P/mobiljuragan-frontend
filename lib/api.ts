@@ -38,7 +38,7 @@ export async function getSessionToken(): Promise<string | undefined> {
 export async function getCurrentAdminProfile(): Promise<{
   id: string;
   fullName: string;
-  role: "ADMIN" | "STAFF";
+  role: "SUPER_ADMIN" | "ADMIN";
 } | null> {
   const token = await getSessionToken();
   if (!token) return null;
@@ -55,21 +55,20 @@ export async function getCurrentAdminProfile(): Promise<{
     return {
       id: String(user.id),
       fullName: String(user.fullName ?? ""),
-      role: user.role === "ADMIN" ? "ADMIN" : "STAFF",
+      role: user.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN",
     };
   } catch {
     return null;
   }
 }
 
-// Mendukung autentikasi via nomor telepon resmi maupun username.
-export async function apiAdminLogin(usernameOrPhone: string, password: string, rememberMe = false) {
+// Autentikasi admin/super admin hanya menggunakan username dan kata sandi.
+export async function apiAdminLogin(username: string, password: string, rememberMe = false) {
   const res = await fetch(`${API_BASE_URL}/admin/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username: usernameOrPhone,
-      phoneNumber: usernameOrPhone,
+      username: username.trim().toLowerCase(),
       password,
       rememberMe,
     }),
@@ -82,32 +81,33 @@ export async function apiAdminLogin(usernameOrPhone: string, password: string, r
     throw new ApiError(
       res.status,
       json?.error?.code || "LOGIN_FAILED",
-      json?.error?.message || "Nomor telepon/username atau kata sandi salah.",
+      json?.error?.message || "Username atau kata sandi salah.",
       json?.error?.details,
     );
   }
 
   return json.data as {
     token: string;
-    user: { id: string; fullName: string; phoneNumber: string; role: string };
+    user: { id: string; fullName: string; username?: string | null; phoneNumber?: string | null; role: string };
   };
 }
 
-// Menyelaraskan enum role Prisma backend (ADMIN / STAFF) ke model peran dashboard.
+// Menyelaraskan enum role Prisma backend (SUPER_ADMIN / ADMIN) ke model peran dashboard.
 type StaffUserPayload = {
   id: string;
   fullName: string;
-  phoneNumber: string;
+  username?: string | null;
+  phoneNumber?: string | null;
   role: string;
   isActive: boolean;
 };
 
 function mapUserToAdminAccount(user: StaffUserPayload): AdminAccount {
-  const role: AdminRole = user.role === "ADMIN" ? "super_admin" : "staf_operasional";
+  const role: AdminRole = user.role === "SUPER_ADMIN" ? "super_admin" : "staf_operasional";
   return {
     id: user.id,
     name: user.fullName,
-    username: user.phoneNumber,
+    username: user.username ?? user.phoneNumber ?? "",
     role,
     active: Boolean(user.isActive),
   };
@@ -150,12 +150,12 @@ export async function getAdminAccounts(): Promise<AdminAccount[]> {
 
 export async function apiCreateAdminAccount(data: {
   fullName: string;
-  phoneNumber: string;
+  username: string;
   role: AdminRole;
   password: string;
 }) {
   const token = await getSessionToken();
-  const backendRole = data.role === "super_admin" ? "ADMIN" : "STAFF";
+  const backendRole = data.role === "super_admin" ? "SUPER_ADMIN" : "ADMIN";
 
   const res = await fetch(`${API_BASE_URL}/admin/users`, {
     method: "POST",
@@ -165,7 +165,7 @@ export async function apiCreateAdminAccount(data: {
     },
     body: JSON.stringify({
       fullName: data.fullName,
-      phoneNumber: data.phoneNumber,
+      username: data.username.trim().toLowerCase(),
       role: backendRole,
       password: data.password,
     }),
@@ -189,7 +189,6 @@ export async function apiUpdateAdminAccount(
   id: string,
   data: {
     fullName?: string;
-    phoneNumber?: string;
     role?: AdminRole;
     password?: string;
     isActive?: boolean;
@@ -197,7 +196,7 @@ export async function apiUpdateAdminAccount(
 ) {
   const token = await getSessionToken();
   const backendRole =
-    data.role !== undefined ? (data.role === "super_admin" ? "ADMIN" : "STAFF") : undefined;
+    data.role !== undefined ? (data.role === "super_admin" ? "SUPER_ADMIN" : "ADMIN") : undefined;
 
   const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
     method: "PATCH",
@@ -207,7 +206,6 @@ export async function apiUpdateAdminAccount(
     },
     body: JSON.stringify({
       fullName: data.fullName,
-      phoneNumber: data.phoneNumber,
       role: backendRole,
       password: data.password ? data.password : undefined,
       isActive: data.isActive,
@@ -1868,6 +1866,40 @@ export async function apiRevokeCustomerSessions(
     );
   }
   return json.data as { message: string };
+}
+
+/** Menghapus akun pelanggan secara atomik beserta data pesanannya. Khusus SUPER_ADMIN. */
+export async function apiDeleteCustomerAccount(id: string): Promise<{
+  id: string;
+  fullName: string;
+  deletedBookings: number;
+  deletedTickets: number;
+  releasedVehicles: number;
+  releasedDrivers: number;
+}> {
+  const token = await getSessionToken();
+  const res = await fetch(`${API_BASE_URL}/admin/customers/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      json?.error?.code || "DELETE_CUSTOMER_FAILED",
+      json?.error?.message || "Gagal menghapus akun pelanggan.",
+    );
+  }
+  return json.data as {
+    id: string;
+    fullName: string;
+    deletedBookings: number;
+    deletedTickets: number;
+    releasedVehicles: number;
+    releasedDrivers: number;
+  };
 }
 
 // Pengembalian dana (refund)

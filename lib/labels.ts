@@ -94,20 +94,19 @@ export const BOOKING_MODE_LABEL: Record<BookingMode, string> = {
 
 /*
  * Label peran hanya dua, sama dengan enum `UserRole` di backend
- * (`ADMIN` dan `STAFF`). Dulu labelnya "Super Admin" dan "Staf", padahal tidak
- * ada peran ketiga di server — layar seolah menjanjikan sesuatu yang tidak bisa
- * diberikan. ADMIN memang pemegang akses penuh; STAFF dibatasi ke operasional.
+ * (`SUPER_ADMIN` dan `ADMIN`). SUPER_ADMIN memegang akses penuh;
+ * ADMIN mengelola operasional harian.
  */
 export const ADMIN_ROLE: Record<AdminRole, string> = {
-  super_admin: "Admin",
-  staf_operasional: "Staf",
+  super_admin: "Super Admin",
+  staf_operasional: "Admin",
 };
 
 export const TICKET_STATUS: Record<SupportTicketStatus, { label: string; tone: ChipTone }> = {
   baru: { label: "Baru", tone: "pending" },
   /* Tim sudah membalas dan menunggu jawaban pelanggan; ini bukan keadaan darurat. */
   menunggu_pelanggan: { label: "Menunggu pelanggan", tone: "busy" },
-  eskalasi: { label: "Eskalasi ke staf", tone: "danger" },
+  eskalasi: { label: "Eskalasi ke admin", tone: "danger" },
   ditangani: { label: "Ditangani", tone: "busy" },
   selesai: { label: "Selesai", tone: "available" },
 };

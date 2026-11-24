@@ -46,7 +46,7 @@ function tautanBerkas(id: string): string {
  */
 export default async function DocumentsPage() {
   const profile = await getCurrentAdminProfile();
-  if (profile?.role !== "ADMIN") {
+  if (profile?.role !== "SUPER_ADMIN") {
     redirect("/");
   }
 

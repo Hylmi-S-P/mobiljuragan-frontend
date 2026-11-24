@@ -18,7 +18,7 @@ export function DashboardShell({
   navCounts?: NavCounts;
   /* Rincian angka per menu, dipakai badge agar bisa menjelaskan komposisinya. */
   navDetails?: Record<string, { baru: number; dibalas: number }>;
-  userRole?: "ADMIN" | "STAFF";
+  userRole?: "SUPER_ADMIN" | "ADMIN";
 }) {
   const [navOpen, setNavOpen] = useState(false);
 

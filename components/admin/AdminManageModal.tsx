@@ -59,9 +59,8 @@ export function AdminManageModal({
   const isSelf = Boolean(currentUserId && currentUserId === account.id);
 
   const [name, setName] = useState(account.name);
-  const [phoneNumber, setPhoneNumber] = useState(account.username);
   const [role, setRole] = useState<AdminRole>(account.role);
-  const [active, setActive] = useState(account.active);
+  const [active] = useState(account.active);
 
   // State Reset Kata Sandi
   const [newPassword, setNewPassword] = useState("");
@@ -77,7 +76,7 @@ export function AdminManageModal({
     null,
   );
 
-  // Validasi kata sandi baru (hanya jika diisi staf)
+  // Validasi kata sandi baru (hanya jika diisi super admin)
   const hasMinLength = newPassword.length >= MIN_PASSWORD_LENGTH;
   const hasUppercase = /[A-Z]/.test(newPassword);
   const hasNumber = /[0-9]/.test(newPassword);
@@ -89,13 +88,13 @@ export function AdminManageModal({
       onSave({
         id: account.id,
         name: name.trim(),
-        username: phoneNumber.trim(),
+        username: account.username,
         role,
         active,
       });
       onClose();
     }
-  }, [state, account.id, name, phoneNumber, role, active, onSave, onClose]);
+  }, [state, account.id, account.username, name, role, active, onSave, onClose]);
 
   const handleDeleteSelfProtected = async () => {
     if (isSelf) return;
@@ -122,8 +121,8 @@ export function AdminManageModal({
     <Modal
       open
       onClose={onClose}
-      title="Kelola Akun Staf & Keamanan"
-      description="Perbarui informasi profil operasional, tetapkan hak akses, atau lakukan reset kata sandi akun."
+      title="Kelola Akun Admin & Keamanan"
+      description="Perbarui profil, tetapkan hak akses, atau lakukan reset kata sandi akun."
       footer={
         <div className="flex w-full items-center justify-between gap-2">
           {!showDeleteConfirm && !isSelf ? (
@@ -231,19 +230,17 @@ export function AdminManageModal({
           </div>
 
           <div>
-            <label htmlFor={`${fieldId}-phone`} className="block text-meta font-medium text-ink">
-              Nomor telepon (dipakai untuk masuk)
+            <label htmlFor={`${fieldId}-username`} className="block text-meta font-medium text-ink">
+              Username (tetap)
             </label>
             <input
-              id={`${fieldId}-phone`}
+              id={`${fieldId}-username`}
               type="text"
-              name="phoneNumber"
-              required
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-            maxLength={20}
-              />
+              value={account.username}
+              disabled
+              readOnly
+              className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-rule/40 px-3 text-body text-ink-soft cursor-not-allowed"
+            />
           </div>
         </div>
 
@@ -276,7 +273,7 @@ export function AdminManageModal({
             <div>
               <span className="block text-body font-semibold text-ink">Reset Kata Sandi</span>
               <p className="text-micro text-ink-soft">
-                Biarkan kosong bila tidak ingin mengganti kata sandi staf.
+                Biarkan kosong bila tidak ingin mengganti kata sandi akun ini.
               </p>
             </div>
             <span className="inline-flex items-center gap-1 text-micro text-ink-soft font-mono bg-canvas px-2 py-0.5 rounded border border-rule">

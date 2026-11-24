@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AiHubPage() {
   const profile = await getCurrentAdminProfile();
-  if (profile?.role !== "ADMIN") {
+  if (profile?.role !== "SUPER_ADMIN") {
     redirect("/");
   }
 

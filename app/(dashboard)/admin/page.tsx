@@ -5,14 +5,14 @@ import { getAdminAccounts, getCurrentAdminProfile } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Manajemen Akun | MobilJuragan",
-  description: "Pengelolaan akun pengelola dan staf portal operasional MobilJuragan Merauke.",
+  description: "Pengelolaan akun admin dan super admin portal operasional MobilJuragan Merauke.",
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const profile = await getCurrentAdminProfile();
-  if (profile?.role !== "ADMIN") {
+  if (profile?.role !== "SUPER_ADMIN") {
     redirect("/");
   }
 

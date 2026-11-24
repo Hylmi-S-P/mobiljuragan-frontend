@@ -14,7 +14,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <DashboardShell
       navCounts={navCounts}
       navDetails={navDetails}
-      userRole={adminProfile?.role ?? "STAFF"}
+      userRole={adminProfile?.role ?? "ADMIN"}
     >
       {children}
     </DashboardShell>

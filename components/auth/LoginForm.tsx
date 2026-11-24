@@ -32,7 +32,7 @@ export function LoginForm() {
     <form action={formAction} noValidate className="flex h-full flex-col">
       <p className="text-meta font-semibold text-ink">Masuk ke akun Anda</p>
       <p className="mt-[7px] max-w-full text-[12px] leading-[1.45] text-rule-strong">
-        Gunakan kredensial resmi staf untuk mengakses seluruh modul operasional.
+        Gunakan username dan kata sandi resmi untuk mengakses modul operasional.
       </p>
 
       {state?.message ? (
@@ -50,18 +50,18 @@ export function LoginForm() {
             htmlFor={`${fieldId}-username`}
             className="block text-[12px] font-medium text-slate-700"
           >
-            Nomor Telepon atau Nama Staf
+            Username
           </label>
           <div className="relative mt-1.5">
             <input
               id={`${fieldId}-username`}
               name="username"
-              maxLength={40}
+              maxLength={30}
               autoComplete="username"
               aria-invalid={Boolean(state?.errors?.username)}
               aria-describedby={state?.errors?.username ? `${fieldId}-username-error` : undefined}
               className="h-11 w-full rounded-md border border-slate-300 bg-canvas pl-3 pr-11 text-body text-ink focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy"
-              placeholder="Masukkan nomor telepon atau nama staf"
+              placeholder="Masukkan username"
             />
             <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
               <IconUser className="h-3.5 w-3.5" />

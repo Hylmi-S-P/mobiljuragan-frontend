@@ -4,6 +4,7 @@ import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createAdminAction, updateAdminAction, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
+import { IconEye, IconEyeOff } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { ADMIN_ROLE } from "@/lib/labels";
 import type { AdminAccount, AdminRole } from "@/lib/types";
@@ -47,6 +48,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
   const [role, setRole] = useState<AdminRole>(account?.role ?? "staf_operasional");
   const [username, setUsername] = useState(account?.username ?? "");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [active, setActive] = useState(account?.active ?? true);
 
   const actionFn = isEdit ? updateAdminAction : createAdminAction;
@@ -95,7 +97,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
 
         <div>
           <label htmlFor={`${fieldId}-name`} className="block text-meta font-medium text-ink">
-            Nama lengkap staf atau admin
+            Nama Lengkap
           </label>
           <input
             id={`${fieldId}-name`}
@@ -108,7 +110,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
               state?.errors?.fullName ? `${fieldId}-name-error` : `${fieldId}-name-hint`
             }
             className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-            placeholder="Nama sesuai identitas staf"
+            placeholder="Nama lengkap admin"
             required
           />
           {state?.errors?.fullName ? (
@@ -124,7 +126,7 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
 
         <div>
           <label htmlFor={`${fieldId}-role`} className="block text-meta font-medium text-ink">
-            Hak akses
+            Hak Akses
           </label>
           <select
             id={`${fieldId}-role`}
@@ -144,31 +146,34 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
         <div className="grid gap-3.5 sm:grid-cols-2">
           <div>
             <label htmlFor={`${fieldId}-username`} className="block text-meta font-medium text-ink">
-              Nomor Telepon (untuk login)
+              Username
             </label>
             <input
               id={`${fieldId}-username`}
-              name="phoneNumber"
-              type="tel"
-              inputMode="tel"
-              maxLength={20}
+              name="username"
+              type="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              maxLength={30}
               value={username}
-              onChange={(event) => setUsername(event.target.value.replace(/[^0-9+\-\s()]/g, ""))}
-              aria-invalid={Boolean(state?.errors?.phoneNumber)}
+              onChange={(event) =>
+                setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))
+              }
+              aria-invalid={Boolean(state?.errors?.username)}
               aria-describedby={
-                state?.errors?.phoneNumber ? `${fieldId}-username-error` : `${fieldId}-username-hint`
+                state?.errors?.username ? `${fieldId}-username-error` : `${fieldId}-username-hint`
               }
               className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-              placeholder="Contoh: 081234567890"
+              placeholder="Contoh: admin.operasional"
               required
             />
-            {state?.errors?.phoneNumber ? (
+            {state?.errors?.username ? (
               <p id={`${fieldId}-username-error`} className="mt-1 text-meta text-danger">
-                {state.errors.phoneNumber}
+                {state.errors.username}
               </p>
             ) : (
               <p id={`${fieldId}-username-hint`} className="mt-1 text-micro text-ink-soft">
-                Minimal 8 digit angka, digunakan untuk masuk ke dashboard.
+                3-30 karakter: huruf kecil, angka, titik, underscore, atau tanda hubung.
               </p>
             )}
           </div>
@@ -177,21 +182,32 @@ export function AdminAccountModal({ account, onClose, onSave }: Props) {
             <label htmlFor={`${fieldId}-password`} className="block text-meta font-medium text-ink">
               Kata Sandi
             </label>
-            <input
-              id={`${fieldId}-password`}
-              name="password"
-              type="password"
-              maxLength={50}
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              aria-invalid={Boolean(state?.errors?.password)}
-              aria-describedby={
-                state?.errors?.password ? `${fieldId}-password-error` : `${fieldId}-password-hint`
-              }
-              className="mt-1 h-11 w-full rounded-sm border border-rule-strong bg-canvas px-3 text-body text-ink"
-              placeholder={account ? "Kosongkan jika tidak diubah" : "Minimal 8 karakter"}
-            />
+            <div className="relative mt-1">
+              <input
+                id={`${fieldId}-password`}
+                name="password"
+                type={showPassword ? "text" : "password"}
+                maxLength={50}
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                aria-invalid={Boolean(state?.errors?.password)}
+                aria-describedby={
+                  state?.errors?.password ? `${fieldId}-password-error` : `${fieldId}-password-hint`
+                }
+                className="h-11 w-full rounded-sm border border-rule-strong bg-canvas pl-3 pr-10 text-body text-ink"
+                placeholder={account ? "Kosongkan jika tidak diubah" : "Minimal 8 karakter"}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                title={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-sm p-1 text-ink-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
+              >
+                {showPassword ? <IconEyeOff className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
+              </button>
+            </div>
             {state?.errors?.password ? (
               <p id={`${fieldId}-password-error`} className="mt-1 text-meta text-danger">
                 {state.errors.password}

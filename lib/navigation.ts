@@ -3,7 +3,7 @@ export type NavGroup = { label: string; items: NavLink[]; adminOnly?: boolean };
 export type NavEntry = NavLink | NavGroup;
 
 export const WORKSPACE_NAME = "CV. Mobil Juragan Express Transport";
-export const WORKSPACE_ROLE = "Portal admin";
+export const WORKSPACE_ROLE = "Portal Super Admin";
 
 /* Grup "Manajemen Armada" tidak punya halaman sendiri, jadi kepala grup
    dirender sebagai tombol akordeon, bukan tautan. */
@@ -20,12 +20,12 @@ export const NAV_ENTRIES: NavEntry[] = [
   },
   { label: "Customer Care", href: "/customer-care" },
   {
-    /* Keperluan audit & pemulihan identitas. Diletakkan berdekatan dengan
-       Customer Care karena dipakai saat menangani laporan pelanggan. */
+    /* Keperluan audit & pemulihan identitas, khusus Super Admin. */
     label: "Akun Pelanggan",
+    adminOnly: true,
     items: [
-      { label: "Daftar Akun", href: "/customers" },
-      { label: "Jejak Identitas", href: "/identity-audit" },
+      { label: "Daftar Akun", href: "/customers", adminOnly: true },
+      { label: "Jejak Identitas", href: "/identity-audit", adminOnly: true },
     ],
   },
   { label: "Laporan Keuangan", href: "/finance" },

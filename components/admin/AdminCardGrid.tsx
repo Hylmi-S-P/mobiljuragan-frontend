@@ -18,21 +18,7 @@ type Props = {
 };
 
 /**
- * Menyamarkan nomor telepon untuk daftar akun.
- *
- * Nomor telepon adalah kredensial masuk akun staf (dipakai sebagai username).
- * Menampilkannya utuh di layar daftar berarti siapa pun yang lewat bisa membacanya
- * tanpa perlu membuka detail akun. Bagian tengah disembunyikan; nomor utuh tetap
- * tersedia di modal kelola, tempat admin memang perlu memeriksanya.
- */
-function samarkanNomor(nomor: string): string {
-  const bersih = nomor.trim();
-  if (bersih.length <= 6) return "•••";
-  return `${bersih.slice(0, 4)}•••${bersih.slice(-3)}`;
-}
-
-/**
- * AdminCardGrid: Grid kartu modular akun pengelola/staf.
+ * AdminCardGrid: Grid kartu modular akun admin dan super admin.
  * Menghilangkan tabel lebar yang terpotong di layar kecil, melindungi akun sesi aktif,
  * dan memindahkan aksi sensitif ke dalam modal kelola terpadu.
  */
@@ -47,9 +33,9 @@ export function AdminCardGrid({
     return (
       <div className="rounded-card border border-rule bg-canvas px-4 py-8 text-center sm:px-6">
         <IconUser className="mx-auto h-8 w-8 text-ink-soft/60" />
-        <p className="mt-2 text-body font-semibold text-ink">Tidak ada akun staf yang cocok.</p>
+        <p className="mt-2 text-body font-semibold text-ink">Tidak ada akun yang cocok.</p>
         <p className="mt-1 text-meta text-ink-soft">
-          Coba sesuaikan kata kunci nama atau nomor telepon untuk mencari akun lain.
+          Coba sesuaikan kata kunci nama atau username untuk mencari akun lain.
         </p>
       </div>
     );
@@ -87,8 +73,8 @@ export function AdminCardGrid({
                       ) : null}
                     </div>
                     <span className="block font-mono text-micro text-ink-soft">
-                      <span className="font-sans">Telepon: </span>
-                      {samarkanNomor(account.username)}
+                      <span className="font-sans">Username: </span>
+                      {account.username || "-"}
                     </span>
                   </div>
                 </div>

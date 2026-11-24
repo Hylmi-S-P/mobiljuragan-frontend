@@ -30,7 +30,7 @@ type SidebarProps = {
   /* Rincian angka: berapa yang benar-benar baru, berapa yang menunggu balasan
      admin setelah pelanggan membalas. Dipakai badge untuk menjelaskan isinya. */
   navDetails?: Record<string, { baru: number; dibalas: number }>;
-  userRole?: "ADMIN" | "STAFF";
+  userRole?: "SUPER_ADMIN" | "ADMIN";
 };
 
 /* Satu ikon per tujuan navigasi, semuanya dari keluarga ikon yang sama. */
@@ -144,19 +144,22 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
             {WORKSPACE_NAME}
           </p>
           <p className="mt-1 text-micro font-semibold uppercase text-on-navy-muted">
-            {userRole === "STAFF" ? "Portal staf" : WORKSPACE_ROLE}
+            {userRole === "SUPER_ADMIN" ? WORKSPACE_ROLE : "Portal Admin"}
           </p>
         </div>
 
         <div aria-hidden="true" className="mb-3 h-px bg-navy-line" />
 
         <nav className="flex flex-col gap-0.5">
-          {NAV_ENTRIES.filter((entry) => userRole === "ADMIN" || !entry.adminOnly).map((entry) => {
+          {NAV_ENTRIES.filter((entry) => userRole === "SUPER_ADMIN" || !entry.adminOnly).map((entry) => {
             if (isNavGroup(entry)) {
+              const visibleItems = entry.items.filter(
+                (item) => userRole === "SUPER_ADMIN" || !item.adminOnly,
+              );
               const IkonGrup = entry.label === "Akun Pelanggan" ? IconUsers : IconCar;
-              const grupAktif = entry.items.some((item) => pathname.startsWith(item.href));
+              const grupAktif = visibleItems.some((item) => pathname.startsWith(item.href));
               const groupOpen = groupOverrides[entry.label] ?? grupAktif;
-              const groupCount = entry.items.reduce(
+              const groupCount = visibleItems.reduce(
                 (sum, sub) => sum + (liveCounts?.[sub.href] ?? 0),
                 0,
               );
@@ -195,7 +198,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
 
                   {groupOpen ? (
                     <div className="flex flex-col gap-0.5 pb-1">
-                      {entry.items.map((item) => {
+                      {visibleItems.map((item) => {
                         const active = pathname.startsWith(item.href);
                         const IkonItem = IKON_NAV[item.href] ?? IconCar;
                         const subCount = liveCounts?.[item.href] ?? 0;
