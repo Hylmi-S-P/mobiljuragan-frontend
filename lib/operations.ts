@@ -676,6 +676,7 @@ type ApiTicketDetail = ApiTicket & {
     id: string;
     body: string;
     isCustomer: boolean;
+    isAi?: boolean;
     sentAt: string;
     sender?: { fullName: string } | null;
   }>;
@@ -688,16 +689,35 @@ export async function getTicketMessages(ticketId: string): Promise<TicketMessage
 
 export async function getTicketDetail(
   ticketId: string,
-): Promise<{ messages: TicketMessageView[]; handledBy?: string }> {
+): Promise<{
+  messages: TicketMessageView[];
+  handledBy?: string;
+  assignedAdminId?: string | null;
+  assignedAdminName?: string | null;
+  isMine?: boolean;
+  status?: string;
+  rawStatus?: string;
+}> {
   const data = await apiGet<ApiTicketDetail>(`/admin/tickets/${encodeURIComponent(ticketId)}`);
+  const customerName = data?.customer?.fullName ?? "Pelanggan";
   const messages = (data?.messages ?? []).map((m) => ({
     id: m.id,
     from: m.isCustomer ? ("pelanggan" as const) : ("tim" as const),
     text: m.body,
     sentAt: m.sentAt,
-    senderName: m.sender?.fullName ?? "Tim",
+    senderName: m.isCustomer
+      ? (m.sender?.fullName ?? customerName)
+      : (m.isAi ? "Bot AI" : (m.sender?.fullName ?? "Admin")),
   }));
-  return { messages, handledBy: data?.handledBy };
+  return {
+    messages,
+    handledBy: data?.handledBy,
+    assignedAdminId: data?.assignedAdmin?.id ?? null,
+    assignedAdminName: data?.assignedAdmin?.fullName ?? null,
+    isMine: Boolean(data?.isMine),
+    status: data?.status ? (TICKET_STATUS_MAP[data.status] ?? "baru") : undefined,
+    rawStatus: data?.status,
+  };
 }
 
 /* Laporan Keuangan */

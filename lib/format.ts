@@ -106,4 +106,21 @@ export function formatDateTimeWit(iso: string | null | undefined): string {
   }
 }
 
+export function formatTimeWit(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return "";
+    return (
+      new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jayapura",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date) + " WIT"
+    );
+  } catch {
+    return "";
+  }
+}
+
 
