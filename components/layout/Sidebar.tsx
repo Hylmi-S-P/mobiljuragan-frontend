@@ -135,11 +135,11 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
           menggulir di dalam sidebar sendiri, bukan mendorong tinggi halaman. */}
       <aside
         aria-label="Navigasi utama"
-        className={`fixed inset-y-0 left-0 z-40 flex w-[227px] shrink-0 flex-col overflow-y-auto bg-navy px-3 py-5 lg:sticky lg:top-0 lg:bottom-auto lg:z-auto lg:h-dvh lg:self-start lg:visible lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-[227px] shrink-0 flex-col overflow-hidden bg-navy px-3 py-4 lg:sticky lg:top-0 lg:bottom-auto lg:z-auto lg:h-dvh lg:self-start lg:visible lg:translate-x-0 ${
           open ? "visible translate-x-0" : "invisible -translate-x-full"
         }`}
       >
-        <div className="px-2 pb-5">
+        <div className="shrink-0 px-2 pb-3.5">
           <p className="text-body font-semibold leading-[1.3] tracking-[-0.01em] text-white">
             {WORKSPACE_NAME}
           </p>
@@ -148,9 +148,9 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
           </p>
         </div>
 
-        <div aria-hidden="true" className="mb-3 h-px bg-navy-line" />
+        <div aria-hidden="true" className="mb-2.5 h-px shrink-0 bg-navy-line" />
 
-        <nav className="flex flex-col gap-0.5">
+        <nav className="sidebar-scroll flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
           {NAV_ENTRIES.filter((entry) => userRole === "SUPER_ADMIN" || !entry.adminOnly).map((entry) => {
             if (isNavGroup(entry)) {
               const visibleItems = entry.items.filter(
@@ -174,12 +174,12 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                       }))
                     }
                     aria-expanded={groupOpen}
-                    className={`flex h-11 items-center gap-2.5 rounded-nav px-3 text-body font-medium text-white transition-colors ${
+                    className={`flex h-11 w-full min-w-0 items-center gap-2.5 rounded-nav px-3 text-body font-medium text-white transition-colors lg:h-9 ${
                       grupAktif && !groupOpen ? "bg-navy-surface" : "hover:bg-navy-hover"
                     }`}
                   >
                     <IkonGrup className="h-[17px] w-[17px] shrink-0 text-white/85" />
-                    <span className="flex-1 whitespace-nowrap text-left">{entry.label}</span>
+                    <span className="min-w-0 flex-1 truncate text-left">{entry.label}</span>
                     {groupCount > 0 ? (
                       <span
                         aria-label={`${groupCount} menunggu tindakan`}
@@ -208,7 +208,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                             href={item.href}
                             aria-current={active ? "page" : undefined}
                             onClick={onClose}
-                            className={`ml-3 flex h-10 items-center gap-2.5 rounded-nav pl-3 pr-3 text-body font-medium transition-colors ${
+                            className={`ml-3 flex h-10 min-w-0 items-center gap-2.5 rounded-nav pl-3 pr-3 text-body font-medium transition-colors lg:h-8 ${
                               active
                                 ? "bg-teal text-white"
                                 : "text-white/85 hover:bg-navy-hover hover:text-white"
@@ -219,7 +219,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                                 active ? "text-white" : "text-white/70"
                               }`}
                             />
-                            <span className="flex-1 truncate">{item.label}</span>
+                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
                             {subCount > 0 ? (
                               <span
                                 aria-label={`${subCount} menunggu pemeriksaan`}
@@ -249,7 +249,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                 href={entry.href}
                 aria-current={active ? "page" : undefined}
                 onClick={onClose}
-                className={`flex h-11 items-center gap-2 rounded-nav px-2.5 text-body font-medium transition-colors ${
+                className={`flex h-11 w-full min-w-0 items-center gap-2 rounded-nav px-2.5 text-body font-medium transition-colors lg:h-9 ${
                   active
                     ? "bg-teal text-white"
                     : "text-white/85 hover:bg-navy-hover hover:text-white"
@@ -258,7 +258,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                 <Ikon
                   className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/70"}`}
                 />
-                <span className="flex-1 whitespace-nowrap">{entry.label}</span>
+                <span className="min-w-0 flex-1 truncate">{entry.label}</span>
                 {/* Indikator notifikasi responsif & adaptif */}
                 {jumlah > 0 ? (() => {
                   const rincian = liveDetails?.[entry.href];
@@ -291,7 +291,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
           })}
         </nav>
 
-        <div className="mt-auto pt-3 pb-2 border-t border-navy-line">
+        <div className="mt-auto shrink-0 border-t border-navy-line pb-1 pt-3">
           <button
             type="button"
             onClick={() => {

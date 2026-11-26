@@ -120,6 +120,15 @@ html {
   outline-offset: 2px;
 }
 
+.sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Garis waktu pada notifikasi.
    Sebelumnya lebarnya diperbarui lewat state React setiap 50 ms, sehingga satu
    notifikasi memicu puluhan render ulang selama 3 detik. Elemen lain di halaman
