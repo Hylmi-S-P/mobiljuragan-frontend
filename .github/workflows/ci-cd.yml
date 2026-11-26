@@ -1,0 +1,82 @@
+name: CI/CD Frontend MobilJuragan
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: Uji Build & Typecheck (Cloud)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+
+      - name: Siapkan Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Pasang dependensi
+        run: npm ci
+
+      - name: Cek tipe TypeScript
+        run: npm run typecheck
+
+      - name: Cek ESLint (peringatan saja)
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Build Next.js standalone
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_OUTPUT_STANDALONE: "true"
+          NEXT_PUBLIC_API_URL: /api/v1
+        run: npm run build
+
+      - name: Gate anti-bocor localhost:4000
+        run: |
+          if grep -rn "localhost:4000" .next/static; then
+            echo "FATAL: localhost:4000 bocor ke .next/static" >&2
+            exit 1
+          fi
+
+  deploy:
+    name: Deploy ke Laptop Server (Kiri)
+    needs: ci
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: [self-hosted, linux, x64, deathhangcomedy, mobiljuragan-frontend]
+    concurrency:
+      group: deploy-mobiljuragan-frontend
+      cancel-in-progress: false
+    steps:
+      - name: Ambil kode terbaru
+        uses: actions/checkout@v4
+
+      - name: Sinkronkan kode ke /srv/mobiljuragan/frontend
+        run: |
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='/node_modules' \
+            --exclude='/.next' \
+            --exclude='/.env' \
+            --exclude='/.env.*' \
+            ./ /srv/mobiljuragan/frontend/
+
+      - name: Deploy container Web lewat Kiri
+        run: /srv/mobiljuragan/deploy-kiri.sh deploy web
+
+      - name: Verifikasi halaman login publik
+        run: |
+          code=$(curl -fsS -m 10 -o /dev/null -w "%{http_code}" https://mobiljuragan.tapakvia.com/login)
+          echo "HTTP $code"
+          test "$code" = "200"
