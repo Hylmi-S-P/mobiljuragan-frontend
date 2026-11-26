@@ -231,7 +231,7 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
             queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
             show(`Profil akun ${saved.name} berhasil diperbarui.`, "success");
           }}
-          onDeleted={(_id) => {
+          onDeleted={() => {
             queryClient.invalidateQueries({ queryKey: ["adminAccounts"] });
             show("Akun berhasil dihapus.", "info");
           }}

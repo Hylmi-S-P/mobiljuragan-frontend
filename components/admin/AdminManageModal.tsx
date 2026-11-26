@@ -5,7 +5,6 @@ import { useFormStatus } from "react-dom";
 import { updateAdminAction, deleteAdminAction, type ActionState } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { StatusChip } from "@/components/ui/StatusChip";
 import {
   IconAlert,
   IconEye,

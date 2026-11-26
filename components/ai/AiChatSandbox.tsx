@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { testAiChatAction } from "@/app/actions";
 import { IconChat, IconSparkles } from "@/components/ui/icons";
 
@@ -59,10 +59,7 @@ function buatIdPesan(peran: "user" | "bot" | "err"): string {
   return `${peran}-${Date.now()}-${crypto.randomUUID()}`;
 }
 
-export function AiChatSandbox({
-  initialTemperature = 0.7,
-  initialMaxTokens = 1200,
-}: Props) {
+export const AiChatSandbox: ComponentType<Props> = function AiChatSandbox() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",

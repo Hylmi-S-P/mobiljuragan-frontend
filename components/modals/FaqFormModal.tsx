@@ -54,7 +54,7 @@ export function FaqFormModal({ faq, existingCategories = [], onClose, onSave }: 
     faq?.category && !initialCategoryMatches ? faq.category : "",
   );
 
-  const [orderIndex, setOrderIndex] = useState<number>(faq?.orderIndex ?? 0);
+  const orderIndex = faq?.orderIndex ?? 0;
   const [isActive, setIsActive] = useState<boolean>(faq?.isActive ?? true);
 
   const actionFn = isEdit ? updateFaqAction : createFaqAction;

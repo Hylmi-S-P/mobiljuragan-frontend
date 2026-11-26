@@ -62,7 +62,6 @@ import {
 } from "@/lib/api";
 import {
   getTicketDetail,
-  getTicketMessages,
   getFinanceSummary,
   type FinanceSummary,
   type KnowledgeDocument,
