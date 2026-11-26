@@ -102,7 +102,6 @@ export function BookingTimelineBar({ rawStatus, paymentStatus, rejectionReason }
             {stages.map((stage) => {
               const isPast = stage.id < currentStep;
               const isCurrent = stage.id === currentStep;
-              const isFuture = stage.id > currentStep;
 
               return (
                 <div key={stage.id} className="flex flex-col items-center text-center">

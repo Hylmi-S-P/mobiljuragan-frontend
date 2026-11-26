@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -11,7 +10,6 @@ import { formatRupiah, formatDateTimeWit } from "@/lib/format";
 import { tautanMedia } from "@/lib/media";
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
-import { useAdminProfile } from "@/components/providers/AdminProfileContext";
 import type { AdminPaymentItem } from "@/lib/types";
 
 type Props = {
@@ -22,32 +20,11 @@ type Props = {
   currentAdmin?: { fullName?: string; role?: string } | null;
 };
 
-export function PaymentProofModal({ payment, open, onClose, onSuccess, currentAdmin }: Props) {
+export function PaymentProofModal({ payment, open, onClose, onSuccess }: Props) {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
-
-  const contextAdmin = useAdminProfile();
-  const providedAdmin = currentAdmin || contextAdmin;
-
-  // Ambil identitas staf/admin yang aktif login untuk audit trail verifikasi
-  const { data: meUser } = useQuery<{ id: string; fullName: string; role: string } | null>({
-    queryKey: ["currentAdminMe"],
-    queryFn: async () => {
-      try {
-        const res = await apiClient.get("/admin/auth/me");
-        return res.data?.data?.user ?? null;
-      } catch {
-        return null;
-      }
-    },
-    enabled: open && !providedAdmin,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const activeUser = providedAdmin || meUser;
-  const adminName = activeUser?.fullName || "Admin MobilJuragan";
 
   /* Menandai lunas tidak bisa dibatalkan dari layar ini: setelah PAID, tombol
      setujui dan tolak hilang, dan backend menolak perubahan status apa pun. Karena

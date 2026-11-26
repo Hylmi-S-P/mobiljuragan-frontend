@@ -9,7 +9,6 @@ import {
   cancelBookingLineItemAction,
   updateBookingStatusAction,
 } from "@/app/actions";
-import { formatRupiah } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
@@ -190,8 +189,6 @@ export function BookingDetailClient({
      (CREATED) pesanan belum diterima, jadi belum ada tarif yang bisa
      disesuaikan; setelah CONFIRMED totalnya sudah dikunci dan ditagihkan. */
   const canDecide = rawStatus === "PENDING_CONFIRMATION";
-  const isCompleted = rawStatus === "COMPLETED";
-  const isRejected = rawStatus === "REJECTED" || rawStatus === "CANCELLED";
 
   // Deteksi otomatis apakah rute pesanan adalah Luar Kota Merauke
   const isLuarKotaBooking = useMemo(() => {

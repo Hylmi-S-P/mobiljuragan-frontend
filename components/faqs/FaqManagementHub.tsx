@@ -44,7 +44,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
   const { show, node } = useToast();
 
   // TanStack Query for caching and server state synchronization
-  const { data: faqs = initialFaqs, isFetching } = useQuery<FaqItem[]>({
+  const { data: faqs = initialFaqs } = useQuery<FaqItem[]>({
     queryKey: ["adminFaqs"],
     queryFn: async (): Promise<FaqItem[]> => {
       const res = await apiClient.get("/admin/faqs");
@@ -220,7 +220,7 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
             setIsFormOpen(true);
           }}
           onToggleActive={handleToggleVisibility}
-          onDeleted={(_id) => {
+          onDeleted={() => {
             queryClient.invalidateQueries({ queryKey: ["adminFaqs"] });
             show("FAQ berhasil dihapus permanen.", "info");
           }}

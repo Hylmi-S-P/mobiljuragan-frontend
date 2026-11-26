@@ -97,7 +97,7 @@ export function PaymentVerificationHub({ initialResponse, isActive = true }: Pro
     refetchIntervalInBackground: false,
   });
 
-  const rawItems = response?.items ?? [];
+  const rawItems = useMemo(() => response?.items ?? [], [response?.items]);
 
   // Hitung jumlah item per kategori dari keseluruhan data yang ada
   const counts = useMemo(() => {
