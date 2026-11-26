@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { PlateBadge } from "@/components/ui/PlateBadge";
 import { formatRupiah } from "@/lib/format";
 import type { FinanceSummary } from "@/lib/operations";
@@ -12,7 +13,10 @@ type Props = {
 /**
  * FleetRevenueTable: Grid kartu modular pendapatan per unit armada CV. Mobil Juragan Merauke.
  */
-export function FleetRevenueTable({ fleetBreakdown, periodeLabel }: Props) {
+export const FleetRevenueTable = memo(function FleetRevenueTable({
+  fleetBreakdown,
+  periodeLabel,
+}: Props) {
   return (
     <div className="rounded-card border border-rule bg-surface p-4 sm:p-5 shadow-xs">
       {/* Header Section */}
@@ -95,4 +99,4 @@ export function FleetRevenueTable({ fleetBreakdown, periodeLabel }: Props) {
       )}
     </div>
   );
-}
+});

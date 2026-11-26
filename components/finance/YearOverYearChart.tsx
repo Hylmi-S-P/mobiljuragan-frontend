@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -25,7 +25,7 @@ type Props = {
  * melihat beda antar tahun: "ga perlu detail sampe ke per bulan nya jg ada,
  * karna kan fungsi chart ini cm pengen tau bedanya dari tahun tahun sebelumnya".
  */
-export function YearOverYearChart({ yearOverYear }: Props) {
+export const YearOverYearChart = memo(function YearOverYearChart({ yearOverYear }: Props) {
   const data = useMemo(
     () =>
       yearOverYear.map((y) => ({
@@ -118,7 +118,7 @@ export function YearOverYearChart({ yearOverYear }: Props) {
                 );
               }}
             />
-            <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="revenue" radius={[4, 4, 0, 0]} isAnimationActive={false}>
               {data.map((d) => (
                 <Cell key={d.tahun} fill={d.revenue > 0 ? "#1e3a5f" : "#e2e8f0"} />
               ))}
@@ -134,4 +134,4 @@ export function YearOverYearChart({ yearOverYear }: Props) {
       ) : null}
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useRef, useState } from "react";
 import { formatRupiah } from "@/lib/format";
 import type { FinanceSummary } from "@/lib/operations";
 import {
@@ -31,40 +31,75 @@ export function FinancialSummaryCard({
 }: Props) {
   const [data, setData] = useState<FinanceSummary>(initialData);
   const [periode, setPeriode] = useState<PeriodeKeuangan>(initialPeriode);
-  const [sedangMemuat, mulaiTransisi] = useTransition();
+  const [sedangMemuat, setSedangMemuat] = useState(false);
   const [galat, setGalat] = useState<string | null>(null);
 
-  const { summary, monthlyTrends, weeklyBreakdown, yearOverYear, rentalTypes, fleetBreakdown } =
-    data;
+  const cacheRef = useRef<Partial<Record<PeriodeKeuangan, FinanceSummary>>>({
+    [initialPeriode]: initialData,
+  });
+  const pendingRef = useRef<Partial<Record<PeriodeKeuangan, Promise<FinanceSummary | null>>>>({});
+  const requestIdRef = useRef(0);
 
-  function pilihPeriode(nilai: PeriodeKeuangan) {
-    if (nilai === periode || sedangMemuat) return;
+  const ambilPeriode = useCallback(async (nilai: PeriodeKeuangan): Promise<FinanceSummary | null> => {
+    const tersimpan = cacheRef.current[nilai];
+    if (tersimpan) return tersimpan;
 
-    const periodeSebelumnya = periode;
+    const berjalan = pendingRef.current[nilai];
+    if (berjalan) return berjalan;
+
+    const janji = muatUlangRingkasanKeuanganAction(nilai)
+      .then((hasil) => {
+        if (hasil.success && hasil.data) {
+          cacheRef.current[nilai] = hasil.data;
+          return hasil.data;
+        }
+        return null;
+      })
+      .finally(() => {
+        delete pendingRef.current[nilai];
+      });
+
+    pendingRef.current[nilai] = janji;
+    return janji;
+  }, []);
+
+  const prefetchPeriode = useCallback(
+    (nilai: PeriodeKeuangan) => {
+      if (cacheRef.current[nilai] || pendingRef.current[nilai]) return;
+      void ambilPeriode(nilai);
+    },
+    [ambilPeriode],
+  );
+
+  async function pilihPeriode(nilai: PeriodeKeuangan) {
+    if (nilai === periode) return;
+
     setPeriode(nilai);
     setGalat(null);
 
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("bulan");
-      if (nilai === PERIODE_KEUANGAN_DEFAULT) {
-        url.searchParams.delete("periode");
-      } else {
-        url.searchParams.set("periode", nilai);
-      }
-      window.history.replaceState(null, "", url.toString());
+    const tersimpan = cacheRef.current[nilai];
+    if (tersimpan) {
+      setData(tersimpan);
+      setSedangMemuat(false);
+      return;
     }
 
-    mulaiTransisi(async () => {
-      const hasil = await muatUlangRingkasanKeuanganAction(nilai);
-      if (hasil.success && hasil.data) {
-        setData(hasil.data);
-      } else {
-        setPeriode(periodeSebelumnya);
-        setGalat(hasil.message ?? "Laporan keuangan gagal dimuat ulang.");
-      }
-    });
+    const reqId = ++requestIdRef.current;
+    setSedangMemuat(true);
+
+    const hasil = await ambilPeriode(nilai);
+    if (requestIdRef.current !== reqId) return;
+
+    setSedangMemuat(false);
+    if (hasil) {
+      setData(hasil);
+    } else {
+      setGalat("Laporan keuangan gagal dimuat ulang.");
+    }
   }
+
+  const { summary, monthlyTrends, weeklyBreakdown, yearOverYear, rentalTypes, fleetBreakdown } =
+    data;
 
   const rentalRevenue = summary.rentalRevenue ?? summary.totalRevenue;
   const cancellationFeeRevenue = summary.cancellationFeeRevenue ?? 0;
@@ -102,10 +137,11 @@ export function FinancialSummaryCard({
               <button
                 key={nilai}
                 type="button"
-                onClick={() => pilihPeriode(nilai)}
+                onClick={() => void pilihPeriode(nilai)}
+                onMouseEnter={() => prefetchPeriode(nilai)}
+                onFocus={() => prefetchPeriode(nilai)}
                 aria-pressed={terpilih}
-                disabled={sedangMemuat}
-                className={`min-h-[44px] rounded-sm px-3 py-2 text-meta font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy disabled:cursor-wait disabled:opacity-60 ${
+                className={`min-h-[44px] rounded-sm px-3 py-2 text-meta font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
                   terpilih
                     ? "bg-surface font-semibold text-ink shadow-xs"
                     : "text-ink-soft hover:bg-surface/60 hover:text-ink"
@@ -127,11 +163,7 @@ export function FinancialSummaryCard({
         </p>
       ) : null}
 
-      <div
-        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 transition-opacity ${
-          sedangMemuat ? "opacity-60" : "opacity-100"
-        }`}
-      >
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ComparisonMetricCard
           title={LABEL_TOTAL_PEMASUKAN}
           value={formatRupiah(summary.totalRevenue)}
@@ -202,17 +234,12 @@ export function FinancialSummaryCard({
         />
       </div>
 
-      <div
-        className={`grid grid-cols-1 gap-6 xl:grid-cols-12 transition-opacity ${
-          sedangMemuat ? "opacity-60" : "opacity-100"
-        }`}
-      >
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <div className="xl:col-span-8">
           {tampilkanYoY ? (
             <YearOverYearChart yearOverYear={yearOverYear} />
           ) : (
             <RevenueBarChart
-              key={periode}
               monthlyTrends={monthlyTrends}
               weeklyBreakdown={weeklyBreakdown}
               jumlahBulan={jumlahBulan}
@@ -227,9 +254,7 @@ export function FinancialSummaryCard({
         </div>
       </div>
 
-      <div className={`transition-opacity ${sedangMemuat ? "opacity-60" : "opacity-100"}`}>
-        <FleetRevenueTable fleetBreakdown={fleetBreakdown} periodeLabel={periodeLabel} />
-      </div>
+      <FleetRevenueTable fleetBreakdown={fleetBreakdown} periodeLabel={periodeLabel} />
     </div>
   );
 }
