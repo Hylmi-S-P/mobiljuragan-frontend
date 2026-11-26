@@ -10,11 +10,11 @@ import { Modal } from "@/components/ui/Modal";
 import {
   correctCustomerNameAction,
   deleteCustomerAccountAction,
-  getCustomerDetailAction,
   revokeCustomerSessionsAction,
   setCustomerActiveAction,
   unlockCustomerAction,
 } from "@/app/actions";
+import { apiClient } from "@/lib/axios";
 import { formatDateTimeWit } from "@/lib/format";
 import type { ActionState } from "@/app/actions";
 import type { CustomerAccount, IdentityAuditItem } from "@/lib/api";
@@ -108,12 +108,23 @@ export function CustomerAccountsTable({
 
   async function bukaRiwayatIdentitas(item: CustomerAccount) {
     setLoadingRiwayatId(item.id);
-    const res = await getCustomerDetailAction(item.id);
-    setLoadingRiwayatId(null);
-    if (res.success) {
-      setDetail({ user: res.user, riwayat: res.riwayat });
-    } else {
-      show(res.message || "Gagal memuat riwayat identitas.", "error");
+    try {
+      const res = await apiClient.get(`/admin/customers/${encodeURIComponent(item.id)}`);
+      const data = res.data?.data as
+        | { user?: CustomerAccount; riwayatIdentitas?: IdentityAuditItem[] }
+        | undefined;
+      if (data?.user) {
+        setDetail({ user: data.user, riwayat: data.riwayatIdentitas ?? [] });
+      } else {
+        show("Gagal memuat riwayat identitas.", "error");
+      }
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+          ?.message || "Gagal memuat riwayat identitas.";
+      show(message, "error");
+    } finally {
+      setLoadingRiwayatId(null);
     }
   }
 

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import type {
   AdminAccount,
@@ -35,11 +36,11 @@ export async function getSessionToken(): Promise<string | undefined> {
   }
 }
 
-export async function getCurrentAdminProfile(): Promise<{
+export const getCurrentAdminProfile = cache(async (): Promise<{
   id: string;
   fullName: string;
   role: "SUPER_ADMIN" | "ADMIN";
-} | null> {
+} | null> => {
   const token = await getSessionToken();
   if (!token) return null;
 
@@ -47,6 +48,7 @@ export async function getCurrentAdminProfile(): Promise<{
     const res = await fetch(`${API_BASE_URL}/admin/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) return null;
     const json = await res.json().catch(() => null);
@@ -60,7 +62,7 @@ export async function getCurrentAdminProfile(): Promise<{
   } catch {
     return null;
   }
-}
+});
 
 // Autentikasi admin/super admin hanya menggunakan username dan kata sandi.
 export async function apiAdminLogin(username: string, password: string, rememberMe = false) {

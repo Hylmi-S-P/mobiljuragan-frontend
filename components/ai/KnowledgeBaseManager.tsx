@@ -8,7 +8,6 @@ import {
   createKnowledgeDocumentAction,
   updateKnowledgeDocumentAction,
   deleteKnowledgeDocumentAction,
-  parseKnowledgeFileAction,
   reindexRagKnowledgeAction,
   getKnowledgeCategoriesAction,
   createKnowledgeCategoryAction,
@@ -107,6 +106,13 @@ export function KnowledgeBaseManager({
     const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
     if (ext !== ".md" && ext !== ".txt") {
       setExtractError("Hanya berkas berformat .md dan .txt yang diperbolehkan.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setExtractError("Ukuran berkas melebihi batas 2 MB.");
+      e.target.value = "";
       return;
     }
 
@@ -115,27 +121,27 @@ export function KnowledgeBaseManager({
     setUploadSuccessNote(null);
 
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
-        const res = await parseKnowledgeFileAction(file.name, base64);
-        if (res.success && res.data) {
-          setFormTitle(res.data.title);
-          setFormContent(res.data.content);
-          setUploadSuccessNote(`Teks dari berkas "${file.name}" berhasil diekstrak (${res.data.lineCount} baris).`);
-        } else {
-          setExtractError(res.message || "Gagal mengekstrak isi berkas.");
-        }
-        setIsExtracting(false);
-      };
-      reader.onerror = () => {
-        setExtractError("Gagal membaca file di browser.");
-        setIsExtracting(false);
-      };
-      reader.readAsDataURL(file);
+      const rawText = await file.text();
+      const normalized = rawText.replace(/\r\n/g, "\n").trim();
+      if (!normalized) {
+        setExtractError("Isi berkas kosong.");
+        return;
+      }
+
+      const content = normalized.slice(0, 15000);
+      const headingMatch = /^#\s+(.+)$/m.exec(content);
+      const fallbackTitle = file.name.replace(/\.(md|txt)$/i, "").replace(/[-_]+/g, " ").trim();
+      const title = (headingMatch?.[1]?.trim() || fallbackTitle || "Dokumen Pengetahuan").slice(0, 80);
+      const lineCount = content.split("\n").length;
+
+      setFormTitle(title);
+      setFormContent(content);
+      setUploadSuccessNote(`Teks dari berkas "${file.name}" berhasil diekstrak (${lineCount} baris).`);
     } catch {
-      setExtractError("Terjadi kesalahan saat memproses berkas.");
+      setExtractError("Gagal membaca isi berkas di browser.");
+    } finally {
       setIsExtracting(false);
+      e.target.value = "";
     }
   };
 

@@ -38,7 +38,18 @@ export function AiHubTabbedWorkspace({
   categories = [],
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("telemetry");
+  const [visitedTabs, setVisitedTabs] = useState<Set<TabType>>(() => new Set(["telemetry"]));
   const [liveActiveDocCount, setLiveActiveDocCount] = useState(activeDocCount);
+
+  function selectTab(tab: TabType) {
+    setActiveTab(tab);
+    setVisitedTabs((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+  }
 
   return (
     <div>
@@ -47,7 +58,7 @@ export function AiHubTabbedWorkspace({
         <div className="flex items-center gap-1.5 rounded-md border border-rule bg-canvas p-1">
           <button
             type="button"
-            onClick={() => setActiveTab("telemetry")}
+            onClick={() => selectTab("telemetry")}
             className={`flex items-center gap-2 rounded-sm px-4 py-2 text-meta font-medium transition-all ${
               activeTab === "telemetry"
                 ? "bg-surface font-semibold text-navy shadow-xs border border-rule/60"
@@ -60,7 +71,7 @@ export function AiHubTabbedWorkspace({
 
           <button
             type="button"
-            onClick={() => setActiveTab("rag")}
+            onClick={() => selectTab("rag")}
             className={`flex items-center gap-2 rounded-sm px-4 py-2 text-meta font-medium transition-all ${
               activeTab === "rag"
                 ? "bg-surface font-semibold text-navy shadow-xs border border-rule/60"
@@ -76,7 +87,7 @@ export function AiHubTabbedWorkspace({
 
           <button
             type="button"
-            onClick={() => setActiveTab("sandbox")}
+            onClick={() => selectTab("sandbox")}
             className={`flex items-center gap-2 rounded-sm px-4 py-2 text-meta font-medium transition-all ${
               activeTab === "sandbox"
                 ? "bg-surface font-semibold text-navy shadow-xs border border-rule/60"
@@ -95,14 +106,9 @@ export function AiHubTabbedWorkspace({
 
       {/* Konten Berdasarkan Tab Aktif.
 
-          Setiap panel sengaja TETAP ter-mount dan hanya disembunyikan lewat kelas
-          `hidden`, bukan dilepas dari pohon React. Sebelumnya panel dilepas
-          (`activeTab === "x" ? <Panel/> : null`), sehingga berpindah tab membuang
-          seluruh state di dalamnya: percakapan sandbox hilang, suntingan system
-          prompt yang belum disimpan ikut hilang, dan entri dokumen yang baru
-          ditambahkan lenyap dari daftar. Dengan `hidden`, tiap panel mempertahankan
-          state-nya masing-masing dan tetap ringan karena tidak ada yang dirender
-          ulang saat tab tidak aktif. */}
+          Panel hanya di-mount saat pertama kali dikunjungi, lalu TETAP ter-mount
+          dan disembunyikan lewat kelas `hidden` supaya percakapan sandbox, suntingan
+          prompt, maupun dokumen yang sedang diedit tidak hilang saat berpindah tab. */}
       <div className="mt-6">
         <div className={activeTab === "telemetry" ? "space-y-6" : "hidden"}>
           <AiTelemetryCards initialHealth={healthData} latestTps={52.4} />
@@ -110,25 +116,30 @@ export function AiHubTabbedWorkspace({
             initialLogs={initialLogs.httpLogs}
             initialRawLogs={initialLogs.rawLogs}
             gatewayUrl={healthData.gatewayUrl}
+            isActive={activeTab === "telemetry"}
           />
         </div>
 
-        <div className={activeTab === "rag" ? "space-y-6" : "hidden"}>
-          <KnowledgeBaseManager
-            initialDocuments={documents}
-            initialCategories={categories}
-            initialRagStats={ragStats}
-            onActiveCountChange={setLiveActiveDocCount}
-          />
-        </div>
+        {visitedTabs.has("rag") ? (
+          <div className={activeTab === "rag" ? "space-y-6" : "hidden"}>
+            <KnowledgeBaseManager
+              initialDocuments={documents}
+              initialCategories={categories}
+              initialRagStats={ragStats}
+              onActiveCountChange={setLiveActiveDocCount}
+            />
+          </div>
+        ) : null}
 
-        <div className={activeTab === "sandbox" ? "space-y-6" : "hidden"}>
-          <SystemPromptDrawer initialConfig={config} activeDocCount={liveActiveDocCount} />
-          <AiChatSandbox
-            initialTemperature={config.temperature}
-            initialMaxTokens={config.maxTokens}
-          />
-        </div>
+        {visitedTabs.has("sandbox") ? (
+          <div className={activeTab === "sandbox" ? "space-y-6" : "hidden"}>
+            <SystemPromptDrawer initialConfig={config} activeDocCount={liveActiveDocCount} />
+            <AiChatSandbox
+              initialTemperature={config.temperature}
+              initialMaxTokens={config.maxTokens}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

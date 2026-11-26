@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { NAV_ENTRIES, WORKSPACE_NAME, WORKSPACE_ROLE, isNavGroup } from "@/lib/navigation";
-import { LogoutConfirmModal } from "@/components/modals/LogoutConfirmModal";
 import {
   IconCar,
   IconCalendar,
@@ -25,6 +24,7 @@ import {
 type SidebarProps = {
   open: boolean;
   onClose: () => void;
+  onRequestLogout: () => void;
   /* Angka pekerjaan yang menunggu, dipetakan per tujuan navigasi. */
   navCounts?: Record<string, number>;
   /* Rincian angka: berapa yang benar-benar baru, berapa yang menunggu balasan
@@ -51,51 +51,97 @@ const IKON_NAV: Record<string, (props: { className?: string }) => React.ReactEle
   "/admin": IconShield,
 };
 
-export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: SidebarProps) {
+const INTERVAL_POLLING_NAV_MS = 45_000;
+
+export function Sidebar({
+  open,
+  onClose,
+  onRequestLogout,
+  navCounts,
+  navDetails,
+  userRole,
+}: SidebarProps) {
   const pathname = usePathname();
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const [syncedCounts, setSyncedCounts] = useState(navCounts);
-  const [syncedDetails, setSyncedDetails] = useState(navDetails);
-  const [liveCounts, setLiveCounts] = useState(navCounts);
-  const [liveDetails, setLiveDetails] = useState(navDetails);
+  const [polled, setPolled] = useState<{
+    baseCounts: typeof navCounts;
+    baseDetails: typeof navDetails;
+    counts?: Record<string, number>;
+    details?: Record<string, { baru: number; dibalas: number }>;
+  } | null>(null);
+  const basePropsRef = useRef({ navCounts, navDetails });
+  const lastFetchedAtRef = useRef<number>(0);
 
-  if (syncedCounts !== navCounts || syncedDetails !== navDetails) {
-    setSyncedCounts(navCounts);
-    setSyncedDetails(navDetails);
-    setLiveCounts(navCounts);
-    setLiveDetails(navDetails);
-  }
+  useEffect(() => {
+    basePropsRef.current = { navCounts, navDetails };
+    lastFetchedAtRef.current = Date.now();
+  }, [navCounts, navDetails]);
+
+  const isPolledFresh =
+    polled !== null &&
+    polled.baseCounts === navCounts &&
+    polled.baseDetails === navDetails;
+  const liveCounts = isPolledFresh ? (polled.counts ?? navCounts) : navCounts;
+  const liveDetails = isPolledFresh ? (polled.details ?? navDetails) : navDetails;
 
   /* Setiap grup akordeon memiliki state independen agar membuka satu grup tidak memengaruhi grup lain. */
   const [groupOverrides, setGroupOverrides] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let activeEffect = true;
+    lastFetchedAtRef.current = Date.now();
+    let timer: number | undefined;
+
+    function stopPolling() {
+      if (timer !== undefined) {
+        window.clearInterval(timer);
+        timer = undefined;
+      }
+    }
 
     async function refreshCounts() {
+      if (document.visibilityState !== "visible") return;
       try {
         const res = await fetch("/api/nav-counts", { cache: "no-store" });
+        if (res.status === 401) {
+          stopPolling();
+          return;
+        }
         if (!res.ok || !activeEffect) return;
         const json = (await res.json()) as {
           counts?: Record<string, number>;
           details?: Record<string, { baru: number; dibalas: number }>;
         };
         if (!activeEffect) return;
-        if (json.counts) setLiveCounts(json.counts);
-        if (json.details) setLiveDetails(json.details);
+        lastFetchedAtRef.current = Date.now();
+        setPolled({
+          baseCounts: basePropsRef.current.navCounts,
+          baseDetails: basePropsRef.current.navDetails,
+          counts: json.counts,
+          details: json.details,
+        });
       } catch {
         // Kegagalan polling dibiarkan tenang agar navigasi tidak terganggu.
       }
     }
 
-    refreshCounts();
-    const timer = window.setInterval(refreshCounts, 25_000);
+    function handleVisibilityChange() {
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastFetchedAtRef.current >= INTERVAL_POLLING_NAV_MS
+      ) {
+        void refreshCounts();
+      }
+    }
+
+    timer = window.setInterval(refreshCounts, INTERVAL_POLLING_NAV_MS);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       activeEffect = false;
-      window.clearInterval(timer);
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [pathname]);
+  }, []);
 
   function isNavActive(entryHref: string): boolean {
     if (entryHref === "/bookings") {
@@ -206,6 +252,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
                           <Link
                             key={item.href}
                             href={item.href}
+                            prefetch={false}
                             aria-current={active ? "page" : undefined}
                             onClick={onClose}
                             className={`ml-3 flex h-10 items-center gap-2.5 rounded-nav pl-3 pr-3 text-body font-medium transition-colors ${
@@ -247,6 +294,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
               <Link
                 key={entry.href}
                 href={entry.href}
+                prefetch={false}
                 aria-current={active ? "page" : undefined}
                 onClick={onClose}
                 className={`flex h-11 items-center gap-2 rounded-nav px-2.5 text-body font-medium transition-colors ${
@@ -295,7 +343,7 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
           <button
             type="button"
             onClick={() => {
-              setShowLogoutModal(true);
+              onRequestLogout();
               onClose();
             }}
             className="group flex h-10 w-full items-center gap-2.5 rounded-nav px-3 text-body font-medium text-white/70 transition-all duration-150 hover:bg-danger/20 hover:text-danger cursor-pointer"
@@ -305,11 +353,6 @@ export function Sidebar({ open, onClose, navCounts, navDetails, userRole }: Side
           </button>
         </div>
       </aside>
-
-      <LogoutConfirmModal
-        open={showLogoutModal}
-        onClose={() => setShowLogoutModal(false)}
-      />
     </>
   );
 }

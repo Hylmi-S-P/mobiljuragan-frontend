@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 
 import { BookingDetailClient } from "@/components/bookings/BookingDetailClient";
 import { PageLead } from "@/components/ui/PageLayout";
-import { getBookingById, getDrivers, getVehicleById } from "@/lib/operations";
+import {
+  getBookingById,
+  getBookingDetailWithVehicle,
+  getDrivers,
+  getVehicleById,
+} from "@/lib/operations";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,14 +32,17 @@ export const dynamic = "force-dynamic";
 export default async function BookingDetailPage({ params }: Params) {
   const { id } = await params;
 
-  const booking = await getBookingById(id);
-  if (!booking) notFound();
+  const detail = await getBookingDetailWithVehicle(id);
+  if (!detail) notFound();
 
-  const vehicle = await getVehicleById(booking.vehicleId);
-  if (!vehicle) notFound();
-
+  const { booking } = detail;
   const isDriverService = booking.mode === "dengan_supir";
-  const drivers = isDriverService ? await getDrivers() : [];
+
+  const [vehicle, drivers] = await Promise.all([
+    detail.vehicle ? Promise.resolve(detail.vehicle) : getVehicleById(booking.vehicleId),
+    isDriverService ? getDrivers() : Promise.resolve([]),
+  ]);
+  if (!vehicle) notFound();
 
   return (
     <>

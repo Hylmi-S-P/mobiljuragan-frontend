@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useRef, useState } from "react";
 import { formatRupiah } from "@/lib/format";
 import type { FinanceSummary } from "@/lib/operations";
@@ -11,14 +12,41 @@ import {
   jumlahBulanUntukPeriode,
   type PeriodeKeuangan,
 } from "@/lib/financePeriod";
-import { muatUlangRingkasanKeuanganAction } from "@/app/actions";
+import { apiClient } from "@/lib/axios";
 import { LABEL_TOTAL_PEMASUKAN } from "@/lib/uiText";
 import { ComparisonMetricCard } from "@/components/ui/ComparisonMetricCard";
 import { IconClipboard, IconTrendingUp } from "@/components/ui/icons";
-import { RevenueBarChart } from "@/components/finance/RevenueBarChart";
-import { YearOverYearChart } from "@/components/finance/YearOverYearChart";
-import { RentalModelChart } from "@/components/finance/RentalModelChart";
 import { FleetRevenueTable } from "@/components/finance/FleetRevenueTable";
+
+const RevenueBarChart = dynamic(
+  () => import("@/components/finance/RevenueBarChart").then((m) => m.RevenueBarChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[340px] animate-pulse rounded-card border border-rule bg-surface" />
+    ),
+  },
+);
+
+const YearOverYearChart = dynamic(
+  () => import("@/components/finance/YearOverYearChart").then((m) => m.YearOverYearChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[340px] animate-pulse rounded-card border border-rule bg-surface" />
+    ),
+  },
+);
+
+const RentalModelChart = dynamic(
+  () => import("@/components/finance/RentalModelChart").then((m) => m.RentalModelChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[340px] animate-pulse rounded-card border border-rule bg-surface" />
+    ),
+  },
+);
 
 type Props = {
   initialData: FinanceSummary;
@@ -47,14 +75,19 @@ export function FinancialSummaryCard({
     const berjalan = pendingRef.current[nilai];
     if (berjalan) return berjalan;
 
-    const janji = muatUlangRingkasanKeuanganAction(nilai)
-      .then((hasil) => {
-        if (hasil.success && hasil.data) {
-          cacheRef.current[nilai] = hasil.data;
-          return hasil.data;
+    const janji = apiClient
+      .get("/admin/finance/summary", {
+        params: { range: nilai, bulan: jumlahBulanUntukPeriode(nilai) },
+      })
+      .then((res) => {
+        const ringkasan = (res.data?.data ?? res.data) as FinanceSummary | undefined;
+        if (ringkasan?.summary) {
+          cacheRef.current[nilai] = ringkasan;
+          return ringkasan;
         }
         return null;
       })
+      .catch(() => null)
       .finally(() => {
         delete pendingRef.current[nilai];
       });
@@ -62,14 +95,6 @@ export function FinancialSummaryCard({
     pendingRef.current[nilai] = janji;
     return janji;
   }, []);
-
-  const prefetchPeriode = useCallback(
-    (nilai: PeriodeKeuangan) => {
-      if (cacheRef.current[nilai] || pendingRef.current[nilai]) return;
-      void ambilPeriode(nilai);
-    },
-    [ambilPeriode],
-  );
 
   async function pilihPeriode(nilai: PeriodeKeuangan) {
     if (nilai === periode) return;
@@ -138,8 +163,6 @@ export function FinancialSummaryCard({
                 key={nilai}
                 type="button"
                 onClick={() => void pilihPeriode(nilai)}
-                onMouseEnter={() => prefetchPeriode(nilai)}
-                onFocus={() => prefetchPeriode(nilai)}
                 aria-pressed={terpilih}
                 className={`min-h-[44px] rounded-sm px-3 py-2 text-meta font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy ${
                   terpilih

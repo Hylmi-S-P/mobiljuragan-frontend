@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
-import { aktifkanVersiTemplateAction, unggahTemplateDokumenAction } from "@/app/actions";
+import { aktifkanVersiTemplateAction } from "@/app/actions";
 import type { TemplateAktif, VersiTemplate } from "@/lib/api";
 
 type Props = {
@@ -42,6 +43,7 @@ function labelJenis(mime: string): string {
  * tersimpan supaya dokumen yang sudah ditandatangani bisa ditelusuri.
  */
 export function DocumentTemplateUploader({ aktif, daftarVersi, tautanBerkasAktif }: Props) {
+  const router = useRouter();
   const [berkas, setBerkas] = useState<File | null>(null);
   const [catatan, setCatatan] = useState("");
   const [pesan, setPesan] = useState<{ jenis: "sukses" | "galat"; teks: string } | null>(null);
@@ -56,17 +58,32 @@ export function DocumentTemplateUploader({ aktif, daftarVersi, tautanBerkasAktif
     }
 
     const formData = new FormData();
-    formData.append("berkas", berkas);
-    formData.append("catatan", catatan);
+    formData.append("berkas", berkas, berkas.name);
+    if (catatan.trim()) {
+      formData.append("catatan", catatan.trim());
+    }
 
     mulaiUnggah(async () => {
-      const hasil = await unggahTemplateDokumenAction(formData);
+      let hasil: { success?: boolean; message?: string } = { success: false };
+      try {
+        const res = await fetch("/api/uploads/document-template", {
+          method: "POST",
+          body: formData,
+        });
+        hasil = (await res.json().catch(() => ({ success: false }))) as {
+          success?: boolean;
+          message?: string;
+        };
+      } catch {
+        hasil = { success: false, message: "Gagal menghubungi server untuk mengunggah dokumen." };
+      }
 
       if (hasil.success) {
         setPesan({ jenis: "sukses", teks: hasil.message ?? "Dokumen tersimpan." });
         setBerkas(null);
         setCatatan("");
         if (inputBerkas.current) inputBerkas.current.value = "";
+        router.refresh();
       } else {
         setPesan({ jenis: "galat", teks: hasil.message ?? "Gagal mengunggah dokumen." });
       }

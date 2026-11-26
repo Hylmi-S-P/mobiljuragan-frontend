@@ -7,7 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/useToast";
-import { unggahBuktiRefundAction, updateRefundAction } from "@/app/actions";
+import { updateRefundAction } from "@/app/actions";
 import { formatCurrencyInput, formatDateTimeWit, formatRupiah, parseRupiahDots } from "@/lib/format";
 import { tautanMedia } from "@/lib/media";
 import type { BookingRefund, RefundStatus } from "@/lib/types";
@@ -101,8 +101,26 @@ export function RefundQueue({ initialRefunds, statusAwal, galat }: Props) {
       let buktiMediaId: string | undefined;
       if (berkasBukti) {
         const formData = new FormData();
-        formData.append("berkas", berkasBukti);
-        const unggah = await unggahBuktiRefundAction(formData);
+        formData.append("file", berkasBukti, berkasBukti.name);
+        formData.append("kategori", "PAYMENT_PROOF");
+
+        let unggah: { success?: boolean; message?: string; mediaId?: string } = {
+          success: false,
+        };
+        try {
+          const uploadRes = await fetch("/api/uploads/refund-proof", {
+            method: "POST",
+            body: formData,
+          });
+          unggah = (await uploadRes.json().catch(() => ({ success: false }))) as {
+            success?: boolean;
+            message?: string;
+            mediaId?: string;
+          };
+        } catch {
+          unggah = { success: false, message: "Gagal menghubungi server saat mengunggah bukti transfer." };
+        }
+
         if (!unggah.success || !unggah.mediaId) {
           show(unggah.message ?? "Gagal mengunggah bukti transfer.", "error");
           return false;

@@ -1,17 +1,21 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useTransition } from "react";
 
 import {
   saveVehicleAction,
   deleteVehicleAction,
-  unggahFotoKendaraanAction,
   completeVehicleServiceAction,
 } from "@/app/actions";
 import { CompleteServiceModal } from "@/components/modals/CompleteServiceModal";
 import { DeleteVehicleModal } from "@/components/modals/DeleteVehicleModal";
-import { VehicleFormModal } from "@/components/modals/VehicleFormModal";
 import { Button } from "@/components/ui/Button";
+
+const VehicleFormModal = dynamic(
+  () => import("@/components/modals/VehicleFormModal").then((m) => m.VehicleFormModal),
+  { ssr: false },
+);
 import { PlateBadge } from "@/components/ui/PlateBadge";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -137,6 +141,8 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                           <img
                             src={tautanMedia(vehicle.imageUrl) ?? ""}
                             alt={`Foto ${vehicle.name}`}
+                            loading="lazy"
+                            decoding="async"
                             className="h-32 w-full object-cover"
                           />
                         </div>
@@ -274,9 +280,28 @@ export function VehicleCatalogTable({ initialVehicles, rentedVehicleIds = [] }: 
                */
               if (berkasFoto) {
                 const formData = new FormData();
-                formData.append("berkas", berkasFoto);
+                formData.append("file", berkasFoto, berkasFoto.name);
 
-                const unggah = await unggahFotoKendaraanAction(idTersimpan, formData);
+                let unggah: { success?: boolean; message?: string; imageUrl?: string } = {
+                  success: false,
+                };
+                try {
+                  const uploadRes = await fetch(
+                    `/api/uploads/vehicle-photo/${encodeURIComponent(idTersimpan)}`,
+                    {
+                      method: "POST",
+                      body: formData,
+                    },
+                  );
+                  unggah = (await uploadRes.json().catch(() => ({ success: false }))) as {
+                    success?: boolean;
+                    message?: string;
+                    imageUrl?: string;
+                  };
+                } catch {
+                  unggah = { success: false, message: "Gagal menghubungi server saat mengunggah foto." };
+                }
+
                 if (unggah.success) {
                   /*
                    * Kartu diperbarui langsung dengan foto baru. Tanpa ini admin

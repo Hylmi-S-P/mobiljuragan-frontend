@@ -23,24 +23,16 @@ export default async function BookingsPage({ searchParams }: PageProps) {
      tautan lama (?tab=pesanan) tetap mendarat di tab yang benar. */
   const initialTab = resolvedSearchParams?.tab;
 
-  let payments: AdminPaymentsResponse = {
+  const emptyPayments: AdminPaymentsResponse = {
     items: [],
     pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
   };
 
-  const [bookings, vehicles] = await Promise.all([
+  const [bookings, vehicles, payments] = await Promise.all([
     getBookings(),
     getAllVehicles(),
+    getAdminPayments({ limit: 100 }).catch(() => emptyPayments),
   ]);
-
-  try {
-    payments = await getAdminPayments({ limit: 100 });
-  } catch {
-    payments = {
-      items: [],
-      pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
-    };
-  }
 
   return (
     <Suspense fallback={<div className="p-8 text-center text-ink-soft">Memuat antrean...</div>}>

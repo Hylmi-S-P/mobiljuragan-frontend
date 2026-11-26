@@ -28,6 +28,7 @@ export async function proxy(request: NextRequest) {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(2500),
     });
 
     if (!res.ok) {

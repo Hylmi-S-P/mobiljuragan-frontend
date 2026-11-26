@@ -28,7 +28,7 @@ const API_BASE_URL = (
 ).replace(/\/$/, "");
 
 export async function GET(
-  _request: Request,
+  request: Request,
   konteks: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const { id } = await konteks.params;
@@ -57,6 +57,7 @@ export async function GET(
     balasan = await fetch(`${API_BASE_URL}/admin/document-templates/${id}/berkas`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]),
     });
   } catch {
     return NextResponse.json(
@@ -81,11 +82,13 @@ export async function GET(
   }
 
   const namaBerkas = ambilNamaBerkas(balasan.headers.get("content-disposition"), id);
+  const contentLength = balasan.headers.get("content-length");
 
   return new NextResponse(balasan.body, {
     status: 200,
     headers: {
       "Content-Type": balasan.headers.get("content-type") ?? "application/octet-stream",
+      ...(contentLength ? { "Content-Length": contentLength } : {}),
       "Content-Disposition": `inline; filename="${namaBerkas}"`,
       /* Berkas legal perusahaan bisa berubah tanpa pemberitahuan, jadi jangan
          disimpan peramban lebih lama dari sesi ini. */

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useToast } from "@/components/ui/useToast";
 import Link from "next/link";
 import { useState, useMemo } from "react";
@@ -19,35 +20,46 @@ import {
   IconCreditCard,
   IconSearch,
 } from "@/components/ui/icons";
-import { PaymentProofModal } from "@/components/payments/PaymentProofModal";
 import { formatRupiah, formatDateTimeWit } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
+import { useAdminProfile } from "@/components/providers/AdminProfileContext";
 import { useDebounce } from "@/lib/useDebounce";
 import type { AdminPaymentItem, AdminPaymentsResponse } from "@/lib/types";
 
+const PaymentProofModal = dynamic(
+  () => import("@/components/payments/PaymentProofModal").then((m) => m.PaymentProofModal),
+  { ssr: false },
+);
+
 type Props = {
   initialResponse?: AdminPaymentsResponse;
+  isActive?: boolean;
 };
 
 type TabFilter = "semua" | "menunggu" | "dibayar" | "ditolak";
 
-export function PaymentVerificationHub({ initialResponse }: Props) {
+export function PaymentVerificationHub({ initialResponse, isActive = true }: Props) {
   const queryClient = useQueryClient();
 
+  const contextAdmin = useAdminProfile();
+
   // Ambil identitas staf/admin yang aktif login untuk modal verifikasi dan audit trail
-  const { data: currentAdmin } = useQuery<{ id: string; fullName: string; role: string }>({
+  const { data: queriedAdmin } = useQuery<{ id: string; fullName: string; role: string } | null>({
     queryKey: ["currentAdminMe"],
     queryFn: async () => {
       try {
         const res = await apiClient.get("/admin/auth/me");
-        return res.data?.data?.user;
+        return res.data?.data?.user ?? null;
       } catch {
         return null;
       }
     },
+    enabled: !contextAdmin,
     staleTime: 5 * 60 * 1000,
   });
+
+  const currentAdmin = contextAdmin ?? queriedAdmin;
 
   // Search & Tab Filter States
   const [activeTab, setActiveTab] = useState<TabFilter>("menunggu");
@@ -80,8 +92,9 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
       return (res.data?.data || res.data) as AdminPaymentsResponse;
     },
     initialData: initialResponse,
-    initialDataUpdatedAt: 0,
-    refetchInterval: 10_000,
+    staleTime: 15_000,
+    refetchInterval: isActive ? 20_000 : false,
+    refetchIntervalInBackground: false,
   });
 
   const rawItems = response?.items ?? [];
@@ -358,17 +371,19 @@ export function PaymentVerificationHub({ initialResponse }: Props) {
           `key` mengikat state modal ke pembayaran yang sedang dibuka. Tanpa ini,
           centang "sudah dicocokkan" dan tahap konfirmasi terbawa ke pembayaran
           berikutnya, sehingga admin bisa menandai lunas tanpa membaca peringatan. */}
-      <PaymentProofModal
-        key={`${selectedPayment?.id ?? "tanpa-pembayaran"}-${selectedPayment?.status ?? ""}-${selectedPayment?.updatedAt ?? ""}`}
-        open={isModalOpen}
-        payment={selectedPayment}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedPayment(null);
-        }}
-        onSuccess={handleVerifySuccess}
-        currentAdmin={currentAdmin}
-      />
+      {isModalOpen && selectedPayment ? (
+        <PaymentProofModal
+          key={`${selectedPayment.id}-${selectedPayment.status}-${selectedPayment.updatedAt}`}
+          open={isModalOpen}
+          payment={selectedPayment}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedPayment(null);
+          }}
+          onSuccess={handleVerifySuccess}
+          currentAdmin={currentAdmin}
+        />
+      ) : null}
     </div>
   );
 }

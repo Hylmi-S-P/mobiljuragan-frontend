@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AiHubTabbedWorkspace } from "@/components/ai/AiHubTabbedWorkspace";
@@ -20,12 +21,24 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function AiHubPage() {
-  const profile = await getCurrentAdminProfile();
-  if (profile?.role !== "SUPER_ADMIN") {
-    redirect("/");
-  }
+function AiHubSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="h-11 w-80 animate-pulse rounded-md border border-rule bg-canvas" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, idx) => (
+          <div
+            key={idx}
+            className="h-28 animate-pulse rounded-card border border-rule bg-surface"
+          />
+        ))}
+      </div>
+      <div className="h-64 animate-pulse rounded-card border border-rule bg-surface" />
+    </div>
+  );
+}
 
+async function AiHubContent() {
   const [aiData, documents, categories, healthData, initialLogs] = await Promise.all([
     getAiConfig(),
     getKnowledgeDocuments(),
@@ -57,5 +70,18 @@ export default async function AiHubPage() {
       categories={categories}
       activeDocCount={activeDocCount}
     />
+  );
+}
+
+export default async function AiHubPage() {
+  const profile = await getCurrentAdminProfile();
+  if (profile?.role !== "SUPER_ADMIN") {
+    redirect("/");
+  }
+
+  return (
+    <Suspense fallback={<AiHubSkeleton />}>
+      <AiHubContent />
+    </Suspense>
   );
 }

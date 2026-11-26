@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useOptimistic, startTransition } from "react";
+import dynamic from "next/dynamic";
+import { useState, useOptimistic, startTransition } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { FaqFormModal } from "@/components/modals/FaqFormModal";
 import { FaqCategoryModal } from "@/components/faqs/FaqCategoryModal";
 import { FaqDetailModal } from "@/components/faqs/FaqDetailModal";
 import { FaqCardGrid } from "@/components/faqs/FaqCardGrid";
@@ -17,6 +17,11 @@ import { FAQ_CATEGORY_PRESETS } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
 import { useDebounce } from "@/lib/useDebounce";
 import type { FaqItem } from "@/lib/types";
+
+const FaqFormModal = dynamic(
+  () => import("@/components/modals/FaqFormModal").then((m) => m.FaqFormModal),
+  { ssr: false },
+);
 
 type Props = {
   initialFaqs?: FaqItem[];
@@ -49,7 +54,6 @@ export function FaqManagementHub({ initialFaqs = [] }: Props) {
       return initialFaqs;
     },
     initialData: initialFaqs,
-    initialDataUpdatedAt: 0,
   });
 
   // Mutation for instant mobile visibility toggle

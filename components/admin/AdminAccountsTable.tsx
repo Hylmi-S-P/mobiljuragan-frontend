@@ -1,9 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useOptimistic, startTransition } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminAccountModal } from "@/components/modals/AdminAccountModal";
-import { AdminManageModal } from "@/components/admin/AdminManageModal";
 import { AdminCardGrid } from "@/components/admin/AdminCardGrid";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
@@ -11,8 +10,19 @@ import { useToast } from "@/components/ui/useToast";
 import { IconPlus, IconSearch } from "@/components/ui/icons";
 import { ADMIN_ROLE } from "@/lib/labels";
 import { apiClient } from "@/lib/axios";
+import { useAdminProfile } from "@/components/providers/AdminProfileContext";
 import { useDebounce } from "@/lib/useDebounce";
 import type { AdminAccount, AdminRole } from "@/lib/types";
+
+const AdminAccountModal = dynamic(
+  () => import("@/components/modals/AdminAccountModal").then((m) => m.AdminAccountModal),
+  { ssr: false },
+);
+
+const AdminManageModal = dynamic(
+  () => import("@/components/admin/AdminManageModal").then((m) => m.AdminManageModal),
+  { ssr: false },
+);
 
 type Props = {
   initialAccounts?: AdminAccount[];
@@ -49,19 +59,24 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
 
   const { show, node } = useToast();
 
+  const contextAdmin = useAdminProfile();
+
   // Mengambil akun yang sedang login untuk proteksi sesi aktif
-  const { data: currentUser } = useQuery<{ id: string; fullName: string; role: string }>({
+  const { data: queriedUser } = useQuery<{ id: string; fullName: string; role: string } | null>({
     queryKey: ["currentAdminMe"],
     queryFn: async () => {
       try {
         const res = await apiClient.get("/admin/auth/me");
-        return res.data?.data?.user;
+        return res.data?.data?.user ?? null;
       } catch {
         return null;
       }
     },
+    enabled: !contextAdmin,
     staleTime: 5 * 60 * 1000,
   });
+
+  const currentUser = contextAdmin ?? queriedUser;
 
   const { data: accounts = initialAccounts ?? [], isFetching } = useQuery<AdminAccount[]>({
     queryKey: ["adminAccounts"],
@@ -73,7 +88,6 @@ export function AdminAccountsTable({ initialAccounts }: Props) {
       return initialAccounts ?? [];
     },
     initialData: initialAccounts,
-    initialDataUpdatedAt: 0,
   });
 
   const toggleStatusMutation = useMutation({

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,8 +10,6 @@ import {
   updateBookingStatusAction,
 } from "@/app/actions";
 import { formatRupiah } from "@/lib/format";
-import { ManualSurchargeModal } from "@/components/modals/ManualSurchargeModal";
-import { PaymentProofModal } from "@/components/payments/PaymentProofModal";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { AutoGrowTextarea } from "@/components/ui/AutoGrowTextarea";
@@ -40,6 +39,16 @@ type Props = {
   vehicle: Vehicle;
   availableDrivers?: Driver[];
 };
+
+const ManualSurchargeModal = dynamic(
+  () => import("@/components/modals/ManualSurchargeModal").then((m) => m.ManualSurchargeModal),
+  { ssr: false },
+);
+
+const PaymentProofModal = dynamic(
+  () => import("@/components/payments/PaymentProofModal").then((m) => m.PaymentProofModal),
+  { ssr: false },
+);
 
 export function BookingDetailClient({
   booking,
@@ -145,6 +154,9 @@ export function BookingDetailClient({
      pembayaran per pesanan, bukan dari daftar antrean. */
   const [verifikasiTerbuka, setVerifikasiTerbuka] = useState(false);
 
+  const isTerminalBooking =
+    rawStatus === "COMPLETED" || rawStatus === "REJECTED" || rawStatus === "CANCELLED";
+
   const { data: dataPembayaran } = useQuery({
     queryKey: ["paymentByBooking", booking.id],
     queryFn: async (): Promise<AdminPaymentItem | null> => {
@@ -159,9 +171,19 @@ export function BookingDetailClient({
     },
     /* Sengaja tidak ditahan sampai modal dibuka: sidebar perlu tahu lebih dulu
        apakah pesanan ini punya tagihan, karena tombolnya hanya berguna kalau
-       ada yang bisa diverifikasi. */
-    staleTime: 0,
-    refetchInterval: 10_000,
+       ada yang bisa diverifikasi. Pesanan baru sebelum penetapan tarif belum
+       memiliki tagihan, dan polling dihentikan ketika status sudah final/lunas. */
+    enabled:
+      Boolean(booking.payment) ||
+      (rawStatus !== "CREATED" && rawStatus !== "PENDING_CONFIRMATION"),
+    staleTime: 10_000,
+    refetchInterval: (query) => {
+      if (isTerminalBooking) return false;
+      const statusBayar = query.state.data?.status ?? booking.payment?.status;
+      if (statusBayar === "PAID" || statusBayar === "REFUNDED") return false;
+      return 15_000;
+    },
+    refetchIntervalInBackground: false,
   });
 
   /* Penyesuaian biaya hanya boleh di tahap penetapan tarif. Di tahap 1
@@ -674,13 +696,15 @@ export function BookingDetailClient({
       {/* Verifikasi Pembayaran dari halaman detail. `key` mengikat state modal
           ke pembayaran yang sedang dibuka, sama seperti di antrean pembayaran,
           supaya centang "Dana sudah masuk" tidak terbawa ke pesanan lain. */}
-      <PaymentProofModal
-        key={`${dataPembayaran?.id ?? "tanpa-pembayaran"}-${dataPembayaran?.status ?? ""}-${dataPembayaran?.updatedAt ?? ""}`}
-        open={verifikasiTerbuka && Boolean(dataPembayaran)}
-        payment={dataPembayaran ?? null}
-        onClose={() => setVerifikasiTerbuka(false)}
-        onSuccess={handlePembayaranDiverifikasi}
-      />
+      {verifikasiTerbuka && Boolean(dataPembayaran) ? (
+        <PaymentProofModal
+          key={`${dataPembayaran?.id ?? "tanpa-pembayaran"}-${dataPembayaran?.status ?? ""}-${dataPembayaran?.updatedAt ?? ""}`}
+          open={verifikasiTerbuka && Boolean(dataPembayaran)}
+          payment={dataPembayaran ?? null}
+          onClose={() => setVerifikasiTerbuka(false)}
+          onSuccess={handlePembayaranDiverifikasi}
+        />
+      ) : null}
 
       {/* Modal Surcharge Manual */}
       {surchargeOpen ? (
