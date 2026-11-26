@@ -68,7 +68,13 @@ import {
   type KnowledgeDocument,
   type TicketMessageView,
 } from "@/lib/operations";
-import { PILIHAN_BULAN_OMZET, type JumlahBulanOmzet } from "@/lib/financePeriod";
+import {
+  PILIHAN_BULAN_OMZET,
+  PILIHAN_PERIODE_KEUANGAN,
+  jumlahBulanUntukPeriode,
+  type JumlahBulanOmzet,
+  type PeriodeKeuangan,
+} from "@/lib/financePeriod";
 import type {
   AdminRole,
   CanonicalBookingStatus,
@@ -1597,6 +1603,24 @@ export async function muatUlangGrafikKeuanganAction(
       return { success: false, message: err.message };
     }
     return { success: false, message: "Grafik keuangan gagal dimuat ulang." };
+  }
+}
+
+export async function muatUlangRingkasanKeuanganAction(
+  periode: PeriodeKeuangan,
+): Promise<ActionState & { data?: FinanceSummary }> {
+  if (!PILIHAN_PERIODE_KEUANGAN.includes(periode)) {
+    return { success: false, message: "Periode laporan keuangan tidak dikenali." };
+  }
+
+  try {
+    const data = await getFinanceSummary(periode, jumlahBulanUntukPeriode(periode));
+    return { success: true, data };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, message: err.message };
+    }
+    return { success: false, message: "Laporan keuangan gagal dimuat ulang." };
   }
 }
 
