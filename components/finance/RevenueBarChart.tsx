@@ -64,7 +64,7 @@ export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }:
   const judul = rentang === 1 ? "Pemasukan Bulan Ini" : `Pemasukan ${rentang} Bulan Terakhir`;
 
   return (
-    <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
+    <div className="flex h-full flex-col rounded-card border border-rule bg-surface p-5 shadow-xs">
       <div className="flex flex-col gap-1 border-b border-rule pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-subtitle font-bold text-ink">{judul}</h3>
@@ -153,14 +153,14 @@ export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }:
       {/* Rincian mingguan muncul setelah batang diklik */}
       {rincianMinggu ? (
         <div className="mt-4 rounded-sm border border-rule/60 bg-canvas/60 p-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h4 className="text-meta font-semibold text-ink">
-              Rincian mingguan — {rincianMinggu.label}
+              Rincian mingguan: {rincianMinggu.label}
             </h4>
             <button
               type="button"
               onClick={() => setBulanAktif(null)}
-              className="text-micro font-medium text-navy hover:underline"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-sm px-2 text-micro font-medium text-navy hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
             >
               Tutup
             </button>

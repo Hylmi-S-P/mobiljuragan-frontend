@@ -7,6 +7,7 @@ import type { FinanceSummary } from "@/lib/operations";
 
 type Props = {
   rentalTypes: NonNullable<FinanceSummary["rentalTypes"]>;
+  periodeLabel?: string;
 };
 
 const WARNA = {
@@ -24,7 +25,7 @@ const WARNA = {
  * Transaksi nol tetap ditampilkan sebagai bagian tersendiri supaya admin tahu
  * model mana yang belum pernah dipakai, bukan mengira datanya hilang.
  */
-export function RentalModelChart({ rentalTypes }: Props) {
+export function RentalModelChart({ rentalTypes, periodeLabel }: Props) {
   const data = useMemo(
     () => [
       {
@@ -58,17 +59,24 @@ export function RentalModelChart({ rentalTypes }: Props) {
   const adaData = totalOmzet > 0 || totalTransaksi > 0 || totalPotongan > 0;
 
   return (
-    <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
-      <div className="flex flex-col gap-1 border-b border-rule pb-3">
-        <h3 className="text-subtitle font-bold text-ink">Model Sewa</h3>
-        <p className="text-meta text-ink-soft">
-          Perbandingan pemasukan lepas kunci dan dengan supir (sewa lunas dan potongan batal).
-        </p>
+    <div className="flex h-full flex-col rounded-card border border-rule bg-surface p-5 shadow-xs">
+      <div className="flex items-start justify-between gap-2 border-b border-rule pb-3">
+        <div>
+          <h3 className="text-subtitle font-bold text-ink">Model Sewa</h3>
+          <p className="text-meta text-ink-soft">
+            Perbandingan lepas kunci dan dengan supir.
+          </p>
+        </div>
+        {periodeLabel ? (
+          <span className="shrink-0 rounded-sm border border-rule bg-canvas px-2 py-0.5 text-micro font-medium text-ink-soft">
+            {periodeLabel}
+          </span>
+        ) : null}
       </div>
 
       {adaData ? (
-        <div className="mt-4 flex flex-col items-center gap-6 sm:flex-row">
-          <div className="h-56 w-full max-w-[260px] shrink-0">
+        <div className="mt-4 flex flex-1 flex-col items-center justify-between gap-5 sm:flex-row xl:flex-col">
+          <div className="h-48 w-full max-w-[220px] shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -77,8 +85,8 @@ export function RentalModelChart({ rentalTypes }: Props) {
                   nameKey="label"
                   cx="50%"
                   cy="50%"
-                  innerRadius={54}
-                  outerRadius={88}
+                  innerRadius={48}
+                  outerRadius={78}
                   paddingAngle={2}
                   strokeWidth={0}
                 >

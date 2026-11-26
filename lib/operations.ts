@@ -723,6 +723,7 @@ export async function getTicketDetail(
 /* Laporan Keuangan */
 
 export type FinanceSummary = {
+  range?: string;
   /* Rentang bulan yang dipakai backend untuk grafik pemasukan. Dikirim balik supaya
      tampilan tidak perlu menebak nilai default mana yang sedang berlaku. */
   bulan?: number;

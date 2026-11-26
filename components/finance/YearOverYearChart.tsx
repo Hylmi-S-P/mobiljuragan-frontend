@@ -51,7 +51,7 @@ export function YearOverYearChart({ yearOverYear }: Props) {
       : null;
 
   return (
-    <div className="rounded-card border border-rule bg-surface p-5 shadow-xs">
+    <div className="flex h-full flex-col rounded-card border border-rule bg-surface p-5 shadow-xs">
       <div className="flex flex-col gap-1 border-b border-rule pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-subtitle font-bold text-ink">Perbandingan Tahun ke Tahun</h3>
