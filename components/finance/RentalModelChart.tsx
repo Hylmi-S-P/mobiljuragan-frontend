@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { memo, useMemo } from "react";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import { formatRupiah } from "@/lib/format";
 import type { FinanceSummary } from "@/lib/operations";
 
@@ -25,7 +25,10 @@ const WARNA = {
  * Transaksi nol tetap ditampilkan sebagai bagian tersendiri supaya admin tahu
  * model mana yang belum pernah dipakai, bukan mengira datanya hilang.
  */
-export function RentalModelChart({ rentalTypes, periodeLabel }: Props) {
+export const RentalModelChart = memo(function RentalModelChart({
+  rentalTypes,
+  periodeLabel,
+}: Props) {
   const data = useMemo(
     () => [
       {
@@ -76,51 +79,50 @@ export function RentalModelChart({ rentalTypes, periodeLabel }: Props) {
 
       {adaData ? (
         <div className="mt-4 flex flex-1 flex-col items-center justify-between gap-5 sm:flex-row xl:flex-col">
-          <div className="h-48 w-full max-w-[220px] shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data}
-                  dataKey="revenue"
-                  nameKey="label"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={48}
-                  outerRadius={78}
-                  paddingAngle={2}
-                  strokeWidth={0}
-                >
-                  {data.map((d) => (
-                    <Cell key={d.kunci} fill={d.warna} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const d = payload[0].payload as (typeof data)[number];
-                    return (
-                      <div className="rounded-sm border border-rule bg-surface px-3 py-2 shadow-md">
-                        <p className="text-micro font-semibold text-ink">{d.label}</p>
+          <div className="flex h-[184px] w-[184px] shrink-0 items-center justify-center">
+            <PieChart width={184} height={184}>
+              <Pie
+                data={data}
+                dataKey="revenue"
+                nameKey="label"
+                cx="50%"
+                cy="50%"
+                innerRadius={48}
+                outerRadius={78}
+                paddingAngle={2}
+                strokeWidth={0}
+                isAnimationActive={false}
+              >
+                {data.map((d) => (
+                  <Cell key={d.kunci} fill={d.warna} />
+                ))}
+              </Pie>
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload as (typeof data)[number];
+                  return (
+                    <div className="rounded-sm border border-rule bg-surface px-3 py-2 shadow-md">
+                      <p className="text-micro font-semibold text-ink">{d.label}</p>
+                      <p className="text-meta text-ink-soft">
+                        Pemasukan: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
+                      </p>
+                      <p className="text-meta text-ink-soft">
+                        Sewa lunas: <strong className="text-ink">{d.count} transaksi</strong>
+                      </p>
+                      {d.feeCount > 0 ? (
                         <p className="text-meta text-ink-soft">
-                          Pemasukan: <strong className="text-ink">{formatRupiah(d.revenue)}</strong>
+                          Potongan batal: <strong className="text-ink">{d.feeCount} transaksi</strong>
                         </p>
-                        <p className="text-meta text-ink-soft">
-                          Sewa lunas: <strong className="text-ink">{d.count} transaksi</strong>
-                        </p>
-                        {d.feeCount > 0 ? (
-                          <p className="text-meta text-ink-soft">
-                            Potongan batal: <strong className="text-ink">{d.feeCount} transaksi</strong>
-                          </p>
-                        ) : null}
-                        <p className="text-meta text-ink-soft">
-                          Porsi: <strong className="text-ink">{d.percentage}%</strong>
-                        </p>
-                      </div>
-                    );
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+                      ) : null}
+                      <p className="text-meta text-ink-soft">
+                        Porsi: <strong className="text-ink">{d.percentage}%</strong>
+                      </p>
+                    </div>
+                  );
+                }}
+              />
+            </PieChart>
           </div>
 
           <ul className="w-full space-y-3">
@@ -158,4 +160,4 @@ export function RentalModelChart({ rentalTypes, periodeLabel }: Props) {
       )}
     </div>
   );
-}
+});

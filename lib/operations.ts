@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getSessionToken, ApiError } from "./api";
 import { normalisasiTransmisi } from "./labels";
 import type { JumlahBulanOmzet } from "./financePeriod";
@@ -62,7 +63,7 @@ function normalisasiTargetPenolakan(nilai: unknown): DocumentRejectionTarget[] {
 const API_BASE_URL =
   process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
-async function apiGet<T>(path: string): Promise<T> {
+async function apiGet<T>(path: string, options?: { timeoutMs?: number }): Promise<T> {
   const token = await getSessionToken();
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -71,6 +72,7 @@ async function apiGet<T>(path: string): Promise<T> {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     cache: "no-store",
+    signal: AbortSignal.timeout(options?.timeoutMs ?? 10_000),
   });
 
   const json = await res.json().catch(() => null);
@@ -175,18 +177,19 @@ function mapVehicle(v: ApiVehicle): Vehicle {
  * kehilangan baris, dan tabel Pesanan yang mencari kendaraan lewat id akan menampilkan sel
  * nama kosong.
  */
-export async function getAllVehicles(): Promise<Vehicle[]> {
+export const getAllVehicles = cache(async (): Promise<Vehicle[]> => {
   const data = await apiGet<ApiVehicle[]>("/vehicles?operationalStatus=ALL");
   return (data ?? []).map(mapVehicle);
-}
+});
 
-export async function getVehicleById(id: string): Promise<Vehicle | null> {
+export const getVehicleById = cache(async (id: string): Promise<Vehicle | null> => {
   const token = await getSessionToken();
 
   const res = await fetch(`${API_BASE_URL}/vehicles/${encodeURIComponent(id)}`, {
     method: "GET",
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   });
 
   // 404 bukan kegagalan halaman; pemanggil yang memutuskan memanggil notFound().
@@ -203,7 +206,7 @@ export async function getVehicleById(id: string): Promise<Vehicle | null> {
 
   const json = await res.json();
   return json?.data ? mapVehicle(json.data) : null;
-}
+});
 
 /* Supir */
 
@@ -250,11 +253,11 @@ function mapDriver(d: ApiDriver): Driver {
   };
 }
 
-export async function getDrivers(): Promise<Driver[]> {
+export const getDrivers = cache(async (): Promise<Driver[]> => {
   // includeInactive agar supir nonaktif tetap tampil di roster beserta statusnya.
   const data = await apiGet<ApiDriver[]>("/admin/drivers?includeInactive=true");
   return (data ?? []).map(mapDriver);
-}
+});
 
 /* Pemesanan */
 
@@ -310,6 +313,10 @@ type ApiBooking = {
     id: string;
     name: string;
     licensePlate: string;
+    category?: string | null;
+    transmission?: string | null;
+    seatingCapacity?: number | null;
+    operationalStatus?: string;
     /* Tarif harian dari katalog. Backend sudah mengirimnya (`vehicle: true`)
        tetapi sebelumnya dibuang saat pemetaan, sehingga dashboard tidak punya
        angka resmi dan memakai konstanta karangan. */
@@ -499,35 +506,57 @@ function mapBooking(b: ApiBooking): Booking {
   };
 }
 
-export async function getBookings(): Promise<Booking[]> {
+export const getBookings = cache(async (): Promise<Booking[]> => {
   const data = await apiGet<{ items: ApiBooking[] }>("/admin/bookings?limit=100");
   return (data?.items ?? []).map(mapBooking);
-}
+});
 
 // Booking memakai identifier yang sama untuk detail: kode booking (MJ-...) maupun UUID.
-export async function getBookingById(id: string): Promise<Booking | null> {
-  const token = await getSessionToken();
+export const getBookingDetailWithVehicle = cache(
+  async (id: string): Promise<{ booking: Booking; vehicle: Vehicle | null } | null> => {
+    const token = await getSessionToken();
 
-  const res = await fetch(`${API_BASE_URL}/admin/bookings/${encodeURIComponent(id)}`, {
-    method: "GET",
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    cache: "no-store",
-  });
+    const res = await fetch(`${API_BASE_URL}/admin/bookings/${encodeURIComponent(id)}`, {
+      method: "GET",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
 
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    const json = await res.json().catch(() => null);
-    throw new ApiError(
-      res.status,
-      json?.error?.code || "BOOKING_FETCH_FAILED",
-      json?.error?.message || "Gagal memuat detail pemesanan.",
-      json?.error?.details,
-    );
-  }
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      throw new ApiError(
+        res.status,
+        json?.error?.code || "BOOKING_FETCH_FAILED",
+        json?.error?.message || "Gagal memuat detail pemesanan.",
+        json?.error?.details,
+      );
+    }
 
-  const json = await res.json();
-  return json?.data ? mapBooking(json.data) : null;
-}
+    const json = await res.json();
+    const raw = json?.data as ApiBooking | undefined;
+    if (!raw) return null;
+
+    const vehicle =
+      raw.vehicle && raw.vehicle.operationalStatus !== undefined
+        ? mapVehicle({
+            ...raw.vehicle,
+            category: raw.vehicle.category ?? null,
+            transmission: raw.vehicle.transmission ?? null,
+            seatingCapacity: raw.vehicle.seatingCapacity ?? null,
+            operationalStatus: raw.vehicle.operationalStatus ?? "AVAILABLE",
+          })
+        : null;
+
+    return { booking: mapBooking(raw), vehicle };
+  },
+);
+
+export const getBookingById = cache(async (id: string): Promise<Booking | null> => {
+  const detail = await getBookingDetailWithVehicle(id);
+  return detail?.booking ?? null;
+});
 
 /* Kalender armada */
 
@@ -648,7 +677,7 @@ type ApiTicket = {
   _count?: { messages: number };
 };
 
-export async function getSupportTickets(): Promise<SupportTicketView[]> {
+export const getSupportTickets = cache(async (): Promise<SupportTicketView[]> => {
   const data = await apiGet<ApiTicket[]>("/admin/tickets");
   return (data ?? []).map((t) => ({
     id: t.id,
@@ -669,7 +698,7 @@ export async function getSupportTickets(): Promise<SupportTicketView[]> {
     bookingCode: t.booking?.bookingCode ?? null,
     bookingStatus: t.booking?.status ?? null,
   }));
-}
+});
 
 type ApiTicketDetail = ApiTicket & {
   messages: Array<{
@@ -805,13 +834,12 @@ export type FinanceSummary = {
  * setahun untuk sparkline. Kalau ikut default API yang 1 bulan, sparkline-nya
  * menciut jadi satu titik. Halaman laporan keuangan menyebut rentangnya sendiri,
  * jadi tidak ada pemanggil yang bergantung pada nilai bawaan ini secara diam. */
-export async function getFinanceSummary(
-  range: string = "all",
-  bulan: JumlahBulanOmzet = 12,
-): Promise<FinanceSummary> {
-  const params = new URLSearchParams({ range, bulan: String(bulan) });
-  return await apiGet<FinanceSummary>(`/admin/finance/summary?${params.toString()}`);
-}
+export const getFinanceSummary = cache(
+  async (range: string = "all", bulan: JumlahBulanOmzet = 12): Promise<FinanceSummary> => {
+    const params = new URLSearchParams({ range, bulan: String(bulan) });
+    return await apiGet<FinanceSummary>(`/admin/finance/summary?${params.toString()}`);
+  },
+);
 
 /* Konfigurasi AI & Knowledge Base */
 
@@ -862,7 +890,7 @@ export type AiGatewayHealth = {
 };
 
 export async function getAiGatewayHealth(): Promise<AiGatewayHealth> {
-  return await apiGet<AiGatewayHealth>("/admin/ai/health");
+  return await apiGet<AiGatewayHealth>("/admin/ai/health", { timeoutMs: 5_000 });
 }
 
 export type KnowledgeDocument = {
@@ -941,6 +969,10 @@ export async function getAiGatewayLogs(): Promise<AiGatewayLogData> {
 
 // Verifikasi Pembayaran (Admin Payment Queue)
 
+const fetchAdminPaymentsCached = cache(async (path: string): Promise<AdminPaymentsResponse> => {
+  return await apiGet<AdminPaymentsResponse>(path);
+});
+
 export async function getAdminPayments(params?: {
   status?: string;
   method?: string;
@@ -959,7 +991,7 @@ export async function getAdminPayments(params?: {
 
   const qs = query.toString();
   const path = `/admin/payments${qs ? `?${qs}` : ""}`;
-  return await apiGet<AdminPaymentsResponse>(path);
+  return await fetchAdminPaymentsCached(path);
 }
 
 export async function verifyPayment(
@@ -1081,6 +1113,6 @@ export type RefundSummary = {
   selesai: { status: RefundStatus; jumlah: number; totalNominal: number };
 };
 
-export async function getRefundSummary(): Promise<RefundSummary | null> {
+export const getRefundSummary = cache(async (): Promise<RefundSummary | null> => {
   return apiGet<RefundSummary>("/admin/refunds/summary");
-}
+});

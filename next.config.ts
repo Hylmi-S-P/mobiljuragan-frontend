@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  poweredByHeader: false,
   ...(process.env.NEXT_OUTPUT_STANDALONE === "true" ? { output: "standalone" as const } : {}),
 
   /* Daftar asal yang boleh memakai aset dev, termasuk bundel HMR.
@@ -18,42 +19,29 @@ const nextConfig: NextConfig = {
    * Daftar ini hanya berlaku di mode dev. Build produksi tidak memakainya. */
   allowedDevOrigins: ["127.0.0.1", "localhost", "100.90.184.52", "192.168.1.3"],
 
-  /* Batas ukuran badan permintaan untuk Server Action.
-   *
-   * Bawaannya 1 MB. Batas itu berlaku untuk SEMUA Server Action, termasuk yang
-   * membawa berkas lewat FormData. Selama ini dashboard hanya memberi tahu
-   * pengguna batas 5 MB (foto armada dan foto SIM) dan 15 MB (dokumen template),
-   * sedangkan server menolak apa pun di atas 1 MB dengan pesan
-   * "Body exceeded 1 MB limit". Artinya berkas yang ukurannya wajar selalu gagal
-   * sebelum sempat diproses.
-   *
-   * Nilainya disamakan dengan batas backend ditambah ruang untuk pembungkus
-   * multipart dan kolom teks lain di form yang sama:
-   * - gambar: BATAS_UKURAN_BERKAS 8 MB (backend/src/lib/imagePipeline.ts)
-   * - dokumen: BATAS_UKURAN_DOKUMEN 15 MB (backend/src/lib/documentTemplateBerkas.ts)
-   *
-   * 20 MB memberi ruang untuk dokumen terbesar tanpa membuka pintu untuk
-   * unggahan liar. Backend tetap menegakkan batasnya sendiri, jadi angka ini
-   * adalah gerbang pertama, bukan satu-satunya. */
+  /* Unggahan berkas besar (template dokumen 15 MB, foto armada 5 MB, bukti
+   * transfer) sekarang dialirkan langsung lewat Route Handler `/api/uploads/*`
+   * yang dilewati oleh `proxy.ts`. Server Action dan `proxy.ts` hanya perlu
+   * menyangga payload form biasa agar penggunaan RAM container `512m` tetap aman. */
   experimental: {
+    optimizePackageImports: ["recharts", "@tanstack/react-query"],
     serverActions: {
-      bodySizeLimit: "20mb",
+      bodySizeLimit: "2mb",
     },
+    proxyClientMaxBodySize: "4mb",
+  },
 
-    /* Batas badan permintaan saat `proxy.ts` aktif.
-     *
-     * Selama proyek ini memakai proxy (gerbang sesi di `proxy.ts`), Next.js
-     * menyalin badan permintaan ke memori agar bisa dibaca lebih dari sekali.
-     * Bawaannya 10 MB, dan yang penting: kalau batas itu terlampaui, Next
-     * TIDAK mengembalikan galat — ia hanya memotong badan permintaan di 10 MB
-     * dan menulis peringatan di log. Akibatnya unggahan besar bisa sampai ke
-     * Server Action dalam keadaan terpotong, lalu gagal dengan pesan yang
-     * menyesatkan tentang isi berkas, bukan tentang ukurannya.
-     *
-     * Nilainya dibuat lebih besar dari `bodySizeLimit` di atas supaya proxy
-     * tidak pernah menjadi pembatas yang lebih ketat daripada Server Action
-     * yang dilindunginya. */
-    proxyClientMaxBodySize: "22mb",
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+    ];
   },
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -32,7 +32,11 @@ type Props = {
  * Kalau dihilangkan, grafik terbaca seolah datanya rusak, padahal memang belum
  * ada uang masuk di bulan tersebut.
  */
-export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }: Props) {
+export const RevenueBarChart = memo(function RevenueBarChart({
+  monthlyTrends,
+  weeklyBreakdown,
+  jumlahBulan,
+}: Props) {
   const [bulanAktif, setBulanAktif] = useState<string | null>(null);
 
   const data = useMemo(
@@ -127,6 +131,7 @@ export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }:
             <Bar
               dataKey="revenue"
               radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
               onClick={(entry) => {
                 const labelPenuh = (entry as unknown as { labelPenuh?: string })?.labelPenuh;
                 if (!labelPenuh) return;
@@ -179,4 +184,4 @@ export function RevenueBarChart({ monthlyTrends, weeklyBreakdown, jumlahBulan }:
       ) : null}
     </div>
   );
-}
+});

@@ -2,12 +2,9 @@
 
 import { useToast } from "@/components/ui/useToast";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { API_BASE_URL, getClientToken } from "@/lib/axios";
+import { API_BASE_URL, apiClient, getClientToken } from "@/lib/axios";
 
-import {
-  loadTicketMessagesAction,
-  replyToTicketAction,
-} from "@/app/actions";
+import { replyToTicketAction } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/PageLayout";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -24,6 +21,91 @@ import type { SupportTicketView, TicketMessageView } from "@/lib/operations";
 */
 }
 const MAKS_PANJANG_PESAN = 500;
+
+const TICKET_STATUS_MAP: Record<string, string> = {
+  OPEN: "baru",
+  IN_PROGRESS: "ditangani",
+  WAITING_CUSTOMER: "menunggu_pelanggan",
+  RESOLVED: "selesai",
+  CLOSED: "selesai",
+};
+
+const SSE_BACKOFF_MS = [2_000, 4_000, 10_000, 30_000];
+
+type TicketDetailClientResult = {
+  success: boolean;
+  messages: TicketMessageView[];
+  handledBy?: string;
+  assignedAdminId?: string | null;
+  assignedAdminName?: string | null;
+  isMine?: boolean;
+  status?: string;
+  rawStatus?: string;
+  message?: string;
+};
+
+async function fetchTicketDetailClient(
+  ticketId: string,
+  signal?: AbortSignal,
+): Promise<TicketDetailClientResult> {
+  if (!ticketId) {
+    return { success: false, messages: [], message: "Tiket tidak valid." };
+  }
+
+  try {
+    const res = await apiClient.get(`/admin/tickets/${encodeURIComponent(ticketId)}`, {
+      signal,
+    });
+    const data = res.data?.data as {
+      customer?: { fullName?: string } | null;
+      handledBy?: string;
+      assignedAdmin?: { id: string; fullName: string } | null;
+      isMine?: boolean;
+      status?: string;
+      messages?: Array<{
+        id: string;
+        body: string;
+        isCustomer: boolean;
+        isAi?: boolean;
+        sentAt: string;
+        sender?: { fullName: string } | null;
+      }>;
+    } | null;
+
+    if (!data) {
+      return { success: false, messages: [], message: "Percakapan tiket gagal dimuat." };
+    }
+
+    const customerName = data.customer?.fullName ?? "Pelanggan";
+    const messages: TicketMessageView[] = (data.messages ?? []).map((m) => ({
+      id: m.id,
+      from: m.isCustomer ? "pelanggan" : "tim",
+      text: m.body,
+      sentAt: m.sentAt,
+      senderName: m.isCustomer
+        ? (m.sender?.fullName ?? customerName)
+        : m.isAi
+          ? "Bot AI"
+          : (m.sender?.fullName ?? "Admin"),
+    }));
+
+    return {
+      success: true,
+      messages,
+      handledBy: data.handledBy,
+      assignedAdminId: data.assignedAdmin?.id ?? null,
+      assignedAdminName: data.assignedAdmin?.fullName ?? null,
+      isMine: Boolean(data.isMine),
+      status: data.status ? (TICKET_STATUS_MAP[data.status] ?? "baru") : undefined,
+      rawStatus: data.status,
+    };
+  } catch (err: unknown) {
+    const message =
+      (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+        ?.message || "Percakapan tiket gagal dimuat.";
+    return { success: false, messages: [], message };
+  }
+}
 
 type Props = {
   initialTickets: SupportTicketView[];
@@ -81,10 +163,60 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
     if (!activeId) return;
 
     const controller = new AbortController();
-    const token = getClientToken();
     const ticketId = activeId;
+    let attempt = 0;
+    let reconnectTimer: number | undefined;
+    let waitingForVisibility = false;
+
+    function clearReconnectTimer() {
+      if (reconnectTimer !== undefined) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+    }
+
+    function scheduleReconnect() {
+      if (controller.signal.aborted) return;
+      clearReconnectTimer();
+
+      if (document.visibilityState === "hidden") {
+        waitingForVisibility = true;
+        return;
+      }
+
+      const delay = SSE_BACKOFF_MS[Math.min(attempt, SSE_BACKOFF_MS.length - 1)];
+      attempt += 1;
+      reconnectTimer = window.setTimeout(() => {
+        if (!controller.signal.aborted) {
+          void connectSse();
+        }
+      }, delay);
+    }
+
+    function onVisibilityChange() {
+      if (
+        document.visibilityState === "visible" &&
+        waitingForVisibility &&
+        !controller.signal.aborted
+      ) {
+        waitingForVisibility = false;
+        attempt = 0;
+        void connectSse();
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     async function connectSse() {
+      if (controller.signal.aborted) return;
+      if (document.visibilityState === "hidden") {
+        waitingForVisibility = true;
+        return;
+      }
+
+      const token = getClientToken();
+      let shouldStop = false;
+
       try {
         const res = await fetch(
           `${API_BASE_URL}/admin/tickets/${encodeURIComponent(ticketId)}/events`,
@@ -98,8 +230,14 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           },
         );
 
+        if (res.status === 401 || res.status === 403 || res.status === 404) {
+          shouldStop = true;
+          return;
+        }
+
         if (!res.ok || !res.body) return;
 
+        attempt = 0;
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
@@ -136,7 +274,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
             const jenis = (payload.jenis as string) || eventType;
             if (jenis === "pesan" || jenis === "handover" || jenis === "status") {
-              const hasil = await loadTicketMessagesAction(ticketId);
+              const hasil = await fetchTicketDetailClient(ticketId, controller.signal);
               if (!controller.signal.aborted && activeIdRef.current === ticketId && hasil.success) {
                 setMessages(hasil.messages);
                 setTickets((current) =>
@@ -170,7 +308,11 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
           }
         }
       } catch {
-        // Koneksi SSE ditutup saat berpindah tiket atau komponen dilepas.
+        // Koneksi terputus atau ditutup saat berpindah tiket/unmount; sambung ulang bila masih aktif.
+      } finally {
+        if (!shouldStop && !controller.signal.aborted) {
+          scheduleReconnect();
+        }
       }
     }
 
@@ -178,6 +320,8 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
 
     return () => {
       controller.abort();
+      clearReconnectTimer();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [activeId]);
 
@@ -197,7 +341,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
     setDraftError(null);
 
     startLoadMessages(async () => {
-      const hasil = await loadTicketMessagesAction(ticketId);
+      const hasil = await fetchTicketDetailClient(ticketId);
 
       // Tiket bisa berpindah lagi selagi permintaan berjalan; hasil yang datang
       // terlambat untuk tiket lama tidak boleh menimpa percakapan tiket aktif.
@@ -319,7 +463,7 @@ export function TicketWorkspace({ initialTickets, initialMessages }: Props) {
       const result = await replyToTicketAction(targetTicketId, text);
       if (result.success) {
         show(result.message ?? "Balasan terkirim.");
-        const segar = await loadTicketMessagesAction(targetTicketId);
+        const segar = await fetchTicketDetailClient(targetTicketId);
         if (segar.success && activeIdRef.current === targetTicketId) {
           setMessages(segar.messages);
         }

@@ -11,6 +11,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 1000 * 60, // 1 menit cache stale time
+            gcTime: 1000 * 60 * 5, // 5 menit masa simpan cache tidak aktif di memori
             refetchOnWindowFocus: false,
             retry: 1,
           },

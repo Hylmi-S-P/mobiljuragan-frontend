@@ -11,7 +11,7 @@ const API_BASE_URL =
   process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
   const token = await getSessionToken();
@@ -30,6 +30,7 @@ export async function GET(
     upstream = await fetch(`${API_BASE_URL}/documents/file/${key}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]),
     });
   } catch {
     return new NextResponse("Gagal menghubungi server dokumen.", { status: 502 });
@@ -40,6 +41,8 @@ export async function GET(
     // supaya kartu dokumen bisa membedakan "bukan milik pesanan" dan "hilang".
     return new NextResponse(null, { status: upstream.status });
   }
+
+  const contentLength = upstream.headers.get("content-length");
 
   /*
    * Badan respons diteruskan sebagai aliran, bukan `arrayBuffer()`. Berkas
@@ -53,6 +56,7 @@ export async function GET(
   return new NextResponse(upstream.body, {
     headers: {
       "Content-Type": upstream.headers.get("content-type") ?? "application/octet-stream",
+      ...(contentLength ? { "Content-Length": contentLength } : {}),
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
     },

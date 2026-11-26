@@ -1,19 +1,37 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { getAiGatewayLogsAction, clearAiGatewayLogsAction } from "@/app/actions";
-import type { AiGatewayLog } from "@/lib/operations";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { clearAiGatewayLogsAction } from "@/app/actions";
+import { apiClient } from "@/lib/axios";
+import type { AiGatewayLog, AiGatewayLogData } from "@/lib/operations";
 
 type Props = {
   initialLogs?: AiGatewayLog[];
   initialRawLogs?: string[];
   gatewayUrl?: string;
+  isActive?: boolean;
 };
+
+function isSameRawLogs(prev: string[], next: string[]): boolean {
+  if (prev.length !== next.length) return false;
+  if (prev.length === 0) return true;
+  return prev[0] === next[0] && prev[prev.length - 1] === next[next.length - 1];
+}
+
+function isSameHttpLogs(prev: AiGatewayLog[], next: AiGatewayLog[]): boolean {
+  if (prev.length !== next.length) return false;
+  if (prev.length === 0) return true;
+  return (
+    prev[0]?.id === next[0]?.id &&
+    prev[prev.length - 1]?.id === next[next.length - 1]?.id
+  );
+}
 
 export function NineRouterConsoleWidget({
   initialLogs = [],
   initialRawLogs = [],
   gatewayUrl = "http://localhost:20128/v1",
+  isActive = true,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"engine" | "http">("engine");
   const [httpLogs, setHttpLogs] = useState<AiGatewayLog[]>(initialLogs);
@@ -22,15 +40,27 @@ export function NineRouterConsoleWidget({
   const [autoRefresh, setAutoRefresh] = useState(true);
   const terminalContainerRef = useRef<HTMLDivElement>(null);
 
+  const loadLogs = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await apiClient.get("/admin/ai/logs", { signal });
+      const payload = res.data?.data as AiGatewayLogData | AiGatewayLog[] | undefined;
+      if (!payload) return;
+
+      const nextHttp = Array.isArray(payload) ? payload : payload.httpLogs || [];
+      const nextRaw = Array.isArray(payload) ? [] : payload.rawLogs;
+
+      setHttpLogs((prev) => (isSameHttpLogs(prev, nextHttp) ? prev : nextHttp));
+      if (Array.isArray(nextRaw)) {
+        setRawLogs((prev) => (isSameRawLogs(prev, nextRaw) ? prev : nextRaw));
+      }
+    } catch {
+      // Kegagalan polling dibiarkan tenang atau terbatalkan saat unmount/tab berpindah.
+    }
+  }, []);
+
   const fetchLogs = () => {
     startTransition(async () => {
-      const res = await getAiGatewayLogsAction();
-      if (res.success && res.data) {
-        setHttpLogs(res.data.httpLogs || []);
-        if (Array.isArray(res.data.rawLogs)) {
-          setRawLogs(res.data.rawLogs);
-        }
-      }
+      await loadLogs();
     });
   };
 
@@ -43,10 +73,30 @@ export function NineRouterConsoleWidget({
   };
 
   useEffect(() => {
-    if (!autoRefresh) return;
-    const interval = setInterval(fetchLogs, 4000);
-    return () => clearInterval(interval);
-  }, [autoRefresh]);
+    if (!autoRefresh || !isActive) return;
+
+    let activeController: AbortController | null = null;
+    const poll = () => {
+      if (document.visibilityState !== "visible") return;
+      activeController?.abort();
+      activeController = new AbortController();
+      void loadLogs(activeController.signal);
+    };
+
+    const interval = window.setInterval(poll, 5000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        poll();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      activeController?.abort();
+    };
+  }, [autoRefresh, isActive, loadLogs]);
 
   // Scroll internal box terminal ke baris terbawah TANPA menggeser scroll window halaman utama
   useEffect(() => {
@@ -132,7 +182,7 @@ export function NineRouterConsoleWidget({
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="rounded accent-teal text-teal h-3 w-3"
             />
-            <span>Auto (4s)</span>
+            <span>Auto (5s)</span>
           </label>
 
           <button
